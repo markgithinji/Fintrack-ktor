@@ -7,6 +7,7 @@ object TransactionsTable : Table("transactions") {
     val type = varchar("type", 50) // "income" or "expense"
     val amount = double("amount")
     val category = varchar("category", 100)
-    val date = varchar("date", 20) // store ISO date as string for now
+    val date = varchar("date", 20) // ISO date string
     override val primaryKey = PrimaryKey(id)
 }
+

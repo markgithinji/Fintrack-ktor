@@ -27,4 +27,6 @@ dependencies {
     implementation(libs.exposed.jdbc)
     implementation(libs.hikari)
     implementation(libs.postgresql)
+    implementation(libs.kotlinx.datetime)
+
 }

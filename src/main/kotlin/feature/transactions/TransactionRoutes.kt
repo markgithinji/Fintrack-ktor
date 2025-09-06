@@ -1,65 +1,107 @@
 package com.fintrack.feature.transactions
 
+import com.fintrack.core.ApiResponse
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.datetime.LocalDate
+import org.jetbrains.exposed.sql.SortOrder
 
 fun Route.transactionRoutes() {
     val repo = TransactionRepository()
 
     route("/transactions") {
-        // GET /transactions → list all
-        get {
-            call.respond(repo.getAll())
-        }
 
-        // GET /transactions/{id} → single
-        get("{id}") {
-            val id = call.parameters["id"]?.toIntOrNull()
-                ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid ID"))
+        // GET /transactions?type=&category=&start=&end=&sortBy=&order=&page=&size=
+        get() {
+            try {
+                val type = call.request.queryParameters["type"]
+                val categories = call.request.queryParameters["category"]?.split(",")
+                val start = call.request.queryParameters["start"]?.let { LocalDate.parse(it) }
+                val end = call.request.queryParameters["end"]?.let { LocalDate.parse(it) }
+                val sortBy = call.request.queryParameters["sortBy"] ?: "date"
+                val order = if (call.request.queryParameters["order"] == "DESC") SortOrder.DESC else SortOrder.ASC
+                val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+                val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
 
-            val transaction = repo.getById(id)
-            if (transaction != null) {
-                call.respond(transaction)
-            } else {
-                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Transaction not found"))
+                val transactions = repo.getAll(type, categories, start, end, sortBy, order, page, size)
+                call.respond(ApiResponse.Success(transactions))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to fetch transactions"))
             }
         }
 
-        // POST /transactions → create
-        post {
-            val transaction = call.receive<Transaction>()
-            val saved = repo.add(transaction)
-            call.respond(HttpStatusCode.Created, saved)
+        // GET /transactions/{id}
+        get("{id}") {
+            try {
+                val id = call.parameters["id"]?.toIntOrNull()
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid ID"))
+
+                val transaction = repo.getById(id)
+                if (transaction != null) call.respond(ApiResponse.Success(transaction))
+                else call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Transaction not found"))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to fetch transaction"))
+            }
         }
 
-        // PUT /transactions/{id} → full update
+        // POST /transactions
+        post {
+            try {
+                val transaction = call.receive<Transaction>()
+                transaction.validate()
+                val saved = repo.add(transaction)
+                call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to create transaction"))
+            }
+        }
+
+        // PUT /transactions/{id}
         put("{id}") {
-            val id = call.parameters["id"]?.toIntOrNull()
-                ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid ID"))
+            try {
+                val id = call.parameters["id"]?.toIntOrNull()
+                    ?: return@put call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid ID"))
 
-            val body = call.receive<Transaction>()
-            val success = repo.update(id, body)
-
-            if (success) {
-                call.respond(HttpStatusCode.OK, repo.getById(id)!!)
-            } else {
-                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Transaction not found"))
+                val body = call.receive<Transaction>()
+                body.validate()
+                val success = repo.update(id, body)
+                if (success) call.respond(ApiResponse.Success(repo.getById(id)!!))
+                else call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Transaction not found"))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to update transaction"))
             }
         }
 
         // DELETE /transactions/{id}
         delete("{id}") {
-            val id = call.parameters["id"]?.toIntOrNull()
-                ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid ID"))
+            try {
+                val id = call.parameters["id"]?.toIntOrNull()
+                    ?: return@delete call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid ID"))
 
-            val success = repo.delete(id)
-            if (success) {
-                call.respond(HttpStatusCode.OK, mapOf("message" to "Transaction deleted"))
-            } else {
-                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Transaction not found"))
+                val success = repo.delete(id)
+                if (success) call.respond(ApiResponse.Success(mapOf("message" to "Transaction deleted")))
+                else call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Transaction not found"))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to delete transaction"))
+            }
+        }
+
+        // GET /transactions/summary?type=&start=&end=&byCategory=true&monthly=true
+        get("/summary") {
+            try {
+                val type = call.request.queryParameters["type"]
+                val start = call.request.queryParameters["start"]?.let { LocalDate.parse(it) }
+                val end = call.request.queryParameters["end"]?.let { LocalDate.parse(it) }
+                val byCategory = call.request.queryParameters["byCategory"]?.toBoolean() ?: false
+                val monthly = call.request.queryParameters["monthly"]?.toBoolean() ?: false
+
+                val summary = repo.getSummary(type, start, end, byCategory, monthly)
+                call.respond(ApiResponse.Success(summary))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to fetch summary"))
             }
         }
     }
