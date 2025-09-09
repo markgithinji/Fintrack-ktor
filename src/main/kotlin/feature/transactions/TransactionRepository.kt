@@ -36,7 +36,6 @@ class TransactionRepository {
             .take(size)
     }
 
-
     fun getById(id: Int): Transaction? = transaction {
         TransactionsTable
             .selectAll().where { TransactionsTable.id eq id }
@@ -51,6 +50,7 @@ class TransactionRepository {
             row[amount] = entity.amount
             row[category] = entity.category
             row[date] = entity.date.toString()
+            row[description] = entity.description
         }.resultedValues?.singleOrNull()
 
         inserted?.toTransaction() ?: throw IllegalStateException("Failed to insert transaction")
@@ -63,6 +63,7 @@ class TransactionRepository {
             row[amount] = entity.amount
             row[category] = entity.category
             row[date] = entity.date.toString()
+            row[description] = entity.description
         } > 0
     }
 
@@ -118,13 +119,12 @@ class TransactionRepository {
         TransactionsTable.deleteAll() > 0
     }
 
-
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id],
         type = this[TransactionsTable.type],
         amount = this[TransactionsTable.amount],
         category = this[TransactionsTable.category],
-        date = LocalDate.parse(this[TransactionsTable.date])
+        date = LocalDate.parse(this[TransactionsTable.date]),
+        description = this[TransactionsTable.description]
     )
-
 }

@@ -8,9 +8,9 @@ import kotlinx.serialization.Contextual
 @Serializable
 data class Transaction(
     val id: Int? = null,
-    val type: String, // "income" or "expense"
+    val type: String,
     val amount: Double,
     val category: String,
-    @Contextual
-    val date: LocalDate // e.g., 2025-09-02
+    @Contextual val date: LocalDate,
+    val description: String? = null
 )
