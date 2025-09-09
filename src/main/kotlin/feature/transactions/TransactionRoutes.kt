@@ -14,6 +14,31 @@ fun Route.transactionRoutes() {
 
     route("/transactions") {
 
+
+        // DELETE /transactions
+        delete {
+            try {
+                val success = repo.clearAll()
+                call.respond(
+                    ApiResponse.Success(mapOf("message" to "All transactions cleared"))
+                )
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to clear transactions"))
+            }
+        }
+
+        // POST /transactions/bulk
+        post("/bulk") {
+            try {
+                val transactions = call.receive<List<Transaction>>()
+                val saved = transactions.map { repo.add(it) }
+                call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to create transactions"))
+            }
+        }
+
+
         // GET /transactions?type=&category=&start=&end=&sortBy=&order=&page=&size=
         get() {
             try {
@@ -104,5 +129,6 @@ fun Route.transactionRoutes() {
                 call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to fetch summary"))
             }
         }
+
     }
 }

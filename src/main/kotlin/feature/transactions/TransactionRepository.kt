@@ -114,6 +114,11 @@ class TransactionRepository {
         result
     }
 
+    fun clearAll(): Boolean = transaction {
+        TransactionsTable.deleteAll() > 0
+    }
+
+
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id],
         type = this[TransactionsTable.type],
