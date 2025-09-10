@@ -1,13 +1,15 @@
-package com.fintrack.feature.transactions
+package com.fintrack.core
 
 import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.javatime.date
+
 
 object TransactionsTable : Table("transactions") {
     val id = integer("id").autoIncrement()
-    val type = varchar("type", 50) // "income" or "expense"
+    val isIncome = bool("is_income")
     val amount = double("amount")
     val category = varchar("category", 100)
-    val date = varchar("date", 20) // ISO date string
+    val date = date("date")
     val description = varchar("description", 255).nullable()
 
     override val primaryKey = PrimaryKey(id)

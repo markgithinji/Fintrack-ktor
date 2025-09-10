@@ -42,21 +42,28 @@ fun Route.transactionRoutes() {
         // GET /transactions?type=&category=&start=&end=&sortBy=&order=&page=&size=
         get() {
             try {
-                val type = call.request.queryParameters["type"]
+                // Convert type query param to Boolean
+                val isIncome = when (call.request.queryParameters["type"]?.lowercase()) {
+                    "income" -> true
+                    "expense" -> false
+                    else -> null
+                }
+
                 val categories = call.request.queryParameters["category"]?.split(",")
                 val start = call.request.queryParameters["start"]?.let { LocalDate.parse(it) }
                 val end = call.request.queryParameters["end"]?.let { LocalDate.parse(it) }
                 val sortBy = call.request.queryParameters["sortBy"] ?: "date"
-                val order = if (call.request.queryParameters["order"] == "DESC") SortOrder.DESC else SortOrder.ASC
+                val order = if (call.request.queryParameters["order"]?.uppercase() == "DESC") SortOrder.DESC else SortOrder.ASC
                 val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
                 val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
 
-                val transactions = repo.getAll(type, categories, start, end, sortBy, order, page, size)
+                val transactions = repo.getAll(isIncome, categories, start, end, sortBy, order, page, size)
                 call.respond(ApiResponse.Success(transactions))
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to fetch transactions"))
             }
         }
+
 
         // GET /transactions/{id}
         get("{id}") {
@@ -117,13 +124,19 @@ fun Route.transactionRoutes() {
         // GET /transactions/summary?type=&start=&end=&byCategory=true&monthly=true
         get("/summary") {
             try {
-                val type = call.request.queryParameters["type"]
+                // Convert type query param to Boolean
+                val isIncome = when (call.request.queryParameters["type"]?.lowercase()) {
+                    "income" -> true
+                    "expense" -> false
+                    else -> null
+                }
+
                 val start = call.request.queryParameters["start"]?.let { LocalDate.parse(it) }
                 val end = call.request.queryParameters["end"]?.let { LocalDate.parse(it) }
                 val byCategory = call.request.queryParameters["byCategory"]?.toBoolean() ?: false
                 val monthly = call.request.queryParameters["monthly"]?.toBoolean() ?: false
 
-                val summary = repo.getSummary(type, start, end, byCategory, monthly)
+                val summary = repo.getSummary(isIncome, start, end, byCategory, monthly)
                 call.respond(ApiResponse.Success(summary))
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Failed to fetch summary"))

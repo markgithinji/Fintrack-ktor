@@ -1,15 +1,18 @@
 package com.fintrack.feature.transactions
 
+import com.fintrack.core.TransactionsTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 import org.jetbrains.exposed.sql.selectAll
 
 class TransactionRepository {
 
     fun getAll(
-        type: String? = null,
+        isIncome: Boolean? = null,
         categories: List<String>? = null,
         start: LocalDate? = null,
         end: LocalDate? = null,
@@ -18,27 +21,28 @@ class TransactionRepository {
         page: Int = 1,
         size: Int = 20
     ): List<Transaction> = transaction {
-        TransactionsTable.selectAll()
+        var query: Query = TransactionsTable.selectAll()
+
+        // Apply filters
+        if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
+        if (!categories.isNullOrEmpty()) query = query.andWhere { TransactionsTable.category inList categories }
+        if (start != null) query = query.andWhere { TransactionsTable.date greaterEq start.toJavaLocalDate() }
+        if (end != null) query = query.andWhere { TransactionsTable.date lessEq end.toJavaLocalDate() }
+
+        // Sorting
+        val orderColumn = when (sortBy) {
+            "amount" -> TransactionsTable.amount
+            else -> TransactionsTable.date
+        }
+        query.orderBy(orderColumn, order)
+
+        // Pagination
+        query.limit(n = size, offset = ((page - 1) * size).toLong())
             .map { it.toTransaction() }
-            .filter { t ->
-                (type == null || t.type == type) &&
-                        (categories == null || categories.contains(t.category)) &&
-                        (start == null || t.date >= start) &&
-                        (end == null || t.date <= end)
-            }
-            .sortedWith(
-                when (sortBy) {
-                    "amount" -> compareBy<Transaction> { it.amount }
-                    else -> compareBy<Transaction> { it.date }
-                }.let { if (order == SortOrder.DESC) it.reversed() else it }
-            )
-            .drop((page - 1) * size)
-            .take(size)
     }
 
     fun getById(id: Int): Transaction? = transaction {
-        TransactionsTable
-            .selectAll().where { TransactionsTable.id eq id }
+        TransactionsTable.selectAll().where { TransactionsTable.id eq id }
             .map { it.toTransaction() }
             .singleOrNull()
     }
@@ -46,10 +50,10 @@ class TransactionRepository {
     fun add(entity: Transaction): Transaction = transaction {
         entity.validate()
         val inserted = TransactionsTable.insert { row ->
-            row[type] = entity.type
+            row[isIncome] = entity.isIncome
             row[amount] = entity.amount
             row[category] = entity.category
-            row[date] = entity.date.toString()
+            row[date] = entity.date.toJavaLocalDate()
             row[description] = entity.description
         }.resultedValues?.singleOrNull()
 
@@ -59,10 +63,10 @@ class TransactionRepository {
     fun update(id: Int, entity: Transaction): Boolean = transaction {
         entity.validate()
         TransactionsTable.update({ TransactionsTable.id eq id }) { row ->
-            row[type] = entity.type
+            row[isIncome] = entity.isIncome
             row[amount] = entity.amount
             row[category] = entity.category
-            row[date] = entity.date.toString()
+            row[date] = entity.date.toJavaLocalDate()
             row[description] = entity.description
         } > 0
     }
@@ -72,23 +76,23 @@ class TransactionRepository {
     }
 
     fun getSummary(
-        type: String? = null,
+        isIncome: Boolean? = null,
         start: LocalDate? = null,
         end: LocalDate? = null,
         byCategory: Boolean = false,
         monthly: Boolean = false
     ): Map<String, Any> = transaction {
 
-        val filtered = TransactionsTable.selectAll()
-            .map { it.toTransaction() }
-            .filter { t ->
-                (type == null || t.type == type) &&
-                        (start == null || t.date >= start) &&
-                        (end == null || t.date <= end)
-            }
+        var filteredQuery: Query = TransactionsTable.selectAll()
+        if (isIncome != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
+        if (start != null) filteredQuery =
+            filteredQuery.andWhere { TransactionsTable.date greaterEq start.toJavaLocalDate() }
+        if (end != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.date lessEq end.toJavaLocalDate() }
 
-        val income = filtered.filter { it.type == "income" }.sumOf { it.amount }
-        val expense = filtered.filter { it.type == "expense" }.sumOf { it.amount }
+        val filtered = filteredQuery.map { it.toTransaction() }
+
+        val income = filtered.filter { it.isIncome }.sumOf { it.amount }
+        val expense = filtered.filter { !it.isIncome }.sumOf { it.amount }
 
         val result = mutableMapOf<String, Any>(
             "income" to income,
@@ -105,9 +109,13 @@ class TransactionRepository {
         if (monthly) {
             val monthlyBreakdown = filtered.groupBy { "${it.date.year}-${it.date.monthNumber}" }
                 .mapValues { entry ->
-                    val incomeMonth = entry.value.filter { it.type == "income" }.sumOf { it.amount }
-                    val expenseMonth = entry.value.filter { it.type == "expense" }.sumOf { it.amount }
-                    mapOf("income" to incomeMonth, "expense" to expenseMonth, "balance" to incomeMonth - expenseMonth)
+                    val incomeMonth = entry.value.filter { it.isIncome }.sumOf { it.amount }
+                    val expenseMonth = entry.value.filter { !it.isIncome }.sumOf { it.amount }
+                    mapOf(
+                        "income" to incomeMonth,
+                        "expense" to expenseMonth,
+                        "balance" to incomeMonth - expenseMonth
+                    )
                 }
             result["monthly"] = monthlyBreakdown
         }
@@ -121,10 +129,10 @@ class TransactionRepository {
 
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id],
-        type = this[TransactionsTable.type],
+        isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         category = this[TransactionsTable.category],
-        date = LocalDate.parse(this[TransactionsTable.date]),
+        date = this[TransactionsTable.date].toKotlinLocalDate(),
         description = this[TransactionsTable.description]
     )
 }
