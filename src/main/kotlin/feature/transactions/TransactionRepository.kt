@@ -1,6 +1,8 @@
-package com.fintrack.feature.transactions
+package feature.transactions
 
-import com.fintrack.core.TransactionsTable
+import core.TransactionsTable
+import com.fintrack.feature.transactions.Transaction
+import core.ValidationException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -41,14 +43,20 @@ class TransactionRepository {
             .map { it.toTransaction() }
     }
 
-    fun getById(id: Int): Transaction? = transaction {
+    fun getById(id: Int): Transaction = transaction {
         TransactionsTable.selectAll().where { TransactionsTable.id eq id }
             .map { it.toTransaction() }
             .singleOrNull()
+            ?: throw NoSuchElementException("Transaction with id $id not found")
     }
 
     fun add(entity: Transaction): Transaction = transaction {
-        entity.validate()
+        try {
+            entity.validate()
+        } catch (e: IllegalArgumentException) {
+            throw ValidationException(e.message ?: "Invalid transaction")
+        }
+
         val inserted = TransactionsTable.insert { row ->
             row[isIncome] = entity.isIncome
             row[amount] = entity.amount
@@ -56,23 +64,34 @@ class TransactionRepository {
             row[date] = entity.date.toJavaLocalDate()
             row[description] = entity.description
         }.resultedValues?.singleOrNull()
+            ?: throw IllegalStateException("Failed to insert transaction")
 
-        inserted?.toTransaction() ?: throw IllegalStateException("Failed to insert transaction")
+        inserted.toTransaction()
     }
 
-    fun update(id: Int, entity: Transaction): Boolean = transaction {
-        entity.validate()
-        TransactionsTable.update({ TransactionsTable.id eq id }) { row ->
+    fun update(id: Int, entity: Transaction): Transaction = transaction {
+        try {
+            entity.validate()
+        } catch (e: IllegalArgumentException) {
+            throw ValidationException(e.message ?: "Invalid transaction")
+        }
+
+        val updated = TransactionsTable.update({ TransactionsTable.id eq id }) { row ->
             row[isIncome] = entity.isIncome
             row[amount] = entity.amount
             row[category] = entity.category
             row[date] = entity.date.toJavaLocalDate()
             row[description] = entity.description
-        } > 0
+        }
+
+        if (updated == 0) throw NoSuchElementException("Transaction with id $id not found")
+        getById(id) // return updated transaction
     }
 
     fun delete(id: Int): Boolean = transaction {
-        TransactionsTable.deleteWhere { TransactionsTable.id eq id } > 0
+        val deleted = TransactionsTable.deleteWhere { TransactionsTable.id eq id }
+        if (deleted == 0) throw NoSuchElementException("Transaction with id $id not found")
+        true
     }
 
     fun getSummary(
@@ -107,16 +126,17 @@ class TransactionRepository {
         }
 
         if (monthly) {
-            val monthlyBreakdown = filtered.groupBy { "${it.date.year}-${it.date.monthNumber}" }
-                .mapValues { entry ->
-                    val incomeMonth = entry.value.filter { it.isIncome }.sumOf { it.amount }
-                    val expenseMonth = entry.value.filter { !it.isIncome }.sumOf { it.amount }
-                    mapOf(
-                        "income" to incomeMonth,
-                        "expense" to expenseMonth,
-                        "balance" to incomeMonth - expenseMonth
-                    )
-                }
+            val monthlyBreakdown =
+                filtered.groupBy { "${it.date.year}-${it.date.monthNumber.toString().padStart(2, '0')}" }
+                    .mapValues { entry ->
+                        val incomeMonth = entry.value.filter { it.isIncome }.sumOf { it.amount }
+                        val expenseMonth = entry.value.filter { !it.isIncome }.sumOf { it.amount }
+                        mapOf(
+                            "income" to incomeMonth,
+                            "expense" to expenseMonth,
+                            "balance" to incomeMonth - expenseMonth
+                        )
+                    }
             result["monthly"] = monthlyBreakdown
         }
 
