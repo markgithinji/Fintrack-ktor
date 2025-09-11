@@ -1,8 +1,7 @@
-package core
+package feature.transactions
 
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.date
-
 
 object TransactionsTable : Table("transactions") {
     val id = integer("id").autoIncrement()

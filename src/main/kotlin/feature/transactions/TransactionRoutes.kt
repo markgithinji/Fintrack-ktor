@@ -1,8 +1,11 @@
 package feature.transactions
 
 import com.fintrack.core.ApiResponse
-import com.fintrack.feature.transactions.Transaction
+import core.TransactionDto
 import core.ValidationException
+import core.toDto
+import core.toTransaction
+import core.validate
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -17,15 +20,19 @@ fun Route.transactionRoutes() {
 
         // DELETE /transactions
         delete {
-            val success = repo.clearAll()
+            repo.clearAll()
             call.respond(ApiResponse.Success(mapOf("message" to "All transactions cleared")))
         }
 
         // POST /transactions/bulk
         post("/bulk") {
-            val transactions = call.receive<List<Transaction>>()
-            transactions.forEach { it.validate() } // validate each transaction
-            val saved = transactions.map { repo.add(it) }
+            val dtos = call.receive<List<TransactionDto>>()
+
+            val saved = dtos.map { dto ->
+                dto.validate()
+                repo.add(dto.toTransaction()).toDto()
+            }
+
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
         }
 
@@ -47,22 +54,29 @@ fun Route.transactionRoutes() {
             val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
 
             val transactions = repo.getAll(isIncome, categories, start, end, sortBy, order, page, size)
+                .map { it.toDto() }
+
             call.respond(ApiResponse.Success(transactions))
         }
 
         // GET /transactions/{id}
         get("{id}") {
-            val id = call.parameters["id"]?.toIntOrNull() ?: throw ValidationException("Invalid ID")
-            val transaction = repo.getById(id) ?: throw NoSuchElementException("Transaction not found")
-            call.respond(ApiResponse.Success(transaction))
+            val id = call.parameters["id"]?.toIntOrNull()
+                ?: throw ValidationException("Invalid ID")
+
+            val transaction = repo.getById(id)
+                ?: throw NoSuchElementException("Transaction not found")
+
+            call.respond(ApiResponse.Success(transaction.toDto()))
         }
 
         // POST /transactions
         post {
-            val transaction = call.receive<Transaction>()
-            transaction.validate()
-            val saved = repo.add(transaction)
-            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+            val dto = call.receive<TransactionDto>()
+            dto.validate()
+
+            val saved = repo.add(dto.toTransaction())
+            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved.toDto()))
         }
 
         // PUT /transactions/{id}
@@ -70,19 +84,21 @@ fun Route.transactionRoutes() {
             val id = call.parameters["id"]?.toIntOrNull()
                 ?: throw ValidationException("Invalid ID")
 
-            val body = call.receive<Transaction>()
-            body.validate()
+            val dto = call.receive<TransactionDto>()
+            dto.validate()
 
-            val updatedTransaction = repo.update(id, body)
-
-            call.respond(ApiResponse.Success(updatedTransaction))
+            val updated = repo.update(id, dto.toTransaction().copy(id = id))
+            call.respond(ApiResponse.Success(updated.toDto()))
         }
 
         // DELETE /transactions/{id}
         delete("{id}") {
-            val id = call.parameters["id"]?.toIntOrNull() ?: throw ValidationException("Invalid ID")
+            val id = call.parameters["id"]?.toIntOrNull()
+                ?: throw ValidationException("Invalid ID")
+
             val success = repo.delete(id)
             if (!success) throw NoSuchElementException("Transaction not found")
+
             call.respond(ApiResponse.Success(mapOf("message" to "Transaction deleted")))
         }
 
@@ -100,6 +116,7 @@ fun Route.transactionRoutes() {
             val monthly = call.request.queryParameters["monthly"]?.toBoolean() ?: false
 
             val summary = repo.getSummary(isIncome, start, end, byCategory, monthly)
+
             call.respond(ApiResponse.Success(summary))
         }
     }

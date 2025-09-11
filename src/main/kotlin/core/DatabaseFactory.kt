@@ -1,8 +1,8 @@
-package com.fintrack.core
+package core
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import core.TransactionsTable
+import feature.transactions.TransactionsTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction

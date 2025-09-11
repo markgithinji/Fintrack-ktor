@@ -1,4 +1,4 @@
-package com.fintrack.feature.transactions
+package feature.transactions
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable

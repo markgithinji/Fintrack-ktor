@@ -1,6 +1,6 @@
 package com.fintrack
 
-import com.fintrack.core.DatabaseFactory
+import core.DatabaseFactory
 import com.fintrack.plugins.*
 import io.ktor.server.application.*
 import io.ktor.server.netty.*

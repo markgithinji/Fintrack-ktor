@@ -1,7 +1,5 @@
 package feature.transactions
 
-import core.TransactionsTable
-import com.fintrack.feature.transactions.Transaction
 import core.ValidationException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
