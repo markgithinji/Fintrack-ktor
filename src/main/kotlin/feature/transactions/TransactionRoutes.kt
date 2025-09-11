@@ -112,12 +112,12 @@ fun Route.transactionRoutes() {
 
             val start = call.request.queryParameters["start"]?.let { LocalDate.parse(it) }
             val end = call.request.queryParameters["end"]?.let { LocalDate.parse(it) }
-            val byCategory = call.request.queryParameters["byCategory"]?.toBoolean() ?: false
-            val monthly = call.request.queryParameters["monthly"]?.toBoolean() ?: false
 
-            val summary = repo.getSummary(isIncome, start, end, byCategory, monthly)
+            val summary: Summary = repo.getSummary(isIncome, start, end)
 
-            call.respond(ApiResponse.Success(summary))
+            val summaryDto = summary.toDto()
+
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(summaryDto))
         }
     }
 }
