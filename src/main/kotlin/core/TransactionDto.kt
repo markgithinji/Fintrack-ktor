@@ -2,6 +2,7 @@ package core
 
 import feature.transactions.Transaction
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -10,7 +11,7 @@ data class TransactionDto(
     val isIncome: Boolean,
     val amount: Double,
     val category: String,
-    val date: String,
+    val dateTime: String,
     val description: String? = null
 )
 
@@ -19,8 +20,8 @@ fun Transaction.toDto() = TransactionDto(
     isIncome = this.isIncome,
     amount = this.amount,
     category = this.category,
-    date = this.date.toString(),
-    description = this.description
+    dateTime = this.dateTime.toString(),
+    description = this.description,
 )
 
 fun TransactionDto.toTransaction() = Transaction(
@@ -28,9 +29,10 @@ fun TransactionDto.toTransaction() = Transaction(
     isIncome = this.isIncome,
     amount = this.amount,
     category = this.category,
-    date = LocalDate.parse(this.date),
+    dateTime = LocalDateTime.parse(this.dateTime),
     description = this.description
 )
+
 
 fun TransactionDto.validate() {
     require(amount > 0) { "amount must be greater than 0" }

@@ -2,8 +2,11 @@ package com.fintrack
 
 import core.DatabaseFactory
 import com.fintrack.plugins.*
+import feature.transactions.TransactionsTable
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 import plugins.configureStatusPages
 
 fun main(args: Array<String>) {

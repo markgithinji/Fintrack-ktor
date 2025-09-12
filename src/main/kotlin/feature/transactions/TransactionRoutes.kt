@@ -12,6 +12,8 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.atTime
 import org.jetbrains.exposed.sql.SortOrder
 
 fun Route.transactionRoutes() {
@@ -39,25 +41,30 @@ fun Route.transactionRoutes() {
 
         // GET /transactions?type=&category=&start=&end=&sortBy=&order=&limit=&afterDate=&afterId=
         get {
+            // Type filter
             val isIncome = when (call.request.queryParameters["type"]?.lowercase()) {
                 "income" -> true
                 "expense" -> false
                 else -> null
             }
 
+            // Category filter
             val categories = call.request.queryParameters["category"]?.split(",")
-            val start = call.request.queryParameters["start"]?.let { LocalDate.parse(it) }
-            val end = call.request.queryParameters["end"]?.let { LocalDate.parse(it) }
-            val sortBy = call.request.queryParameters["sortBy"] ?: "date"
-            val order =
-                if (call.request.queryParameters["order"]?.uppercase() == "DESC") SortOrder.DESC else SortOrder.ASC
 
+            // Start/end filters as LocalDateTime
+            val start: LocalDateTime? = call.request.queryParameters["start"]?.let { LocalDate.parse(it).atTime(0, 0, 0) }
+            val end: LocalDateTime? = call.request.queryParameters["end"]?.let { LocalDate.parse(it).atTime(23, 59, 59) }
+
+            // Sorting and limit
+            val sortBy = call.request.queryParameters["sortBy"] ?: "dateTime"
+            val order = if (call.request.queryParameters["order"]?.uppercase() == "DESC") SortOrder.DESC else SortOrder.ASC
             val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceAtMost(50) ?: 20
 
-            // cursor (date + id)
-            val afterDate = call.request.queryParameters["afterDate"]?.let { LocalDate.parse(it) }
-            val afterId = call.request.queryParameters["afterId"]?.toIntOrNull()
+            // Cursor (dateTime + id)
+            val afterDateTime: LocalDateTime? = call.request.queryParameters["afterDateTime"]?.let { LocalDateTime.parse(it) }
+            val afterId: Int? = call.request.queryParameters["afterId"]?.toIntOrNull()
 
+            // Fetch paginated transactions
             val transactions = repo.getAllCursor(
                 isIncome = isIncome,
                 categories = categories,
@@ -66,13 +73,13 @@ fun Route.transactionRoutes() {
                 sortBy = sortBy,
                 order = order,
                 limit = limit,
-                afterDate = afterDate,
+                afterDateTime = afterDateTime,
                 afterId = afterId
             ).map { it.toDto() }
 
             // Build next cursor
             val last = transactions.lastOrNull()
-            val nextCursor = last?.let { "${it.date}|${it.id}" }
+            val nextCursor = last?.let { "${it.dateTime}|${it.id}" }
 
             call.respond(
                 ApiResponse.Success(
@@ -83,7 +90,6 @@ fun Route.transactionRoutes() {
                 )
             )
         }
-
 
         // GET /transactions/{id}
         get("{id}") {
@@ -136,14 +142,17 @@ fun Route.transactionRoutes() {
                 else -> null
             }
 
-            val start = call.request.queryParameters["start"]?.let { LocalDate.parse(it) }
-            val end = call.request.queryParameters["end"]?.let { LocalDate.parse(it) }
+            val start: LocalDateTime? = call.request.queryParameters["start"]
+                ?.let { LocalDate.parse(it).atTime(0, 0, 0) }
+            val end: LocalDateTime? = call.request.queryParameters["end"]
+                ?.let { LocalDate.parse(it).atTime(23, 59, 59) }
 
             val summary: Summary = repo.getSummary(isIncome, start, end)
-
             val summaryDto = summary.toDto()
 
             call.respond(HttpStatusCode.OK, ApiResponse.Success(summaryDto))
         }
+
+
     }
 }

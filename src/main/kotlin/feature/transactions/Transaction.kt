@@ -1,6 +1,7 @@
 package feature.transactions
 
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Contextual
 
@@ -11,6 +12,6 @@ data class Transaction(
     val isIncome: Boolean,
     val amount: Double,
     val category: String,
-    @Contextual val date: LocalDate,
+    @Contextual val dateTime: LocalDateTime,
     val description: String? = null
 )
