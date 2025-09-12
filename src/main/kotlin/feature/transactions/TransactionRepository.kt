@@ -51,11 +51,10 @@ class TransactionRepository {
         }
 
         query.orderBy(orderColumn, order)
-            .orderBy(TransactionsTable.id, order) // tie-breaker for same timestamp
+            .orderBy(TransactionsTable.id, order) // tie-breaker
             .limit(limit)
             .map { it.toTransaction() }
     }
-
 
 
     fun getById(id: Int): Transaction = transaction {
