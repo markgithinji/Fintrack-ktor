@@ -12,17 +12,18 @@ import java.time.temporal.WeekFields
 
 class TransactionRepository {
 
-    fun getAll(
+    fun getAllCursor(
         isIncome: Boolean? = null,
         categories: List<String>? = null,
         start: LocalDate? = null,
         end: LocalDate? = null,
         sortBy: String = "date",
         order: SortOrder = SortOrder.ASC,
-        page: Int = 1,
-        size: Int = 20
+        limit: Int = 20,
+        afterDate: LocalDate? = null,
+        afterId: Int? = null
     ): List<Transaction> = transaction {
-        var query: Query = TransactionsTable.selectAll()
+        var query = TransactionsTable.selectAll()
 
         // Apply filters
         if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
@@ -30,17 +31,27 @@ class TransactionRepository {
         if (start != null) query = query.andWhere { TransactionsTable.date greaterEq start.toJavaLocalDate() }
         if (end != null) query = query.andWhere { TransactionsTable.date lessEq end.toJavaLocalDate() }
 
+        // Cursor filter
+        if (afterDate != null && afterId != null) {
+            query = query.andWhere {
+                (TransactionsTable.date greater afterDate.toJavaLocalDate()) or
+                        ((TransactionsTable.date eq afterDate.toJavaLocalDate()) and
+                                (TransactionsTable.id greater afterId))
+            }
+        }
+
         // Sorting
         val orderColumn = when (sortBy) {
             "amount" -> TransactionsTable.amount
             else -> TransactionsTable.date
         }
-        query.orderBy(orderColumn, order)
 
-        // Pagination
-        query.limit(n = size, offset = ((page - 1) * size).toLong())
+        query.orderBy(orderColumn, order)
+            .orderBy(TransactionsTable.id, order) // tie-breaker
+            .limit(limit)
             .map { it.toTransaction() }
     }
+
 
     fun getById(id: Int): Transaction = transaction {
         TransactionsTable.selectAll().where { TransactionsTable.id eq id }
@@ -100,7 +111,8 @@ class TransactionRepository {
     ): Summary = transaction {
         var filteredQuery: Query = TransactionsTable.selectAll()
         if (isIncome != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
-        if (start != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.date greaterEq start.toJavaLocalDate() }
+        if (start != null) filteredQuery =
+            filteredQuery.andWhere { TransactionsTable.date greaterEq start.toJavaLocalDate() }
         if (end != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.date lessEq end.toJavaLocalDate() }
 
         val filtered = filteredQuery.map { it.toTransaction() }
@@ -192,6 +204,7 @@ class TransactionRepository {
         date = this[TransactionsTable.date].toKotlinLocalDate(),
         description = this[TransactionsTable.description]
     )
+
     val LocalDate.weekOfYear: Int
         get() = this.toJavaLocalDate().get(WeekFields.ISO.weekOfYear())
 }

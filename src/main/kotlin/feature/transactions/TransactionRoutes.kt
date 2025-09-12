@@ -1,6 +1,7 @@
 package feature.transactions
 
 import com.fintrack.core.ApiResponse
+import core.PaginatedTransactionDto
 import core.TransactionDto
 import core.ValidationException
 import core.toDto
@@ -36,7 +37,7 @@ fun Route.transactionRoutes() {
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
         }
 
-        // GET /transactions?type=&category=&start=&end=&sortBy=&order=&page=&size=
+        // GET /transactions?type=&category=&start=&end=&sortBy=&order=&limit=&afterDate=&afterId=
         get {
             val isIncome = when (call.request.queryParameters["type"]?.lowercase()) {
                 "income" -> true
@@ -50,14 +51,39 @@ fun Route.transactionRoutes() {
             val sortBy = call.request.queryParameters["sortBy"] ?: "date"
             val order =
                 if (call.request.queryParameters["order"]?.uppercase() == "DESC") SortOrder.DESC else SortOrder.ASC
-            val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
-            val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
 
-            val transactions = repo.getAll(isIncome, categories, start, end, sortBy, order, page, size)
-                .map { it.toDto() }
+            val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceAtMost(50) ?: 20
 
-            call.respond(ApiResponse.Success(transactions))
+            // cursor (date + id)
+            val afterDate = call.request.queryParameters["afterDate"]?.let { LocalDate.parse(it) }
+            val afterId = call.request.queryParameters["afterId"]?.toIntOrNull()
+
+            val transactions = repo.getAllCursor(
+                isIncome = isIncome,
+                categories = categories,
+                start = start,
+                end = end,
+                sortBy = sortBy,
+                order = order,
+                limit = limit,
+                afterDate = afterDate,
+                afterId = afterId
+            ).map { it.toDto() }
+
+            // Build next cursor
+            val last = transactions.lastOrNull()
+            val nextCursor = last?.let { "${it.date}|${it.id}" }
+
+            call.respond(
+                ApiResponse.Success(
+                    PaginatedTransactionDto(
+                        data = transactions,
+                        nextCursor = nextCursor
+                    )
+                )
+            )
         }
+
 
         // GET /transactions/{id}
         get("{id}") {
