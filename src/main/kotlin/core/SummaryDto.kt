@@ -9,9 +9,15 @@ data class SummaryDto(
     val expense: Double,
     val balance: Double,
 
+    // Expense highlights
     val highestMonth: HighlightDto?,
     val highestCategory: HighlightDto?,
     val highestDay: HighlightDto?,
+
+    // Income highlights
+    val highestIncomeMonth: HighlightDto? = null,
+    val highestIncomeCategory: HighlightDto? = null,
+    val highestIncomeDay: HighlightDto? = null,
 
     val averagePerDay: Double,
 
@@ -19,10 +25,11 @@ data class SummaryDto(
     val monthlyCategorySummary: Map<String, List<CategorySummaryDto>>
 )
 
+
 @Serializable
 data class HighlightDto(
-    val label: String,   // month/category/date as string
-    val value: String,   // duplicate for convenience
+    val label: String,
+    val value: String, // duplicate for convenience
     val amount: Double
 )
 

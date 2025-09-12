@@ -124,36 +124,48 @@ class TransactionRepository {
 
         val filtered = filteredQuery.map { it.toTransaction() }
 
-        val income = filtered.filter { it.isIncome }.sumOf { it.amount }
-        val expense = filtered.filter { !it.isIncome }.sumOf { it.amount }
+        val incomeTxns = filtered.filter { it.isIncome }
+        val expenseTxns = filtered.filter { !it.isIncome }
+
+        val income = incomeTxns.sumOf { it.amount }
+        val expense = expenseTxns.sumOf { it.amount }
         val balance = income - expense
 
-        // Highest month
-        val monthlyTotals = filtered.groupBy { "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}" }
-            .mapValues { entry -> entry.value.sumOf { it.amount } }
-        val highestMonth = monthlyTotals.maxByOrNull { it.value }?.let {
-            HighestMonth(month = it.key, amount = it.value)
-        }
+        // Highest month (income & expense separately)
+        fun highestMonth(txns: List<Transaction>) =
+            txns.groupBy { "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}" }
+                .mapValues { entry -> entry.value.sumOf { it.amount } }
+                .maxByOrNull { it.value }
+                ?.let { HighestMonth(month = it.key, amount = it.value) }
 
-        // Highest category
-        val categoryTotals = filtered.groupBy { it.category }
-            .mapValues { entry -> entry.value.sumOf { it.amount } }
-        val highestCategory = categoryTotals.maxByOrNull { it.value }?.let {
-            HighestCategory(category = it.key, amount = it.value)
-        }
+        val highestIncomeMonth = highestMonth(incomeTxns)
+        val highestExpenseMonth = highestMonth(expenseTxns)
 
-        // Highest daily spending
-        val dailyTotals = filtered.groupBy { it.dateTime.date }
-            .mapValues { entry -> entry.value.sumOf { it.amount } }
-        val highestDay = dailyTotals.maxByOrNull { it.value }?.let {
-            HighestDay(date = it.key, amount = it.value)
-        }
+        // Highest category (income & expense separately)
+        fun highestCategory(txns: List<Transaction>) =
+            txns.groupBy { it.category }
+                .mapValues { entry -> entry.value.sumOf { it.amount } }
+                .maxByOrNull { it.value }
+                ?.let { HighestCategory(category = it.key, amount = it.value) }
 
-        // Average per day (only count days with transactions)
-        val distinctDays = dailyTotals.size.coerceAtLeast(1)
+        val highestIncomeCategory = highestCategory(incomeTxns)
+        val highestExpenseCategory = highestCategory(expenseTxns)
+
+        // Highest day (income & expense separately)
+        fun highestDay(txns: List<Transaction>) =
+            txns.groupBy { it.dateTime.date }
+                .mapValues { entry -> entry.value.sumOf { it.amount } }
+                .maxByOrNull { it.value }
+                ?.let { HighestDay(date = it.key, amount = it.value) }
+
+        val highestIncomeDay = highestDay(incomeTxns)
+        val highestExpenseDay = highestDay(expenseTxns)
+
+        // Average per day
+        val distinctDays = expenseTxns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
         val averagePerDay = if (distinctDays > 0) expense / distinctDays else 0.0
 
-        // Weekly category breakdown
+        // Weekly & monthly category breakdown
         val weeklyCategorySummary = filtered.groupBy {
             val week = it.dateTime.toJavaLocalDateTime()
                 .get(WeekFields.ISO.weekOfYear())
@@ -170,7 +182,6 @@ class TransactionRepository {
             }
         }
 
-        // Monthly category breakdown
         val monthlyCategorySummary = filtered.groupBy {
             "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}"
         }.mapValues { (_, txns) ->
@@ -189,9 +200,12 @@ class TransactionRepository {
             income = income,
             expense = expense,
             balance = balance,
-            highestMonth = highestMonth,
-            highestCategory = highestCategory,
-            highestDay = highestDay,
+            highestMonth = highestExpenseMonth,
+            highestCategory = highestExpenseCategory,
+            highestDay = highestExpenseDay,
+            highestIncomeMonth = highestIncomeMonth,
+            highestIncomeCategory = highestIncomeCategory,
+            highestIncomeDay = highestIncomeDay,
             averagePerDay = averagePerDay,
             weeklyCategorySummary = weeklyCategorySummary,
             monthlyCategorySummary = monthlyCategorySummary

@@ -136,7 +136,8 @@ fun Route.transactionRoutes() {
 
         // GET /transactions/summary?type=&start=&end=&byCategory=true&monthly=true
         get("/summary") {
-            val isIncome = when (call.request.queryParameters["type"]?.lowercase()) {
+            val typeFilter = call.request.queryParameters["type"]?.lowercase()
+            val isIncomeFilter = when (typeFilter) {
                 "income" -> true
                 "expense" -> false
                 else -> null
@@ -147,12 +148,21 @@ fun Route.transactionRoutes() {
             val end: LocalDateTime? = call.request.queryParameters["end"]
                 ?.let { LocalDate.parse(it).atTime(23, 59, 59) }
 
-            val summary: Summary = repo.getSummary(isIncome, start, end)
-            val summaryDto = summary.toDto()
+            val fullSummary: Summary = repo.getSummary(start = start, end = end)
 
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(summaryDto))
+            // If type filter is provided, adjust income/expense numbers accordingly
+            val filteredSummary = if (isIncomeFilter != null) {
+                val total = if (isIncomeFilter) fullSummary.income else fullSummary.expense
+                fullSummary.copy(
+                    income = if (isIncomeFilter) total else 0.0,
+                    expense = if (!isIncomeFilter) total else 0.0,
+                    balance = if (isIncomeFilter) total else -total
+                )
+            } else {
+                fullSummary
+            }
+
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(filteredSummary.toDto()))
         }
-
-
     }
 }

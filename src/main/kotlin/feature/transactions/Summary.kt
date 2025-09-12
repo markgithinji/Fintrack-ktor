@@ -13,15 +13,20 @@ data class Summary(
     val expense: Double,
     val balance: Double,
 
-    val highestMonth: HighestMonth?,        // e.g. "2025-09", amount
-    val highestCategory: HighestCategory?,  // e.g. "Shopping", amount
-    val highestDay: HighestDay?,            // e.g. "2025-09-04", amount
+    val highestMonth: HighestMonth?,
+    val highestCategory: HighestCategory?,
+    val highestDay: HighestDay?,
+
+    val highestIncomeMonth: HighestMonth? = null,
+    val highestIncomeCategory: HighestCategory? = null,
+    val highestIncomeDay: HighestDay? = null,
 
     val averagePerDay: Double,
 
-    val weeklyCategorySummary: Map<String, List<CategorySummary>>, // "2025-W36": [...]
-    val monthlyCategorySummary: Map<String, List<CategorySummary>> // "2025-09": [...]
+    val weeklyCategorySummary: Map<String, List<CategorySummary>>,
+    val monthlyCategorySummary: Map<String, List<CategorySummary>>
 )
+
 
 @Serializable
 data class HighestMonth(val month: String, val amount: Double)
@@ -58,7 +63,11 @@ fun Summary.toDto(): SummaryDto = SummaryDto(
     highestMonth = highestMonth?.toDto(),
     highestCategory = highestCategory?.toDto(),
     highestDay = highestDay?.toDto(),
+    highestIncomeMonth = highestIncomeMonth?.toDto(),
+    highestIncomeCategory = highestIncomeCategory?.toDto(),
+    highestIncomeDay = highestIncomeDay?.toDto(),
     averagePerDay = averagePerDay,
     weeklyCategorySummary = weeklyCategorySummary.mapValues { it.value.map { cs -> cs.toDto() } },
     monthlyCategorySummary = monthlyCategorySummary.mapValues { it.value.map { cs -> cs.toDto() } }
 )
+
