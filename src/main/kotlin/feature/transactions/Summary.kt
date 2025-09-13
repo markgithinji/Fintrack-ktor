@@ -1,66 +1,55 @@
 package feature.transactions
 
-import core.CategorySummariesDto
 import core.CategorySummaryDto
+import core.DistributionSummaryDto
 import core.HighlightDto
 import core.HighlightsDto
-import core.SummaryDto
+import core.HighlightsSummaryDto
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
+// --------- Domain ---------
 @Serializable
-data class Summary(
+data class HighlightsSummary(
     val income: Double = 0.0,
     val expense: Double = 0.0,
     val balance: Double = 0.0,
     val incomeHighlights: Highlights = Highlights(),
-    val expenseHighlights: Highlights = Highlights(),
-    val incomeCategorySummary: CategorySummaries = CategorySummaries(),
-    val expenseCategorySummary: CategorySummaries = CategorySummaries()
+    val expenseHighlights: Highlights = Highlights()
+)
+
+@Serializable
+data class DistributionSummary(
+    val period: String = "",
+    val incomeCategories: List<CategorySummary> = emptyList(),
+    val expenseCategories: List<CategorySummary> = emptyList()
 )
 
 @Serializable
 data class Highlights(
-    val highestMonth: HighestMonth? = null,
-    val highestCategory: HighestCategory? = null,
-    val highestDay: HighestDay? = null,
+    val highestMonth: Highlight? = null,
+    val highestCategory: Highlight? = null,
+    val highestDay: Highlight? = null,
     val averagePerDay: Double = 0.0
 )
 
 @Serializable
-data class CategorySummaries(
-    val weekly: Map<String, List<CategorySummary>> = emptyMap(),
-    val monthly: Map<String, List<CategorySummary>> = emptyMap()
+data class Highlight(
+    val label: String = "",
+    val value: String = "",
+    val amount: Double = 0.0
 )
-
-@Serializable
-data class HighestMonth(val month: String, val amount: Double)
-
-@Serializable
-data class HighestCategory(val category: String, val amount: Double)
-
-@Serializable
-data class HighestDay(val date: LocalDate, val amount: Double)
 
 @Serializable
 data class CategorySummary(
-    val category: String,
-    val total: Double,
-    val percentage: Double
+    val category: String = "",
+    val total: Double = 0.0,
+    val percentage: Double = 0.0
 )
 
-// --------- Mappers ---------
-fun HighestMonth.toDto(): HighlightDto =
-    HighlightDto(label = month, value = month, amount = amount)
-
-fun HighestCategory.toDto(): HighlightDto =
-    HighlightDto(label = category, value = category, amount = amount)
-
-fun HighestDay.toDto(): HighlightDto =
-    HighlightDto(label = date.toString(), value = date.toString(), amount = amount)
-
-fun CategorySummary.toDto(): CategorySummaryDto =
-    CategorySummaryDto(category = category, total = total, percentage = percentage)
+// --------- Mappers to DTO ---------
+fun Highlight.toDto(): HighlightDto =
+    HighlightDto(label = label, value = value, amount = amount)
 
 fun Highlights.toDto(): HighlightsDto = HighlightsDto(
     highestMonth = highestMonth?.toDto(),
@@ -69,17 +58,19 @@ fun Highlights.toDto(): HighlightsDto = HighlightsDto(
     averagePerDay = averagePerDay
 )
 
-fun CategorySummaries.toDto(): CategorySummariesDto = CategorySummariesDto(
-    weekly = weekly.mapValues { entry -> entry.value.map { it.toDto() } },
-    monthly = monthly.mapValues { entry -> entry.value.map { it.toDto() } }
-)
+fun CategorySummary.toDto(): CategorySummaryDto =
+    CategorySummaryDto(category = category, total = total, percentage = percentage)
 
-fun Summary.toDto(): SummaryDto = SummaryDto(
+fun HighlightsSummary.toDto(): HighlightsSummaryDto = HighlightsSummaryDto(
     income = income,
     expense = expense,
     balance = balance,
     incomeHighlights = incomeHighlights.toDto(),
-    expenseHighlights = expenseHighlights.toDto(),
-    incomeCategorySummary = incomeCategorySummary.toDto(),
-    expenseCategorySummary = expenseCategorySummary.toDto()
+    expenseHighlights = expenseHighlights.toDto()
+)
+
+fun DistributionSummary.toDto(): DistributionSummaryDto = DistributionSummaryDto(
+    period = period,
+    incomeCategories = incomeCategories.map { it.toDto() },
+    expenseCategories = expenseCategories.map { it.toDto() }
 )
