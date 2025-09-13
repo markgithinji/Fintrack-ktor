@@ -190,14 +190,23 @@ class TransactionRepository {
         start: LocalDateTime? = null,
         end: LocalDateTime? = null
     ): DistributionSummary = transaction {
-        val filteredQuery: Query = TransactionsTable.selectAll()
-        // optionally filter by isIncome, start, end
-        val filtered = filteredQuery.map { it.toTransaction() }
+        var query: Query = TransactionsTable.selectAll()
+
+        if (isIncome != null) {
+            query = query.andWhere { TransactionsTable.isIncome eq isIncome }
+        }
+        if (start != null) {
+            query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
+        }
+        if (end != null) {
+            query = query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
+        }
+
+        val filtered = query.map { it.toTransaction() }
 
         val incomeTxns = filtered.filter { it.isIncome }
         val expenseTxns = filtered.filter { !it.isIncome }
 
-        // helper to compute category totals for a period
         fun categorySummary(txns: List<Transaction>, period: String, weekMode: Boolean = true): List<CategorySummary> {
             val grouped = if (weekMode) {
                 txns.groupBy {
@@ -221,8 +230,26 @@ class TransactionRepository {
             }
         }
 
-        val incomeCategories = categorySummary(incomeTxns, period, weekMode = period.contains("W"))
-        val expenseCategories = categorySummary(expenseTxns, period, weekMode = period.contains("W"))
+        val weekMode = period.contains("W")
+        val categories = if (isIncome == true) {
+            categorySummary(incomeTxns, period, weekMode)
+        } else if (isIncome == false) {
+            categorySummary(expenseTxns, period, weekMode)
+        } else {
+            // if no type filter, return all categories (combine)
+            categorySummary(incomeTxns, period, weekMode) +
+                    categorySummary(expenseTxns, period, weekMode)
+        }
+
+        val (incomeCategories, expenseCategories) = when (isIncome) {
+            true -> categories to emptyList()
+            false -> emptyList<CategorySummary>() to categories
+            null -> {
+                val inc = categorySummary(incomeTxns, period, weekMode)
+                val exp = categorySummary(expenseTxns, period, weekMode)
+                inc to exp
+            }
+        }
 
         DistributionSummary(
             period = period,
@@ -230,6 +257,7 @@ class TransactionRepository {
             expenseCategories = expenseCategories
         )
     }
+
 
     fun clearAll(): Boolean = transaction {
         TransactionsTable.deleteAll() > 0
