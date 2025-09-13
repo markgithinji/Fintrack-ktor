@@ -115,12 +115,13 @@ class TransactionRepository {
         start: LocalDateTime? = null,
         end: LocalDateTime? = null
     ): Summary = transaction {
+
         var filteredQuery: Query = TransactionsTable.selectAll()
         if (isIncome != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
-        if (start != null) filteredQuery =
-            filteredQuery.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
-        if (end != null) filteredQuery =
-            filteredQuery.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
+        if (start != null)
+            filteredQuery = filteredQuery.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
+        if (end != null)
+            filteredQuery = filteredQuery.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
 
         val filtered = filteredQuery.map { it.toTransaction() }
 
@@ -131,30 +132,32 @@ class TransactionRepository {
         val expense = expenseTxns.sumOf { it.amount }
         val balance = income - expense
 
-        // Highest month (income & expense separately)
+        // Highest month
         fun highestMonth(txns: List<Transaction>) =
             txns.groupBy { "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}" }
-                .mapValues { entry -> entry.value.sumOf { it.amount } }
+                .mapValues { it.value.sumOf { t -> t.amount } }
                 .maxByOrNull { it.value }
                 ?.let { HighestMonth(month = it.key, amount = it.value) }
 
         val highestIncomeMonth = highestMonth(incomeTxns)
         val highestExpenseMonth = highestMonth(expenseTxns)
 
-        // Highest category (income & expense separately)
-        fun highestCategory(txns: List<Transaction>) =
-            txns.groupBy { it.category }
-                .mapValues { entry -> entry.value.sumOf { it.amount } }
-                .maxByOrNull { it.value }
-                ?.let { HighestCategory(category = it.key, amount = it.value) }
+        // Highest category
+        fun highestCategory(txns: List<Transaction>): HighestCategory? {
+            val grouped = txns.groupBy { it.category.trim().lowercase() }
+                .mapValues { it.value.sumOf { t -> t.amount } }
+            val maxEntry = grouped.maxByOrNull { it.value } ?: return null
+            val displayName = txns.firstOrNull { it.category.trim().lowercase() == maxEntry.key }?.category ?: maxEntry.key
+            return HighestCategory(category = displayName, amount = maxEntry.value)
+        }
 
         val highestIncomeCategory = highestCategory(incomeTxns)
         val highestExpenseCategory = highestCategory(expenseTxns)
 
-        // Highest day (income & expense separately)
+        // Highest day
         fun highestDay(txns: List<Transaction>) =
             txns.groupBy { it.dateTime.date }
-                .mapValues { entry -> entry.value.sumOf { it.amount } }
+                .mapValues { it.value.sumOf { t -> t.amount } }
                 .maxByOrNull { it.value }
                 ?.let { HighestDay(date = it.key, amount = it.value) }
 
@@ -162,39 +165,42 @@ class TransactionRepository {
         val highestExpenseDay = highestDay(expenseTxns)
 
         // Average per day
-        val distinctDays = expenseTxns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
-        val averagePerDay = if (distinctDays > 0) expense / distinctDays else 0.0
+        val expenseDays = expenseTxns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
+        val averagePerDay = expense / expenseDays
 
-        // Weekly & monthly category breakdown
-        val weeklyCategorySummary = filtered.groupBy {
-            val week = it.dateTime.toJavaLocalDateTime()
-                .get(WeekFields.ISO.weekOfYear())
-            "${it.dateTime.year}-W${week.toString().padStart(2, '0')}"
-        }.mapValues { (_, txns) ->
-            val total = txns.sumOf { it.amount }
-            txns.groupBy { it.category }.map { (cat, list) ->
-                val sum = list.sumOf { it.amount }
-                CategorySummary(
-                    category = cat,
-                    total = sum,
-                    percentage = if (total > 0) (sum / total) * 100 else 0.0
-                )
+        val incomeDays = incomeTxns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
+        val averageIncomePerDay = income / incomeDays
+
+        // Weekly & monthly category summary helper with deduplication
+        fun categorySummary(txns: List<Transaction>, weekMode: Boolean = true): Map<String, List<CategorySummary>> {
+            val grouped = if (weekMode) {
+                txns.groupBy {
+                    val week = it.dateTime.toJavaLocalDateTime().get(WeekFields.ISO.weekOfYear())
+                    "${it.dateTime.year}-W${week.toString().padStart(2, '0')}"
+                }
+            } else {
+                txns.groupBy { "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}" }
+            }
+
+            return grouped.mapValues { (_, txnsInPeriod) ->
+                // Deduplicate categories by normalizing
+                val deduped = txnsInPeriod.groupBy { it.category.trim().lowercase() }
+                    .map { (_, list) ->
+                        val sum = list.sumOf { it.amount }
+                        val displayName = list.first().category // preserve original casing
+                        CategorySummary(category = displayName, total = sum, percentage = 0.0)
+                    }
+
+                // Compute percentages
+                val totalAmount = deduped.sumOf { it.total }
+                deduped.map { it.copy(percentage = if (totalAmount > 0) (it.total / totalAmount) * 100 else 0.0) }
             }
         }
 
-        val monthlyCategorySummary = filtered.groupBy {
-            "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}"
-        }.mapValues { (_, txns) ->
-            val total = txns.sumOf { it.amount }
-            txns.groupBy { it.category }.map { (cat, list) ->
-                val sum = list.sumOf { it.amount }
-                CategorySummary(
-                    category = cat,
-                    total = sum,
-                    percentage = if (total > 0) (sum / total) * 100 else 0.0
-                )
-            }
-        }
+        val weeklyCategorySummary = categorySummary(expenseTxns, weekMode = true)
+        val monthlyCategorySummary = categorySummary(expenseTxns, weekMode = false)
+        val weeklyIncomeCategorySummary = categorySummary(incomeTxns, weekMode = true)
+        val monthlyIncomeCategorySummary = categorySummary(incomeTxns, weekMode = false)
 
         Summary(
             income = income,
@@ -203,14 +209,19 @@ class TransactionRepository {
             highestMonth = highestExpenseMonth,
             highestCategory = highestExpenseCategory,
             highestDay = highestExpenseDay,
+            averagePerDay = averagePerDay,
             highestIncomeMonth = highestIncomeMonth,
             highestIncomeCategory = highestIncomeCategory,
             highestIncomeDay = highestIncomeDay,
-            averagePerDay = averagePerDay,
+            averageIncomePerDay = averageIncomePerDay,
             weeklyCategorySummary = weeklyCategorySummary,
-            monthlyCategorySummary = monthlyCategorySummary
+            monthlyCategorySummary = monthlyCategorySummary,
+            weeklyIncomeCategorySummary = weeklyIncomeCategorySummary,
+            monthlyIncomeCategorySummary = monthlyIncomeCategorySummary
         )
     }
+
+
 
 
     fun clearAll(): Boolean = transaction {

@@ -13,19 +13,27 @@ data class Summary(
     val expense: Double,
     val balance: Double,
 
+    // Expense highlights
     val highestMonth: HighestMonth?,
     val highestCategory: HighestCategory?,
     val highestDay: HighestDay?,
+    val averagePerDay: Double,
 
+    // Income highlights
     val highestIncomeMonth: HighestMonth? = null,
     val highestIncomeCategory: HighestCategory? = null,
     val highestIncomeDay: HighestDay? = null,
+    val averageIncomePerDay: Double = 0.0,
 
-    val averagePerDay: Double,
+    // Expense categories
+    val weeklyCategorySummary: Map<String, List<CategorySummary>> = emptyMap(),
+    val monthlyCategorySummary: Map<String, List<CategorySummary>> = emptyMap(),
 
-    val weeklyCategorySummary: Map<String, List<CategorySummary>>,
-    val monthlyCategorySummary: Map<String, List<CategorySummary>>
+    // Income categories
+    val weeklyIncomeCategorySummary: Map<String, List<CategorySummary>> = emptyMap(),
+    val monthlyIncomeCategorySummary: Map<String, List<CategorySummary>> = emptyMap()
 )
+
 
 
 @Serializable
@@ -60,14 +68,25 @@ fun Summary.toDto(): SummaryDto = SummaryDto(
     income = income,
     expense = expense,
     balance = balance,
+
+    // Expense highlights
     highestMonth = highestMonth?.toDto(),
     highestCategory = highestCategory?.toDto(),
     highestDay = highestDay?.toDto(),
+    averagePerDay = averagePerDay,
+
+    // Income highlights
     highestIncomeMonth = highestIncomeMonth?.toDto(),
     highestIncomeCategory = highestIncomeCategory?.toDto(),
     highestIncomeDay = highestIncomeDay?.toDto(),
-    averagePerDay = averagePerDay,
+    averageIncomePerDay = averageIncomePerDay,
+
+    // Expense categories
     weeklyCategorySummary = weeklyCategorySummary.mapValues { it.value.map { cs -> cs.toDto() } },
-    monthlyCategorySummary = monthlyCategorySummary.mapValues { it.value.map { cs -> cs.toDto() } }
+    monthlyCategorySummary = monthlyCategorySummary.mapValues { it.value.map { cs -> cs.toDto() } },
+
+    // Income categories
+    weeklyIncomeCategorySummary = weeklyIncomeCategorySummary.mapValues { it.value.map { cs -> cs.toDto() } },
+    monthlyIncomeCategorySummary = monthlyIncomeCategorySummary.mapValues { it.value.map { cs -> cs.toDto() } }
 )
 

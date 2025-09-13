@@ -10,21 +10,25 @@ data class SummaryDto(
     val balance: Double,
 
     // Expense highlights
-    val highestMonth: HighlightDto?,
-    val highestCategory: HighlightDto?,
-    val highestDay: HighlightDto?,
+    val highestMonth: HighlightDto? = null,
+    val highestCategory: HighlightDto? = null,
+    val highestDay: HighlightDto? = null,
+    val averagePerDay: Double = 0.0,
 
     // Income highlights
     val highestIncomeMonth: HighlightDto? = null,
     val highestIncomeCategory: HighlightDto? = null,
     val highestIncomeDay: HighlightDto? = null,
+    val averageIncomePerDay: Double = 0.0,
 
-    val averagePerDay: Double,
+    // Expense categories
+    val weeklyCategorySummary: Map<String, List<CategorySummaryDto>> = emptyMap(),
+    val monthlyCategorySummary: Map<String, List<CategorySummaryDto>> = emptyMap(),
 
-    val weeklyCategorySummary: Map<String, List<CategorySummaryDto>>,
-    val monthlyCategorySummary: Map<String, List<CategorySummaryDto>>
+    // Income categories
+    val weeklyIncomeCategorySummary: Map<String, List<CategorySummaryDto>> = emptyMap(),
+    val monthlyIncomeCategorySummary: Map<String, List<CategorySummaryDto>> = emptyMap()
 )
-
 
 @Serializable
 data class HighlightDto(
