@@ -109,19 +109,23 @@ class TransactionRepository {
         if (deleted == 0) throw NoSuchElementException("Transaction with id $id not found")
         true
     }
-
     fun getSummary(
         isIncome: Boolean? = null,
         start: LocalDateTime? = null,
         end: LocalDateTime? = null
     ): Summary = transaction {
-
         var filteredQuery: Query = TransactionsTable.selectAll()
         if (isIncome != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
-        if (start != null)
-            filteredQuery = filteredQuery.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
-        if (end != null)
-            filteredQuery = filteredQuery.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
+        if (start != null) {
+            filteredQuery = filteredQuery.andWhere {
+                TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime()
+            }
+        }
+        if (end != null) {
+            filteredQuery = filteredQuery.andWhere {
+                TransactionsTable.dateTime lessEq end.toJavaLocalDateTime()
+            }
+        }
 
         val filtered = filteredQuery.map { it.toTransaction() }
 
@@ -139,20 +143,16 @@ class TransactionRepository {
                 .maxByOrNull { it.value }
                 ?.let { HighestMonth(month = it.key, amount = it.value) }
 
-        val highestIncomeMonth = highestMonth(incomeTxns)
-        val highestExpenseMonth = highestMonth(expenseTxns)
-
         // Highest category
         fun highestCategory(txns: List<Transaction>): HighestCategory? {
             val grouped = txns.groupBy { it.category.trim().lowercase() }
                 .mapValues { it.value.sumOf { t -> t.amount } }
             val maxEntry = grouped.maxByOrNull { it.value } ?: return null
-            val displayName = txns.firstOrNull { it.category.trim().lowercase() == maxEntry.key }?.category ?: maxEntry.key
+            val displayName = txns.firstOrNull {
+                it.category.trim().lowercase() == maxEntry.key
+            }?.category ?: maxEntry.key
             return HighestCategory(category = displayName, amount = maxEntry.value)
         }
-
-        val highestIncomeCategory = highestCategory(incomeTxns)
-        val highestExpenseCategory = highestCategory(expenseTxns)
 
         // Highest day
         fun highestDay(txns: List<Transaction>) =
@@ -161,67 +161,79 @@ class TransactionRepository {
                 .maxByOrNull { it.value }
                 ?.let { HighestDay(date = it.key, amount = it.value) }
 
-        val highestIncomeDay = highestDay(incomeTxns)
-        val highestExpenseDay = highestDay(expenseTxns)
-
         // Average per day
-        val expenseDays = expenseTxns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
-        val averagePerDay = expense / expenseDays
-
-        val incomeDays = incomeTxns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
-        val averageIncomePerDay = income / incomeDays
+        fun averagePerDay(txns: List<Transaction>, total: Double): Double {
+            val days = txns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
+            return total / days
+        }
 
         // Weekly & monthly category summary helper with deduplication
-        fun categorySummary(txns: List<Transaction>, weekMode: Boolean = true): Map<String, List<CategorySummary>> {
+        fun categorySummary(
+            txns: List<Transaction>,
+            weekMode: Boolean = true
+        ): Map<String, List<CategorySummary>> {
             val grouped = if (weekMode) {
                 txns.groupBy {
                     val week = it.dateTime.toJavaLocalDateTime().get(WeekFields.ISO.weekOfYear())
                     "${it.dateTime.year}-W${week.toString().padStart(2, '0')}"
                 }
             } else {
-                txns.groupBy { "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}" }
+                txns.groupBy {
+                    "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}"
+                }
             }
 
             return grouped.mapValues { (_, txnsInPeriod) ->
-                // Deduplicate categories by normalizing
                 val deduped = txnsInPeriod.groupBy { it.category.trim().lowercase() }
                     .map { (_, list) ->
                         val sum = list.sumOf { it.amount }
-                        val displayName = list.first().category // preserve original casing
+                        val displayName = list.first().category
                         CategorySummary(category = displayName, total = sum, percentage = 0.0)
                     }
 
-                // Compute percentages
                 val totalAmount = deduped.sumOf { it.total }
-                deduped.map { it.copy(percentage = if (totalAmount > 0) (it.total / totalAmount) * 100 else 0.0) }
+                deduped.map {
+                    it.copy(
+                        percentage = if (totalAmount > 0) (it.total / totalAmount) * 100 else 0.0
+                    )
+                }
             }
         }
 
-        val weeklyCategorySummary = categorySummary(expenseTxns, weekMode = true)
-        val monthlyCategorySummary = categorySummary(expenseTxns, weekMode = false)
-        val weeklyIncomeCategorySummary = categorySummary(incomeTxns, weekMode = true)
-        val monthlyIncomeCategorySummary = categorySummary(incomeTxns, weekMode = false)
+        val expenseHighlights = Highlights(
+            highestMonth = highestMonth(expenseTxns),
+            highestCategory = highestCategory(expenseTxns),
+            highestDay = highestDay(expenseTxns),
+            averagePerDay = averagePerDay(expenseTxns, expense)
+        )
+
+        val incomeHighlights = Highlights(
+            highestMonth = highestMonth(incomeTxns),
+            highestCategory = highestCategory(incomeTxns),
+            highestDay = highestDay(incomeTxns),
+            averagePerDay = averagePerDay(incomeTxns, income)
+        )
+
+        val expenseCategorySummary = CategorySummaries(
+            weekly = categorySummary(expenseTxns, weekMode = true),
+            monthly = categorySummary(expenseTxns, weekMode = false)
+        )
+
+        val incomeCategorySummary = CategorySummaries(
+            weekly = categorySummary(incomeTxns, weekMode = true),
+            monthly = categorySummary(incomeTxns, weekMode = false)
+        )
 
         Summary(
             income = income,
             expense = expense,
             balance = balance,
-            highestMonth = highestExpenseMonth,
-            highestCategory = highestExpenseCategory,
-            highestDay = highestExpenseDay,
-            averagePerDay = averagePerDay,
-            highestIncomeMonth = highestIncomeMonth,
-            highestIncomeCategory = highestIncomeCategory,
-            highestIncomeDay = highestIncomeDay,
-            averageIncomePerDay = averageIncomePerDay,
-            weeklyCategorySummary = weeklyCategorySummary,
-            monthlyCategorySummary = monthlyCategorySummary,
-            weeklyIncomeCategorySummary = weeklyIncomeCategorySummary,
-            monthlyIncomeCategorySummary = monthlyIncomeCategorySummary
+            incomeHighlights = incomeHighlights,
+            expenseHighlights = expenseHighlights,
+            incomeCategorySummary = incomeCategorySummary,
+            expenseCategorySummary = expenseCategorySummary
         )
     }
-
-
 
 
     fun clearAll(): Boolean = transaction {
