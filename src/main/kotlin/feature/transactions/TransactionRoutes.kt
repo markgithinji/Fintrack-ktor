@@ -52,16 +52,20 @@ fun Route.transactionRoutes() {
             val categories = call.request.queryParameters["category"]?.split(",")
 
             // Start/end filters as LocalDateTime
-            val start: LocalDateTime? = call.request.queryParameters["start"]?.let { LocalDate.parse(it).atTime(0, 0, 0) }
-            val end: LocalDateTime? = call.request.queryParameters["end"]?.let { LocalDate.parse(it).atTime(23, 59, 59) }
+            val start: LocalDateTime? =
+                call.request.queryParameters["start"]?.let { LocalDate.parse(it).atTime(0, 0, 0) }
+            val end: LocalDateTime? =
+                call.request.queryParameters["end"]?.let { LocalDate.parse(it).atTime(23, 59, 59) }
 
             // Sorting and limit
             val sortBy = call.request.queryParameters["sortBy"] ?: "dateTime"
-            val order = if (call.request.queryParameters["order"]?.uppercase() == "DESC") SortOrder.DESC else SortOrder.ASC
+            val order =
+                if (call.request.queryParameters["order"]?.uppercase() == "DESC") SortOrder.DESC else SortOrder.ASC
             val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceAtMost(50) ?: 20
 
             // Cursor (dateTime + id)
-            val afterDateTime: LocalDateTime? = call.request.queryParameters["afterDateTime"]?.let { LocalDateTime.parse(it) }
+            val afterDateTime: LocalDateTime? =
+                call.request.queryParameters["afterDateTime"]?.let { LocalDateTime.parse(it) }
             val afterId: Int? = call.request.queryParameters["afterId"]?.toIntOrNull()
 
             // Fetch paginated transactions
@@ -134,8 +138,9 @@ fun Route.transactionRoutes() {
             call.respond(ApiResponse.Success(mapOf("message" to "Transaction deleted")))
         }
 
-        // GET /transactions/summary?type=&start=&end=&byCategory=true&monthly=true
-        get("/summary") {
+
+        // GET /transactions/summary/highlights?type=&start=&end=
+        get("/summary/highlights") {
             val typeFilter = call.request.queryParameters["type"]?.lowercase()
             val isIncomeFilter = when (typeFilter) {
                 "income" -> true
@@ -148,9 +153,44 @@ fun Route.transactionRoutes() {
             val end: LocalDateTime? = call.request.queryParameters["end"]
                 ?.let { LocalDate.parse(it).atTime(23, 59, 59) }
 
-            val summary: Summary = repo.getSummary(isIncome = isIncomeFilter, start = start, end = end)
+            val highlights: HighlightsSummary = repo.getHighlightsSummary(
+                isIncome = isIncomeFilter,
+                start = start,
+                end = end
+            )
 
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(summary.toDto()))
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(highlights.toDto()))
+        }
+
+        // GET /transactions/summary/distribution?period=2025-W37&type=&start=&end=
+        get("/summary/distribution") {
+            val period = call.request.queryParameters["period"]
+                ?: return@get call.respondText(
+                    "Missing period parameter",
+                    status = HttpStatusCode.BadRequest
+                )
+
+            val start: LocalDateTime? = call.request.queryParameters["start"]
+                ?.let { LocalDate.parse(it).atTime(0, 0, 0) }
+            val end: LocalDateTime? = call.request.queryParameters["end"]
+                ?.let { LocalDate.parse(it).atTime(23, 59, 59) }
+
+            // Optional filter by type (income/expense)
+            val typeFilter = call.request.queryParameters["type"]?.lowercase()
+            val isIncomeFilter = when (typeFilter) {
+                "income" -> true
+                "expense" -> false
+                else -> null
+            }
+
+            val distribution: DistributionSummary = repo.getDistributionSummary(
+                period = period,
+                isIncome = isIncomeFilter,
+                start = start,
+                end = end
+            )
+
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(distribution.toDto()))
         }
     }
 }
