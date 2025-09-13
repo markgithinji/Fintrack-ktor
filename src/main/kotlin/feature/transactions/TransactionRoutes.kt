@@ -1,6 +1,7 @@
 package feature.transactions
 
 import com.fintrack.core.ApiResponse
+import core.AvailableWeeks
 import core.PaginatedTransactionDto
 import core.TransactionDto
 import core.ValidationException
@@ -15,6 +16,10 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.atTime
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
+import java.time.temporal.IsoFields
 
 fun Route.transactionRoutes() {
     val repo = TransactionRepository()
@@ -191,6 +196,24 @@ fun Route.transactionRoutes() {
             )
 
             call.respond(HttpStatusCode.OK, ApiResponse.Success(distribution.toDto()))
+        }
+
+        get("/available-weeks") {
+            val weeks = transaction {
+                TransactionsTable
+                    .selectAll()
+                    .map { it[TransactionsTable.dateTime].toLocalDate() }
+                    .map { date ->
+                        val year = date.year
+                        val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+                        "%04d-W%02d".format(year, week)
+                    }
+                    .distinct()
+                    .sortedDescending()
+            }
+
+            val result = AvailableWeeks(weeks)
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
         }
     }
 }
