@@ -1,5 +1,7 @@
 package feature.transactions
 
+import core.AvailableMonths
+import core.AvailableWeeks
 import core.ValidationException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -258,6 +260,35 @@ class TransactionRepository {
         )
     }
 
+    fun getAvailableWeeks(): AvailableWeeks = transaction {
+        val weeks = TransactionsTable
+            .selectAll()
+            .map { it[TransactionsTable.dateTime].toLocalDate() }
+            .map { date ->
+                val year = date.year
+                val week = date.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+                "%04d-W%02d".format(year, week)
+            }
+            .distinct()
+            .sortedDescending()
+
+        AvailableWeeks(weeks)
+    }
+
+    fun getAvailableMonths(): AvailableMonths = transaction {
+        val months = TransactionsTable
+            .selectAll()
+            .map { it[TransactionsTable.dateTime].toLocalDate() }
+            .map { date ->
+                val year = date.year
+                val month = date.monthValue
+                "%04d-%02d".format(year, month)
+            }
+            .distinct()
+            .sortedDescending()
+
+        AvailableMonths(months)
+    }
 
     fun clearAll(): Boolean = transaction {
         TransactionsTable.deleteAll() > 0
