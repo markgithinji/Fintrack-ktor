@@ -207,5 +207,10 @@ fun Route.transactionRoutes() {
             val result = repo.getAvailableMonths()
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
         }
+
+        get("/available-years") {
+            val result = repo.getAvailableYears()
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
+        }
     }
 }

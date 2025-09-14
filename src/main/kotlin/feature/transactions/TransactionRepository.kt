@@ -2,6 +2,7 @@ package feature.transactions
 
 import core.AvailableMonths
 import core.AvailableWeeks
+import core.AvailableYears
 import core.ValidationException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -192,6 +193,7 @@ class TransactionRepository {
         start: LocalDateTime? = null,
         end: LocalDateTime? = null
     ): DistributionSummary = transaction {
+        // --- Filter transactions by type and optional date ---
         var query: Query = TransactionsTable.selectAll()
 
         if (isIncome != null) {
@@ -209,56 +211,59 @@ class TransactionRepository {
         val incomeTxns = filtered.filter { it.isIncome }
         val expenseTxns = filtered.filter { !it.isIncome }
 
-        fun categorySummary(txns: List<Transaction>, period: String, weekMode: Boolean = true): List<CategorySummary> {
-            val grouped = if (weekMode) {
-                txns.groupBy {
-                    val week = it.dateTime.toJavaLocalDateTime().get(WeekFields.ISO.weekOfYear())
+        // --- Determine period type ---
+        val weekMode = period.contains("W")
+        val yearMode = !weekMode && period.length == 4
+        val monthMode = !weekMode && !yearMode
+
+        fun categorySummary(txns: List<Transaction>): List<CategorySummary> {
+            // Group transactions by the period
+            val grouped = when {
+                weekMode -> txns.groupBy {
+                    val week = it.dateTime.toJavaLocalDateTime()
+                        .get(WeekFields.ISO.weekOfWeekBasedYear())
                     "${it.dateTime.year}-W${week.toString().padStart(2, '0')}"
                 }
-            } else {
-                txns.groupBy { "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}" }
+                monthMode -> txns.groupBy {
+                    "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}"
+                }
+                yearMode -> txns.groupBy { it.dateTime.year.toString() }
+                else -> emptyMap()
             }
 
-            val txnsInPeriod = grouped[period].orEmpty()
+            // --- Get transactions for the requested period ---
+            val txnsInPeriod = if (yearMode) {
+                grouped[period].orEmpty()
+            } else if (monthMode || weekMode) {
+                grouped[period].orEmpty()
+            } else {
+                emptyList()
+            }
+
+            // --- Aggregate by category ---
             val deduped = txnsInPeriod.groupBy { it.category.trim().lowercase() }.map { (_, list) ->
                 val sum = list.sumOf { it.amount }
                 val displayName = list.first().category
                 CategorySummary(category = displayName, total = sum, percentage = 0.0)
             }
 
+            // --- Compute percentages ---
             val totalAmount = deduped.sumOf { it.total }
             return deduped.map {
                 it.copy(percentage = if (totalAmount > 0) (it.total / totalAmount) * 100 else 0.0)
             }
         }
 
-        val weekMode = period.contains("W")
-        val categories = if (isIncome == true) {
-            categorySummary(incomeTxns, period, weekMode)
-        } else if (isIncome == false) {
-            categorySummary(expenseTxns, period, weekMode)
-        } else {
-            // if no type filter, return all categories (combine)
-            categorySummary(incomeTxns, period, weekMode) +
-                    categorySummary(expenseTxns, period, weekMode)
-        }
-
-        val (incomeCategories, expenseCategories) = when (isIncome) {
-            true -> categories to emptyList()
-            false -> emptyList<CategorySummary>() to categories
-            null -> {
-                val inc = categorySummary(incomeTxns, period, weekMode)
-                val exp = categorySummary(expenseTxns, period, weekMode)
-                inc to exp
-            }
-        }
+        val incomeCategoriesFinal = if (isIncome != false) categorySummary(incomeTxns) else emptyList()
+        val expenseCategoriesFinal = if (isIncome != true) categorySummary(expenseTxns) else emptyList()
 
         DistributionSummary(
             period = period,
-            incomeCategories = incomeCategories,
-            expenseCategories = expenseCategories
+            incomeCategories = incomeCategoriesFinal,
+            expenseCategories = expenseCategoriesFinal
         )
     }
+
 
     fun getAvailableWeeks(): AvailableWeeks = transaction {
         val weeks = TransactionsTable
@@ -289,6 +294,17 @@ class TransactionRepository {
 
         AvailableMonths(months)
     }
+
+    fun getAvailableYears(): AvailableYears = transaction {
+        val years = TransactionsTable
+            .selectAll()
+            .map { it[TransactionsTable.dateTime].toLocalDate().year.toString() }
+            .distinct()
+            .sortedDescending()
+
+        AvailableYears(years)
+    }
+
 
     fun clearAll(): Boolean = transaction {
         TransactionsTable.deleteAll() > 0
