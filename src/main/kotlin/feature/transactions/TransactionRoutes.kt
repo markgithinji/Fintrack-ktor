@@ -199,20 +199,12 @@ fun Route.transactionRoutes() {
         }
 
         get("/available-weeks") {
-            val weeks = transaction {
-                TransactionsTable
-                    .selectAll()
-                    .map { it[TransactionsTable.dateTime].toLocalDate() }
-                    .map { date ->
-                        val year = date.year
-                        val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
-                        "%04d-W%02d".format(year, week)
-                    }
-                    .distinct()
-                    .sortedDescending()
-            }
+            val result = repo.getAvailableWeeks()
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
+        }
 
-            val result = AvailableWeeks(weeks)
+        get("/available-months") {
+            val result = repo.getAvailableMonths()
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
         }
     }
