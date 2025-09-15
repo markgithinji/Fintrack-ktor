@@ -2,6 +2,7 @@ package com.fintrack
 
 import core.DatabaseFactory
 import com.fintrack.plugins.*
+import feature.transactions.BudgetsTable
 import feature.transactions.TransactionsTable
 import io.ktor.server.application.*
 import io.ktor.server.netty.*

@@ -1,5 +1,6 @@
 package com.fintrack.plugins
 
+import feature.transactions.budgetRoutes
 import feature.transactions.transactionRoutes
 import io.ktor.server.application.Application
 import io.ktor.server.response.respondText
@@ -12,5 +13,6 @@ fun Application.configureRouting() {
             call.respondText("Hello World!")
         }
         transactionRoutes()
+        budgetRoutes()
     }
 }
