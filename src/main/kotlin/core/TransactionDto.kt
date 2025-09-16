@@ -21,11 +21,16 @@ fun Transaction.toDto() = TransactionDto(
     amount = this.amount,
     category = this.category,
     dateTime = this.dateTime.toString(),
-    description = this.description,
+    description = this.description
 )
 
-fun TransactionDto.toTransaction() = Transaction(
+/**
+ * Converts a DTO into a domain Transaction.
+ * The userId is injected from session, not from the client.
+ */
+fun TransactionDto.toTransaction(userId: Int) = Transaction(
     id = this.id,
+    userId = userId, // injected, never from client
     isIncome = this.isIncome,
     amount = this.amount,
     category = this.category,
@@ -33,6 +38,7 @@ fun TransactionDto.toTransaction() = Transaction(
     description = this.description
 )
 
+// --- Validation ---
 
 fun TransactionDto.validate() {
     require(amount > 0) { "amount must be greater than 0" }

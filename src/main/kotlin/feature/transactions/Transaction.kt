@@ -9,6 +9,7 @@ import kotlinx.serialization.Contextual
 @Serializable
 data class Transaction(
     val id: Int? = null,
+    val userId: Int,
     val isIncome: Boolean,
     val amount: Double,
     val category: String,
