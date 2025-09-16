@@ -15,19 +15,21 @@ import org.jetbrains.exposed.sql.selectAll
 import java.time.LocalDate as JavaLocalDate
 
 class BudgetRepository {
-    fun getAll(): List<Budget> = transaction {
-        BudgetsTable.selectAll().map { it.toBudget() }
+
+    fun getAllByUser(userId: Int): List<Budget> = transaction {
+        BudgetsTable.selectAll().where { BudgetsTable.userId eq userId }
+            .map { it.toBudget() }
     }
 
-    fun getById(id: Int): Budget? = transaction {
-        BudgetsTable
-            .selectAll().where { BudgetsTable.id eq id }
+    fun getById(userId: Int, id: Int): Budget? = transaction {
+        BudgetsTable.selectAll().where { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }
             .map { it.toBudget() }
             .singleOrNull()
     }
 
     fun add(budget: Budget): Budget = transaction {
         val insertStatement = BudgetsTable.insert {
+            it[userId] = budget.userId
             it[name] = budget.name
             it[categories] = Json.encodeToString(budget.categories)
             it[limit] = budget.limit
@@ -40,10 +42,8 @@ class BudgetRepository {
     }
 
     fun addAll(budgets: List<Budget>): List<Budget> = transaction {
-        val inserted = BudgetsTable.batchInsert(
-            budgets,
-            shouldReturnGeneratedValues = true
-        ) { budget ->
+        val inserted = BudgetsTable.batchInsert(budgets, shouldReturnGeneratedValues = true) { budget ->
+            this[BudgetsTable.userId] = budget.userId
             this[BudgetsTable.name] = budget.name
             this[BudgetsTable.categories] = Json.encodeToString(budget.categories)
             this[BudgetsTable.limit] = budget.limit
@@ -51,12 +51,11 @@ class BudgetRepository {
             this[BudgetsTable.startDate] = budget.startDate.toJavaLocalDate()
             this[BudgetsTable.endDate] = budget.endDate.toJavaLocalDate()
         }
-
         inserted.map { it.toBudget() }
     }
 
-    fun update(id: Int, budget: Budget): Boolean = transaction {
-        BudgetsTable.update({ BudgetsTable.id eq id }) {
+    fun update(userId: Int, id: Int, budget: Budget): Boolean = transaction {
+        BudgetsTable.update({ (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }) {
             it[name] = budget.name
             it[categories] = Json.encodeToString(budget.categories)
             it[limit] = budget.limit
@@ -66,8 +65,8 @@ class BudgetRepository {
         } > 0
     }
 
-    fun delete(id: Int): Boolean = transaction {
-        BudgetsTable.deleteWhere { BudgetsTable.id eq id } > 0
+    fun delete(userId: Int, id: Int): Boolean = transaction {
+        BudgetsTable.deleteWhere { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) } > 0
     }
 }
 
@@ -77,6 +76,7 @@ fun ResultRow.toBudget(): Budget {
     val categories: List<String> = Json.decodeFromString(categoriesJson)
     return Budget(
         id = this[BudgetsTable.id],
+        userId = this[BudgetsTable.userId],
         name = this[BudgetsTable.name],
         categories = categories,
         limit = this[BudgetsTable.limit],
