@@ -1,6 +1,7 @@
 package feature.transactions
 
 import com.fintrack.core.ApiResponse
+import com.fintrack.feature.transactions.userIdOrThrow
 import core.AvailableWeeks
 import core.PaginatedTransactionDto
 import core.TransactionDto
@@ -28,24 +29,30 @@ fun Route.transactionRoutes() {
 
         // DELETE /transactions
         delete {
-            repo.clearAll()
-            call.respond(ApiResponse.Success(mapOf("message" to "All transactions cleared")))
+            val userId = call.userIdOrThrow()
+            repo.clearAll(userId)
+            call.respond(ApiResponse.Success(mapOf("message" to "All transactions cleared for user $userId")))
         }
 
         // POST /transactions/bulk
         post("/bulk") {
+            val userId = call.userIdOrThrow()
+
             val dtos = call.receive<List<TransactionDto>>()
 
             val saved = dtos.map { dto ->
                 dto.validate()
-                repo.add(dto.toTransaction()).toDto()
+                repo.add(dto.toTransaction(userId)).toDto() // inject userId here
             }
 
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
         }
 
-        // GET /transactions?type=&category=&start=&end=&sortBy=&order=&limit=&afterDate=&afterId=
+
+        // GET /transactions?type=&category=&start=&end=&sortBy=&order=&limit=&afterDateTime=&afterId=
         get {
+            val userId = call.userIdOrThrow()
+
             // Type filter
             val isIncome = when (call.request.queryParameters["type"]?.lowercase()) {
                 "income" -> true
@@ -73,8 +80,9 @@ fun Route.transactionRoutes() {
                 call.request.queryParameters["afterDateTime"]?.let { LocalDateTime.parse(it) }
             val afterId: Int? = call.request.queryParameters["afterId"]?.toIntOrNull()
 
-            // Fetch paginated transactions
+            // Fetch paginated transactions (scoped to user)
             val transactions = repo.getAllCursor(
+                userId = userId,
                 isIncome = isIncome,
                 categories = categories,
                 start = start,
@@ -100,12 +108,15 @@ fun Route.transactionRoutes() {
             )
         }
 
+
         // GET /transactions/{id}
         get("{id}") {
+            val userId = call.userIdOrThrow()
+
             val id = call.parameters["id"]?.toIntOrNull()
                 ?: throw ValidationException("Invalid ID")
 
-            val transaction = repo.getById(id)
+            val transaction = repo.getById(userId, id)
                 ?: throw NoSuchElementException("Transaction not found")
 
             call.respond(ApiResponse.Success(transaction.toDto()))
@@ -113,39 +124,54 @@ fun Route.transactionRoutes() {
 
         // POST /transactions
         post {
+            val userId = call.userIdOrThrow()
+
             val dto = call.receive<TransactionDto>()
             dto.validate()
 
-            val saved = repo.add(dto.toTransaction())
+            // Inject userId from session, not from DTO
+            val transaction = dto.toTransaction(userId)
+            val saved = repo.add(transaction)
+
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved.toDto()))
         }
 
+
         // PUT /transactions/{id}
         put("{id}") {
+            val userId = call.userIdOrThrow()
+
             val id = call.parameters["id"]?.toIntOrNull()
                 ?: throw ValidationException("Invalid ID")
 
             val dto = call.receive<TransactionDto>()
             dto.validate()
 
-            val updated = repo.update(id, dto.toTransaction().copy(id = id))
+            // Inject userId from session, tie the entity to this user
+            val transaction = dto.toTransaction(userId).copy(id = id)
+            val updated = repo.update(userId = userId, id = id, entity = transaction)
+
             call.respond(ApiResponse.Success(updated.toDto()))
         }
 
+
         // DELETE /transactions/{id}
         delete("{id}") {
+            val userId = call.userIdOrThrow()
+
             val id = call.parameters["id"]?.toIntOrNull()
                 ?: throw ValidationException("Invalid ID")
 
-            val success = repo.delete(id)
-            if (!success) throw NoSuchElementException("Transaction not found")
+            // Pass userId to enforce ownership
+            repo.delete(id, userId)
 
             call.respond(ApiResponse.Success(mapOf("message" to "Transaction deleted")))
         }
 
-
         // GET /transactions/summary/highlights?type=&start=&end=
         get("/summary/highlights") {
+            val userId = call.userIdOrThrow()
+
             val typeFilter = call.request.queryParameters["type"]?.lowercase()
             val isIncomeFilter = when (typeFilter) {
                 "income" -> true
@@ -159,6 +185,7 @@ fun Route.transactionRoutes() {
                 ?.let { LocalDate.parse(it).atTime(23, 59, 59) }
 
             val highlights: HighlightsSummary = repo.getHighlightsSummary(
+                userId = userId,
                 isIncome = isIncomeFilter,
                 start = start,
                 end = end
@@ -167,8 +194,11 @@ fun Route.transactionRoutes() {
             call.respond(HttpStatusCode.OK, ApiResponse.Success(highlights.toDto()))
         }
 
+
         // GET /transactions/summary/distribution?period=2025-W37&type=&start=&end=
         get("/summary/distribution") {
+            val userId = call.userIdOrThrow()
+
             val period = call.request.queryParameters["period"]
                 ?: return@get call.respondText(
                     "Missing period parameter",
@@ -180,7 +210,6 @@ fun Route.transactionRoutes() {
             val end: LocalDateTime? = call.request.queryParameters["end"]
                 ?.let { LocalDate.parse(it).atTime(23, 59, 59) }
 
-            // Optional filter by type (income/expense)
             val typeFilter = call.request.queryParameters["type"]?.lowercase()
             val isIncomeFilter = when (typeFilter) {
                 "income" -> true
@@ -189,6 +218,7 @@ fun Route.transactionRoutes() {
             }
 
             val distribution: DistributionSummary = repo.getDistributionSummary(
+                userId = userId,
                 period = period,
                 isIncome = isIncomeFilter,
                 start = start,
@@ -198,19 +228,24 @@ fun Route.transactionRoutes() {
             call.respond(HttpStatusCode.OK, ApiResponse.Success(distribution.toDto()))
         }
 
+
         get("/available-weeks") {
-            val result = repo.getAvailableWeeks()
+            val userId = call.userIdOrThrow()
+            val result = repo.getAvailableWeeks(userId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
         }
 
         get("/available-months") {
-            val result = repo.getAvailableMonths()
+            val userId = call.userIdOrThrow()
+            val result = repo.getAvailableMonths(userId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
         }
 
         get("/available-years") {
-            val result = repo.getAvailableYears()
+            val userId = call.userIdOrThrow()
+            val result = repo.getAvailableYears(userId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
         }
+
     }
 }

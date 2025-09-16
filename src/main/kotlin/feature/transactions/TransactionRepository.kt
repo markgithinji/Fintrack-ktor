@@ -18,8 +18,8 @@ import org.jetbrains.exposed.sql.selectAll
 import java.time.temporal.WeekFields
 
 class TransactionRepository {
-
     fun getAllCursor(
+        userId: Int,
         isIncome: Boolean? = null,
         categories: List<String>? = null,
         start: LocalDateTime? = null,
@@ -30,14 +30,14 @@ class TransactionRepository {
         afterDateTime: LocalDateTime? = null,
         afterId: Int? = null
     ): List<Transaction> = transaction {
-        var query = TransactionsTable.selectAll()
-
+        var query = TransactionsTable
+            .selectAll()
+            .andWhere { TransactionsTable.userId eq userId }
         // Apply filters
         if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
         if (!categories.isNullOrEmpty()) query = query.andWhere { TransactionsTable.category inList categories }
         if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
         if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
-
         // Cursor filter
         if (afterDateTime != null && afterId != null) {
             query = query.andWhere {
@@ -46,7 +46,6 @@ class TransactionRepository {
                                 (TransactionsTable.id greater afterId))
             }
         }
-
         // Sorting
         val orderColumn = when (sortBy) {
             "amount" -> TransactionsTable.amount
@@ -60,11 +59,13 @@ class TransactionRepository {
     }
 
 
-    fun getById(id: Int): Transaction = transaction {
-        TransactionsTable.selectAll().where { TransactionsTable.id eq id }
+    fun getById(id: Int, userId: Int): Transaction = transaction {
+        TransactionsTable
+            .selectAll()
+            .where { (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId) }
             .map { it.toTransaction() }
             .singleOrNull()
-            ?: throw NoSuchElementException("Transaction with id $id not found")
+            ?: throw NoSuchElementException("Transaction with id $id not found for user $userId")
     }
 
     fun add(entity: Transaction): Transaction = transaction {
@@ -75,6 +76,7 @@ class TransactionRepository {
         }
 
         val inserted = TransactionsTable.insert { row ->
+            row[userId] = entity.userId
             row[isIncome] = entity.isIncome
             row[amount] = entity.amount
             row[category] = entity.category
@@ -87,14 +89,17 @@ class TransactionRepository {
     }
 
 
-    fun update(id: Int, entity: Transaction): Transaction = transaction {
+
+    fun update(id: Int, userId: Int, entity: Transaction): Transaction = transaction {
         try {
             entity.validate()
         } catch (e: IllegalArgumentException) {
             throw ValidationException(e.message ?: "Invalid transaction")
         }
 
-        val updated = TransactionsTable.update({ TransactionsTable.id eq id }) { row ->
+        val updated = TransactionsTable.update(
+            where = { (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId) }
+        ) { row ->
             row[isIncome] = entity.isIncome
             row[amount] = entity.amount
             row[category] = entity.category
@@ -102,36 +107,41 @@ class TransactionRepository {
             row[description] = entity.description
         }
 
-        if (updated == 0) throw NoSuchElementException("Transaction with id $id not found")
-        getById(id) // return updated transaction
+        if (updated == 0) throw NoSuchElementException("Transaction with id $id not found for user $userId")
+        getById(userId, id)
     }
 
-
-    fun delete(id: Int): Boolean = transaction {
-        val deleted = TransactionsTable.deleteWhere { TransactionsTable.id eq id }
-        if (deleted == 0) throw NoSuchElementException("Transaction with id $id not found")
+    fun delete(id: Int, userId: Int): Boolean = transaction {
+        val deleted = TransactionsTable.deleteWhere {
+            (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId)
+        }
+        if (deleted == 0) throw NoSuchElementException("Transaction with id $id not found for user $userId")
         true
     }
 
     fun getHighlightsSummary(
+        userId: Int,
         isIncome: Boolean? = null,
         start: LocalDateTime? = null,
         end: LocalDateTime? = null
     ): HighlightsSummary = transaction {
         var filteredQuery: Query = TransactionsTable.selectAll()
-        if (isIncome != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
-        if (start != null) filteredQuery = filteredQuery.andWhere {
-            TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime()
+            .andWhere { TransactionsTable.userId eq userId }
+
+        if (isIncome != null) {
+            filteredQuery = filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
         }
-        if (end != null) filteredQuery = filteredQuery.andWhere {
-            TransactionsTable.dateTime lessEq end.toJavaLocalDateTime()
+        if (start != null) {
+            filteredQuery = filteredQuery.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
+        }
+        if (end != null) {
+            filteredQuery = filteredQuery.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
         }
 
         val filtered = filteredQuery.map { it.toTransaction() }
 
         val incomeTxns = filtered.filter { it.isIncome }
         val expenseTxns = filtered.filter { !it.isIncome }
-
         val income = incomeTxns.sumOf { it.amount }
         val expense = expenseTxns.sumOf { it.amount }
         val balance = income - expense
@@ -169,7 +179,6 @@ class TransactionRepository {
             highestDay = highestDay(incomeTxns),
             averagePerDay = averagePerDay(incomeTxns, income)
         )
-
         val expenseHighlights = Highlights(
             highestMonth = highestMonth(expenseTxns),
             highestCategory = highestCategory(expenseTxns),
@@ -188,13 +197,15 @@ class TransactionRepository {
 
     // --- For a single DistributionSummary for a given period ---
     fun getDistributionSummary(
+        userId: Int,
         period: String,
         isIncome: Boolean? = null,
         start: LocalDateTime? = null,
         end: LocalDateTime? = null
     ): DistributionSummary = transaction {
-        // --- Filter transactions by type and optional date ---
+        // --- Filter transactions by user, type, and optional date ---
         var query: Query = TransactionsTable.selectAll()
+            .andWhere { TransactionsTable.userId eq userId }
 
         if (isIncome != null) {
             query = query.andWhere { TransactionsTable.isIncome eq isIncome }
@@ -207,7 +218,6 @@ class TransactionRepository {
         }
 
         val filtered = query.map { it.toTransaction() }
-
         val incomeTxns = filtered.filter { it.isIncome }
         val expenseTxns = filtered.filter { !it.isIncome }
 
@@ -217,7 +227,6 @@ class TransactionRepository {
         val monthMode = !weekMode && !yearMode
 
         fun categorySummary(txns: List<Transaction>): List<CategorySummary> {
-            // Group transactions by the period
             val grouped = when {
                 weekMode -> txns.groupBy {
                     val week = it.dateTime.toJavaLocalDateTime()
@@ -231,23 +240,14 @@ class TransactionRepository {
                 else -> emptyMap()
             }
 
-            // --- Get transactions for the requested period ---
-            val txnsInPeriod = if (yearMode) {
-                grouped[period].orEmpty()
-            } else if (monthMode || weekMode) {
-                grouped[period].orEmpty()
-            } else {
-                emptyList()
-            }
+            val txnsInPeriod = grouped[period].orEmpty()
 
-            // --- Aggregate by category ---
             val deduped = txnsInPeriod.groupBy { it.category.trim().lowercase() }.map { (_, list) ->
                 val sum = list.sumOf { it.amount }
                 val displayName = list.first().category
                 CategorySummary(category = displayName, total = sum, percentage = 0.0)
             }
 
-            // --- Compute percentages ---
             val totalAmount = deduped.sumOf { it.total }
             return deduped.map {
                 it.copy(percentage = if (totalAmount > 0) (it.total / totalAmount) * 100 else 0.0)
@@ -264,10 +264,10 @@ class TransactionRepository {
         )
     }
 
-
-    fun getAvailableWeeks(): AvailableWeeks = transaction {
+    fun getAvailableWeeks(userId: Int): AvailableWeeks = transaction {
         val weeks = TransactionsTable
             .selectAll()
+            .andWhere { TransactionsTable.userId eq userId }
             .map { it[TransactionsTable.dateTime].toLocalDate() }
             .map { date ->
                 val year = date.year
@@ -280,9 +280,10 @@ class TransactionRepository {
         AvailableWeeks(weeks)
     }
 
-    fun getAvailableMonths(): AvailableMonths = transaction {
+    fun getAvailableMonths(userId: Int): AvailableMonths = transaction {
         val months = TransactionsTable
             .selectAll()
+            .andWhere { TransactionsTable.userId eq userId }
             .map { it[TransactionsTable.dateTime].toLocalDate() }
             .map { date ->
                 val year = date.year
@@ -295,9 +296,10 @@ class TransactionRepository {
         AvailableMonths(months)
     }
 
-    fun getAvailableYears(): AvailableYears = transaction {
+    fun getAvailableYears(userId: Int): AvailableYears = transaction {
         val years = TransactionsTable
             .selectAll()
+            .andWhere { TransactionsTable.userId eq userId }
             .map { it[TransactionsTable.dateTime].toLocalDate().year.toString() }
             .distinct()
             .sortedDescending()
@@ -305,13 +307,14 @@ class TransactionRepository {
         AvailableYears(years)
     }
 
-
-    fun clearAll(): Boolean = transaction {
-        TransactionsTable.deleteAll() > 0
+    fun clearAll(userId: Int): Boolean = transaction {
+        TransactionsTable.deleteWhere { TransactionsTable.userId eq userId } > 0
     }
+
 
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id],
+        userId = this[TransactionsTable.userId],
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         category = this[TransactionsTable.category],
