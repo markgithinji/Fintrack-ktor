@@ -15,13 +15,11 @@ fun Application.configureRouting() {
             call.respondText("Hello World!")
         }
 
-        // Public routes
         authRoutes()
-        budgetRoutes()
 
-        // Protected routes
         authenticate("auth-jwt") {
             transactionRoutes()
+            budgetRoutes()
         }
     }
 }
