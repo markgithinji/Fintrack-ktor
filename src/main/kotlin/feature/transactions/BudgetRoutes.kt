@@ -38,6 +38,27 @@ fun Route.budgetRoutes() {
                 )
             }
         }
+
+        // GET budget by id
+        get("{id}") {
+            try {
+                val id = call.parameters["id"]?.toIntOrNull()
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Id missing"))
+
+                val budget = repository.getById(id)
+                if (budget != null) {
+                    call.respond(ApiResponse.Success(budget.toDto()))
+                } else {
+                    call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Budget not found"))
+                }
+            } catch (e: Exception) {
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    ApiResponse.Error(e.message ?: "Unknown error")
+                )
+            }
+        }
+
         // POST a new budget
         post {
             try {
