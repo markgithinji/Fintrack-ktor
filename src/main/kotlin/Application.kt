@@ -1,5 +1,6 @@
 package com.fintrack
 
+import com.fintrack.feature.user.UsersTable
 import core.DatabaseFactory
 import com.fintrack.plugins.*
 import feature.transactions.BudgetsTable
@@ -16,6 +17,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     DatabaseFactory.init()
+    configureAuth()
     configureSerialization()
     configureStatusPages()
     configureRouting()
