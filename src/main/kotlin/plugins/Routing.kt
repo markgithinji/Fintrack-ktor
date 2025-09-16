@@ -1,5 +1,6 @@
 package com.fintrack.plugins
 
+import com.fintrack.feature.user.authRoutes
 import feature.transactions.budgetRoutes
 import feature.transactions.transactionRoutes
 import io.ktor.server.application.Application
@@ -14,5 +15,6 @@ fun Application.configureRouting() {
         }
         transactionRoutes()
         budgetRoutes()
+        authRoutes()
     }
 }
