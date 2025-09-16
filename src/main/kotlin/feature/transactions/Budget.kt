@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 // --- Domain ---
 data class Budget(
     val id: Int? = null,
+    val userId: Int,
     val name: String,
     val categories: List<String>,
     val limit: Double,
@@ -28,9 +29,10 @@ data class BudgetDto(
 )
 
 // --- Mappers ---
-fun BudgetDto.toDomain(): Budget =
+fun BudgetDto.toDomain(userId: Int): Budget =
     Budget(
         id = id,
+        userId = userId, // set from JWT
         name = name,
         categories = categories,
         limit = limit,
