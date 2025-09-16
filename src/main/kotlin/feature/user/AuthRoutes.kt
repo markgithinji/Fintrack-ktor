@@ -29,35 +29,56 @@ fun Route.authRoutes() {
     val userRepo = UserRepository()
 
     route("/auth") {
+
+        // Register route
         post("/register") {
             try {
                 val request = call.receive<AuthRequest>()
-                val userId = userRepo.createUser(request.username, request.password)
-                call.respond(
-                    HttpStatusCode.Created,
-                    ApiResponse.Success(mapOf("userId" to userId))
+                val userId = userRepo.createUser(request.email, request.password) // use email as username for now
+                val token = JwtConfig.generateToken(userId)
+
+                val response = UserDto(
+                    id = userId.toString(),
+                    name = request.email, // using email as name for now
+                    email = request.email,
+                    token = token
                 )
+
+                call.respond(HttpStatusCode.Created, response)
             } catch (e: Exception) {
                 call.respond(
                     HttpStatusCode.BadRequest,
-                    ApiResponse.Error("Registration failed: ${e.message}")
+                    mapOf("error" to "Registration failed: ${e.message}")
                 )
             }
         }
 
+        // Login route
         post("/login") {
-            val request = call.receive<AuthRequest>()
-            val user = userRepo.findByUsername(request.username)
+            try {
+                val request = call.receive<AuthRequest>()
+                val user = userRepo.findByUsername(request.email) // lookup by email
 
-            if (user == null || !BCrypt.checkpw(request.password, user.passwordHash)) {
-                call.respond(HttpStatusCode.Unauthorized, ApiResponse.Error("Invalid credentials"))
-                return@post
+                if (user == null || !BCrypt.checkpw(request.password, user.passwordHash)) {
+                    call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid credentials"))
+                    return@post
+                }
+
+                val token = JwtConfig.generateToken(user.id)
+                val response = UserDto(
+                    id = user.id.toString(),
+                    name = user.username,
+                    email = user.username,
+                    token = token
+                )
+
+                call.respond(response)
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Login failed: ${e.message}"))
             }
-
-            val token = JwtConfig.generateToken(user.id)
-            call.respond(ApiResponse.Success(mapOf("token" to token)))
         }
 
+        // Get current user
         authenticate("auth-jwt") {
             get("/me") {
                 val principal = call.principal<JWTPrincipal>()
@@ -65,16 +86,15 @@ fun Route.authRoutes() {
                 val user = userRepo.findById(userId)
 
                 if (user == null) {
-                    call.respond(HttpStatusCode.NotFound, ApiResponse.Error("User not found"))
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
                 } else {
-                    call.respond(
-                        ApiResponse.Success(
-                            mapOf(
-                                "id" to user.id,
-                                "username" to user.username
-                            )
-                        )
+                    val response = UserDto(
+                        id = user.id.toString(),
+                        name = user.username,
+                        email = user.username,
+                        token = "" // token not needed here
                     )
+                    call.respond(response)
                 }
             }
         }
