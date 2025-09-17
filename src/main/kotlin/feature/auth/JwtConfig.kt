@@ -1,4 +1,4 @@
-package com.fintrack.feature.user
+package com.fintrack.feature.auth
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier

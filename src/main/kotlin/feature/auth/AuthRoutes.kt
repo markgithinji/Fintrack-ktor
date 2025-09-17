@@ -1,4 +1,4 @@
-package com.fintrack.feature.user
+package com.fintrack.feature.auth
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
@@ -8,22 +8,11 @@ import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
-import com.fintrack.core.ApiResponse
-import core.AvailableWeeks
-import core.PaginatedTransactionDto
-import core.TransactionDto
-import core.ValidationException
-import core.toDto
-import core.toTransaction
-import core.validate
-import io.ktor.http.*
-import io.ktor.server.request.*
+import com.fintrack.feature.auth.JwtConfig
+import com.fintrack.feature.user.data.UserRepository
+import com.fintrack.feature.user.data.UserDto
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.atTime
-import org.jetbrains.exposed.sql.SortOrder
 import org.mindrot.jbcrypt.BCrypt
 fun Route.authRoutes() {
     val userRepo = UserRepository()
@@ -75,27 +64,6 @@ fun Route.authRoutes() {
                 call.respond(response)
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Login failed: ${e.message}"))
-            }
-        }
-
-        // Get current user
-        authenticate("auth-jwt") {
-            get("/me") {
-                val principal = call.principal<JWTPrincipal>()
-                val userId = principal!!.payload.getClaim("userId").asInt()
-                val user = userRepo.findById(userId)
-
-                if (user == null) {
-                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
-                } else {
-                    val response = UserDto(
-                        id = user.id.toString(),
-                        name = user.username,
-                        email = user.username,
-                        token = "" // token not needed here
-                    )
-                    call.respond(response)
-                }
             }
         }
     }

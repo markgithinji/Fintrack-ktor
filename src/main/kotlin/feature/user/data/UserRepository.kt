@@ -1,12 +1,12 @@
-package com.fintrack.feature.user
+package com.fintrack.feature.user.data
 
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.SqlExpressionBuilder
+import com.fintrack.feature.user.UsersTable
+import com.fintrack.feature.user.domain.User
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.mindrot.jbcrypt.BCrypt
+
 class UserRepository {
 
     fun createUser(username: String, password: String): Int = transaction {

@@ -1,6 +1,6 @@
 package com.fintrack.plugins
 
-import com.fintrack.feature.user.JwtConfig
+import com.fintrack.feature.auth.JwtConfig
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication

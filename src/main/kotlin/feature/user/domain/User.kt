@@ -1,4 +1,4 @@
-package com.fintrack.feature.user
+package com.fintrack.feature.user.domain
 
 data class User(
     val id: Int,

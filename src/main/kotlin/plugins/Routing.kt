@@ -1,8 +1,9 @@
 package com.fintrack.plugins
 
-import com.fintrack.feature.user.authRoutes
+import com.fintrack.feature.auth.authRoutes
 import feature.transactions.budgetRoutes
 import feature.transactions.transactionRoutes
+import feature.user.userRoutes
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respondText
@@ -20,6 +21,7 @@ fun Application.configureRouting() {
         authenticate("auth-jwt") {
             transactionRoutes()
             budgetRoutes()
+            userRoutes()
         }
     }
 }
