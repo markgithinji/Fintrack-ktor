@@ -1,6 +1,5 @@
 package feature.transactions
 
-import core.Category
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 

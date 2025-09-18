@@ -11,6 +11,7 @@ import io.ktor.server.routing.post
 import com.fintrack.feature.auth.JwtConfig
 import com.fintrack.feature.user.data.UserRepository
 import com.fintrack.feature.user.data.UserDto
+import feature.auth.AuthResponse
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.mindrot.jbcrypt.BCrypt
@@ -26,10 +27,7 @@ fun Route.authRoutes() {
                 val userId = userRepo.createUser(request.email, request.password) // use email as username for now
                 val token = JwtConfig.generateToken(userId)
 
-                val response = UserDto(
-                    id = userId.toString(),
-                    name = request.email, // using email as name for now
-                    email = request.email,
+                val response = AuthResponse(
                     token = token
                 )
 
@@ -54,10 +52,7 @@ fun Route.authRoutes() {
                 }
 
                 val token = JwtConfig.generateToken(user.id)
-                val response = UserDto(
-                    id = user.id.toString(),
-                    name = user.username,
-                    email = user.username,
+                val response = AuthResponse(
                     token = token
                 )
 
