@@ -3,19 +3,35 @@ package feature.transactions
 import core.AvailableMonths
 import core.AvailableWeeks
 import core.AvailableYears
+import core.DaySummary
+import core.OverviewSummary
 import core.ValidationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.DateTimeUnit
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toKotlinLocalDateTime
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.time.temporal.WeekFields
+import kotlinx.datetime.*
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
+import java.time.LocalDateTime as JLocalDateTime
 
 class TransactionRepository {
     fun getAllCursor(
@@ -311,6 +327,63 @@ class TransactionRepository {
         TransactionsTable.deleteWhere { TransactionsTable.userId eq userId } > 0
     }
 
+
+    /**
+     * Returns an OverviewSummary containing:
+     *  - weeklyOverview: last 7 days (today included)
+     *  - monthlyOverview: last 30 days (today included)
+     */
+    fun getOverviewSummary(userId: Int): OverviewSummary {
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+        val weeklyStart = today.minus(DatePeriod(days = 6))   // last 7 days
+        val monthlyStart = today.minus(DatePeriod(days = 29)) // last 30 days
+
+        val weekly = getDaySummaries(userId, weeklyStart, today)
+        val monthly = getDaySummaries(userId, monthlyStart, today)
+
+        return OverviewSummary(weeklyOverview = weekly, monthlyOverview = monthly)
+    }
+
+    /**
+     * Returns list of DaySummary for the inclusive date range [start. .end].
+     * This function opens a transaction (Exposed).
+     */
+    fun getDaySummaries(userId: Int, start: LocalDate, end: LocalDate): List<DaySummary> = transaction {
+        // Build Java LocalDateTime boundaries for the DB (Exposed uses java.time.LocalDateTime)
+        val startJ = JLocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0, 0, 0)
+        val endJ = JLocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59, 999_999_999)
+
+        // Query rows in the range for the user
+        val rows = TransactionsTable
+            .selectAll().where {
+                (TransactionsTable.userId eq userId) and
+                        (TransactionsTable.dateTime greaterEq startJ) and
+                        (TransactionsTable.dateTime lessEq endJ)
+            }
+            .map { row ->
+                // row[TransactionsTable.dateTime] is java.time.LocalDateTime
+                val jdt = row[TransactionsTable.dateTime]
+                val jDate = jdt.toLocalDate() // java.time.LocalDate
+                // Convert to kotlinx.datetime.LocalDate
+                val kDate = LocalDate(jDate.year, jDate.monthValue, jDate.dayOfMonth)
+
+                Triple(kDate, row[TransactionsTable.isIncome], row[TransactionsTable.amount])
+            }
+
+        // Build inclusive date list [start..end] using kotlinx.datetime
+        val dates = generateSequence(start) { current ->
+            if (current < end) current.plus(DatePeriod(days = 1)) else null
+        }.toList()
+
+        // For each date compute income & expense
+        dates.map { date ->
+            val dayTxs = rows.filter { it.first == date }
+            val income = dayTxs.filter { it.second }.sumOf { it.third }
+            val expense = dayTxs.filter { !it.second }.sumOf { it.third }
+            DaySummary(date = date, income = income, expense = expense)
+        }
+    }
 
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id],
