@@ -1,36 +1,11 @@
 package feature.transactions
 
-import core.AvailableMonths
-import core.AvailableWeeks
-import core.AvailableYears
-import core.DaySummary
-import core.OverviewSummary
-import core.ValidationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DatePeriod
-import kotlinx.datetime.DateTimeUnit
+import core.*
+import kotlinx.datetime.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
-import kotlinx.datetime.toJavaLocalDate
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toKotlinLocalDate
-import kotlinx.datetime.toKotlinLocalDateTime
-import kotlinx.datetime.toLocalDateTime
-import org.jetbrains.exposed.sql.javatime.date
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import java.time.temporal.WeekFields
-import kotlinx.datetime.*
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.LocalDateTime as JLocalDateTime
 
 class TransactionRepository {
@@ -384,6 +359,71 @@ class TransactionRepository {
             DaySummary(date = date, income = income, expense = expense)
         }
     }
+
+    fun getCategoryComparisons(userId: Int): List<CategoryComparison> = transaction {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+        // --- Period boundaries ---
+        val thisWeekStart = now.minus(DatePeriod(days = 6))
+        val lastWeekStart = thisWeekStart.minus(DatePeriod(days = 7))
+        val lastWeekEnd = thisWeekStart.minus(DatePeriod(days = 1))
+
+        val thisMonthStart = now.minus(DatePeriod(days = 29))
+        val lastMonthStart = thisMonthStart.minus(DatePeriod(days = 30))
+        val lastMonthEnd = thisMonthStart.minus(DatePeriod(days = 1))
+
+        // --- Helper to get category totals for a range ---
+        fun totalsByCategory(start: LocalDate, end: LocalDate): Map<String, Double> {
+            val startJ = java.time.LocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0)
+            val endJ = java.time.LocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59)
+
+            return TransactionsTable
+                .selectAll().where {
+                    (TransactionsTable.userId eq userId) and
+                            (TransactionsTable.dateTime greaterEq startJ) and
+                            (TransactionsTable.dateTime lessEq endJ)
+                }
+                .groupBy { it[TransactionsTable.category] }
+                .mapValues { (_, rows) -> rows.sumOf { it[TransactionsTable.amount] } }
+        }
+
+        // --- Weekly comparison ---
+        val thisWeekTotals = totalsByCategory(thisWeekStart, now)
+        val lastWeekTotals = totalsByCategory(lastWeekStart, lastWeekEnd)
+
+        val topWeekCategory = thisWeekTotals.maxByOrNull { it.value }?.key
+        val weeklyComparison = topWeekCategory?.let { category ->
+            val current = thisWeekTotals[category] ?: 0.0
+            val previous = lastWeekTotals[category] ?: 0.0
+            CategoryComparison(
+                period = "weekly",
+                category = category,
+                currentTotal = current,
+                previousTotal = previous,
+                changePercentage = if (previous != 0.0) (current - previous) / previous * 100 else 100.0
+            )
+        }
+
+        // --- Monthly comparison ---
+        val thisMonthTotals = totalsByCategory(thisMonthStart, now)
+        val lastMonthTotals = totalsByCategory(lastMonthStart, lastMonthEnd)
+
+        val topMonthCategory = thisMonthTotals.maxByOrNull { it.value }?.key
+        val monthlyComparison = topMonthCategory?.let { category ->
+            val current = thisMonthTotals[category] ?: 0.0
+            val previous = lastMonthTotals[category] ?: 0.0
+            CategoryComparison(
+                period = "monthly",
+                category = category,
+                currentTotal = current,
+                previousTotal = previous,
+                changePercentage = if (previous != 0.0) (current - previous) / previous * 100 else 100.0
+            )
+        }
+
+        listOfNotNull(weeklyComparison, monthlyComparison)
+    }
+
 
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id],
