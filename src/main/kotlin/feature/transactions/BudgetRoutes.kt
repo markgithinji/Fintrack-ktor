@@ -30,17 +30,20 @@ fun Route.budgetRoutes() {
                 call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Unknown error"))
             }
         }
-        // GET all budgets for current user
+
+        // GET all budgets for current user (optional account filter)
         get {
             try {
                 val principal = call.principal<JWTPrincipal>()!!
                 val userId = principal.payload.getClaim("userId").asInt()
-                val budgets = repository.getAllByUser(userId)
+                val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
+                val budgets = repository.getAllByUser(userId, accountId)
                 call.respond(ApiResponse.Success(budgets.map { it.toDto() }))
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, ApiResponse.Error(e.message ?: "Unknown error"))
             }
         }
+
         // GET budget by id (user-specific)
         get("{id}") {
             try {
@@ -55,13 +58,11 @@ fun Route.budgetRoutes() {
                     call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Budget not found"))
                 }
             } catch (e: Exception) {
-                call.respond(
-                    HttpStatusCode.InternalServerError,
-                    ApiResponse.Error(e.message ?: "Unknown error")
-                )
+                call.respond(HttpStatusCode.InternalServerError, ApiResponse.Error(e.message ?: "Unknown error"))
             }
         }
-        // POST a new budget (user-specific)
+
+        // POST a new budget (user-specific, can include accountId)
         post {
             try {
                 val principal = call.principal<JWTPrincipal>()!!
@@ -70,13 +71,11 @@ fun Route.budgetRoutes() {
                 val budget = repository.add(budgetDto.toDomain(userId))
                 call.respond(HttpStatusCode.Created, ApiResponse.Success(budget.toDto()))
             } catch (e: Exception) {
-                call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error(e.message ?: "Invalid request")
-                )
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Invalid request"))
             }
         }
-        // PUT update by id (user-specific)
+
+        // PUT update by id (user-specific, can update accountId)
         put("{id}") {
             try {
                 val principal = call.principal<JWTPrincipal>()!!
@@ -95,16 +94,14 @@ fun Route.budgetRoutes() {
                 call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Invalid request"))
             }
         }
+
         // DELETE a budget by id (user-specific)
         delete("{id}") {
             try {
                 val principal = call.principal<JWTPrincipal>()!!
                 val userId = principal.payload.getClaim("userId").asInt()
                 val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@delete call.respond(
-                        HttpStatusCode.BadRequest,
-                        ApiResponse.Error("Id missing")
-                    )
+                    ?: return@delete call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Id missing"))
                 val removed = repository.delete(userId, id)
                 if (removed) {
                     call.respond(ApiResponse.Success("Deleted budget with id: $id"))
@@ -112,14 +109,10 @@ fun Route.budgetRoutes() {
                     call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Budget not found"))
                 }
             } catch (e: Exception) {
-                call.respond(
-                    HttpStatusCode.InternalServerError,
-                    ApiResponse.Error(e.message ?: "Unknown error")
-                )
+                call.respond(HttpStatusCode.InternalServerError, ApiResponse.Error(e.message ?: "Unknown error"))
             }
         }
     }
-
 }
 
 
