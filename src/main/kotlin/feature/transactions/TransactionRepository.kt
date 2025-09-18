@@ -4,6 +4,7 @@ import core.*
 import kotlinx.datetime.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.temporal.WeekFields
 import java.time.LocalDateTime as JLocalDateTime
@@ -11,6 +12,7 @@ import java.time.LocalDateTime as JLocalDateTime
 class TransactionRepository {
     fun getAllCursor(
         userId: Int,
+        accountId: Int? = null,
         isIncome: Boolean? = null,
         categories: List<String>? = null,
         start: LocalDateTime? = null,
@@ -21,14 +23,18 @@ class TransactionRepository {
         afterDateTime: LocalDateTime? = null,
         afterId: Int? = null
     ): List<Transaction> = transaction {
-        var query = TransactionsTable
-            .selectAll()
+        var query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq userId }
+
+        // Filter by account
+        if (accountId != null) query = query.andWhere { TransactionsTable.accountId eq accountId }
+
         // Apply filters
         if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
         if (!categories.isNullOrEmpty()) query = query.andWhere { TransactionsTable.category inList categories }
         if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
         if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
+
         // Cursor filter
         if (afterDateTime != null && afterId != null) {
             query = query.andWhere {
@@ -37,6 +43,7 @@ class TransactionRepository {
                                 (TransactionsTable.id greater afterId))
             }
         }
+
         // Sorting
         val orderColumn = when (sortBy) {
             "amount" -> TransactionsTable.amount
@@ -50,14 +57,15 @@ class TransactionRepository {
     }
 
 
+
     fun getById(id: Int, userId: Int): Transaction = transaction {
         TransactionsTable
-            .selectAll()
-            .where { (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId) }
+            .selectAll().where { (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId) }
             .map { it.toTransaction() }
             .singleOrNull()
             ?: throw NoSuchElementException("Transaction with id $id not found for user $userId")
     }
+
 
     fun add(entity: Transaction): Transaction = transaction {
         try {
@@ -68,6 +76,7 @@ class TransactionRepository {
 
         val inserted = TransactionsTable.insert { row ->
             row[userId] = entity.userId
+            row[accountId] = entity.accountId
             row[isIncome] = entity.isIncome
             row[amount] = entity.amount
             row[category] = entity.category
@@ -81,6 +90,7 @@ class TransactionRepository {
 
 
 
+
     fun update(id: Int, userId: Int, entity: Transaction): Transaction = transaction {
         try {
             entity.validate()
@@ -91,6 +101,7 @@ class TransactionRepository {
         val updated = TransactionsTable.update(
             where = { (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId) }
         ) { row ->
+            row[accountId] = entity.accountId
             row[isIncome] = entity.isIncome
             row[amount] = entity.amount
             row[category] = entity.category
@@ -99,8 +110,10 @@ class TransactionRepository {
         }
 
         if (updated == 0) throw NoSuchElementException("Transaction with id $id not found for user $userId")
-        getById(userId, id)
+
+        getById(id, userId)
     }
+
 
     fun delete(id: Int, userId: Int): Boolean = transaction {
         val deleted = TransactionsTable.deleteWhere {
@@ -110,8 +123,10 @@ class TransactionRepository {
         true
     }
 
+
     fun getHighlightsSummary(
         userId: Int,
+        accountId: Int? = null,
         isIncome: Boolean? = null,
         start: LocalDateTime? = null,
         end: LocalDateTime? = null
@@ -119,15 +134,12 @@ class TransactionRepository {
         var filteredQuery: Query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq userId }
 
-        if (isIncome != null) {
-            filteredQuery = filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
-        }
-        if (start != null) {
-            filteredQuery = filteredQuery.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
-        }
-        if (end != null) {
-            filteredQuery = filteredQuery.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
-        }
+        // Account filter
+        if (accountId != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.accountId eq accountId }
+
+        if (isIncome != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
+        if (start != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
+        if (end != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
 
         val filtered = filteredQuery.map { it.toTransaction() }
 
@@ -148,8 +160,7 @@ class TransactionRepository {
                 .mapValues { it.value.sumOf { t -> t.amount } }
                 .maxByOrNull { it.value }
                 ?.let { entry ->
-                    val displayName = txns.firstOrNull { it.category.trim().lowercase() == entry.key }?.category
-                        ?: entry.key
+                    val displayName = txns.firstOrNull { it.category.trim().lowercase() == entry.key }?.category ?: entry.key
                     Highlight(label = displayName, value = displayName, amount = entry.value)
                 }
 
@@ -186,27 +197,24 @@ class TransactionRepository {
         )
     }
 
+
     // --- For a single DistributionSummary for a given period ---
     fun getDistributionSummary(
         userId: Int,
         period: String,
+        accountId: Int? = null,
         isIncome: Boolean? = null,
         start: LocalDateTime? = null,
         end: LocalDateTime? = null
     ): DistributionSummary = transaction {
-        // --- Filter transactions by user, type, and optional date ---
+        // --- Filter transactions by user, type, optional account, and date ---
         var query: Query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq userId }
 
-        if (isIncome != null) {
-            query = query.andWhere { TransactionsTable.isIncome eq isIncome }
-        }
-        if (start != null) {
-            query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
-        }
-        if (end != null) {
-            query = query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
-        }
+        if (accountId != null) query = query.andWhere { TransactionsTable.accountId eq accountId }
+        if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
+        if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
+        if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
 
         val filtered = query.map { it.toTransaction() }
         val incomeTxns = filtered.filter { it.isIncome }
@@ -220,9 +228,9 @@ class TransactionRepository {
         fun categorySummary(txns: List<Transaction>): List<CategorySummary> {
             val grouped = when {
                 weekMode -> txns.groupBy {
-                    val week = it.dateTime.toJavaLocalDateTime()
-                        .get(WeekFields.ISO.weekOfWeekBasedYear())
-                    "${it.dateTime.year}-W${week.toString().padStart(2, '0')}"
+                    val javaDateTime = it.dateTime.toJavaLocalDateTime()
+                    val week = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
+                    "${javaDateTime.year}-W${week.toString().padStart(2, '0')}"
                 }
                 monthMode -> txns.groupBy {
                     "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}"
@@ -255,10 +263,15 @@ class TransactionRepository {
         )
     }
 
-    fun getAvailableWeeks(userId: Int): AvailableWeeks = transaction {
-        val weeks = TransactionsTable
-            .selectAll()
-            .andWhere { TransactionsTable.userId eq userId }
+
+    fun getAvailableWeeks(userId: Int, accountId: Int? = null): AvailableWeeks = transaction {
+        var query = TransactionsTable.selectAll().andWhere { TransactionsTable.userId eq userId }
+
+        if (accountId != null) {
+            query = query.andWhere { TransactionsTable.accountId eq accountId }
+        }
+
+        val weeks = query
             .map { it[TransactionsTable.dateTime].toLocalDate() }
             .map { date ->
                 val year = date.year
@@ -271,10 +284,14 @@ class TransactionRepository {
         AvailableWeeks(weeks)
     }
 
-    fun getAvailableMonths(userId: Int): AvailableMonths = transaction {
-        val months = TransactionsTable
-            .selectAll()
-            .andWhere { TransactionsTable.userId eq userId }
+    fun getAvailableMonths(userId: Int, accountId: Int? = null): AvailableMonths = transaction {
+        var query = TransactionsTable.selectAll().andWhere { TransactionsTable.userId eq userId }
+
+        if (accountId != null) {
+            query = query.andWhere { TransactionsTable.accountId eq accountId }
+        }
+
+        val months = query
             .map { it[TransactionsTable.dateTime].toLocalDate() }
             .map { date ->
                 val year = date.year
@@ -287,10 +304,15 @@ class TransactionRepository {
         AvailableMonths(months)
     }
 
-    fun getAvailableYears(userId: Int): AvailableYears = transaction {
-        val years = TransactionsTable
-            .selectAll()
-            .andWhere { TransactionsTable.userId eq userId }
+
+    fun getAvailableYears(userId: Int, accountId: Int? = null): AvailableYears = transaction {
+        var query = TransactionsTable.selectAll().andWhere { TransactionsTable.userId eq userId }
+
+        if (accountId != null) {
+            query = query.andWhere { TransactionsTable.accountId eq accountId }
+        }
+
+        val years = query
             .map { it[TransactionsTable.dateTime].toLocalDate().year.toString() }
             .distinct()
             .sortedDescending()
@@ -298,8 +320,16 @@ class TransactionRepository {
         AvailableYears(years)
     }
 
-    fun clearAll(userId: Int): Boolean = transaction {
-        TransactionsTable.deleteWhere { TransactionsTable.userId eq userId } > 0
+
+    fun clearAll(userId: Int, accountId: Int? = null): Boolean = transaction {
+        val deleted = if (accountId != null) {
+            TransactionsTable.deleteWhere {
+                (TransactionsTable.userId eq userId) and (TransactionsTable.accountId eq accountId)
+            }
+        } else {
+            TransactionsTable.deleteWhere { TransactionsTable.userId eq userId }
+        }
+        deleted > 0
     }
 
 
@@ -308,50 +338,54 @@ class TransactionRepository {
      *  - weeklyOverview: last 7 days (today included)
      *  - monthlyOverview: last 30 days (today included)
      */
-    fun getOverviewSummary(userId: Int): OverviewSummary {
+    fun getOverviewSummary(userId: Int, accountId: Int? = null): OverviewSummary {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
         val weeklyStart = today.minus(DatePeriod(days = 6))   // last 7 days
         val monthlyStart = today.minus(DatePeriod(days = 29)) // last 30 days
 
-        val weekly = getDaySummaries(userId, weeklyStart, today)
-        val monthly = getDaySummaries(userId, monthlyStart, today)
+        val weekly = getDaySummaries(userId, weeklyStart, today, accountId)
+        val monthly = getDaySummaries(userId, monthlyStart, today, accountId)
 
         return OverviewSummary(weeklyOverview = weekly, monthlyOverview = monthly)
     }
+
 
     /**
      * Returns list of DaySummary for the inclusive date range [start. .end].
      * This function opens a transaction (Exposed).
      */
-    fun getDaySummaries(userId: Int, start: LocalDate, end: LocalDate): List<DaySummary> = transaction {
-        // Build Java LocalDateTime boundaries for the DB (Exposed uses java.time.LocalDateTime)
+    fun getDaySummaries(
+        userId: Int,
+        start: LocalDate,
+        end: LocalDate,
+        accountId: Int? = null
+    ): List<DaySummary> = transaction {
         val startJ = JLocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0, 0, 0)
         val endJ = JLocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59, 999_999_999)
 
-        // Query rows in the range for the user
-        val rows = TransactionsTable
-            .selectAll().where {
-                (TransactionsTable.userId eq userId) and
-                        (TransactionsTable.dateTime greaterEq startJ) and
-                        (TransactionsTable.dateTime lessEq endJ)
-            }
-            .map { row ->
-                // row[TransactionsTable.dateTime] is java.time.LocalDateTime
-                val jdt = row[TransactionsTable.dateTime]
-                val jDate = jdt.toLocalDate() // java.time.LocalDate
-                // Convert to kotlinx.datetime.LocalDate
-                val kDate = LocalDate(jDate.year, jDate.monthValue, jDate.dayOfMonth)
+        // Query rows in the range for the user (and optional account)
+        var query = TransactionsTable.selectAll().where {
+            (TransactionsTable.userId eq userId) and
+                    (TransactionsTable.dateTime greaterEq startJ) and
+                    (TransactionsTable.dateTime lessEq endJ)
+        }
 
-                Triple(kDate, row[TransactionsTable.isIncome], row[TransactionsTable.amount])
-            }
+        if (accountId != null) {
+            query = query.andWhere { TransactionsTable.accountId eq accountId }
+        }
 
-        // Build inclusive date list [start..end] using kotlinx.datetime
+        val rows = query.map { row ->
+            val jdt = row[TransactionsTable.dateTime]
+            val jDate = jdt.toLocalDate()
+            val kDate = LocalDate(jDate.year, jDate.monthValue, jDate.dayOfMonth)
+            Triple(kDate, row[TransactionsTable.isIncome], row[TransactionsTable.amount])
+        }
+
         val dates = generateSequence(start) { current ->
             if (current < end) current.plus(DatePeriod(days = 1)) else null
         }.toList()
 
-        // For each date compute income & expense
         dates.map { date ->
             val dayTxs = rows.filter { it.first == date }
             val income = dayTxs.filter { it.second }.sumOf { it.third }
@@ -360,7 +394,11 @@ class TransactionRepository {
         }
     }
 
-    fun getCategoryComparisons(userId: Int): List<CategoryComparison> = transaction {
+
+    fun getCategoryComparisons(
+        userId: Int,
+        accountId: Int? = null
+    ): List<CategoryComparison> = transaction {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
         // --- Period boundaries ---
@@ -377,12 +415,17 @@ class TransactionRepository {
             val startJ = java.time.LocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0)
             val endJ = java.time.LocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59)
 
-            return TransactionsTable
-                .selectAll().where {
-                    (TransactionsTable.userId eq userId) and
-                            (TransactionsTable.dateTime greaterEq startJ) and
-                            (TransactionsTable.dateTime lessEq endJ)
-                }
+            var query = TransactionsTable.selectAll().where {
+                (TransactionsTable.userId eq userId) and
+                        (TransactionsTable.dateTime greaterEq startJ) and
+                        (TransactionsTable.dateTime lessEq endJ)
+            }
+
+            if (accountId != null) {
+                query = query.andWhere { TransactionsTable.accountId eq accountId }
+            }
+
+            return query
                 .groupBy { it[TransactionsTable.category] }
                 .mapValues { (_, rows) -> rows.sumOf { it[TransactionsTable.amount] } }
         }
@@ -425,6 +468,7 @@ class TransactionRepository {
     }
 
 
+
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id],
         userId = this[TransactionsTable.userId],
@@ -432,6 +476,8 @@ class TransactionRepository {
         amount = this[TransactionsTable.amount],
         category = this[TransactionsTable.category],
         dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(),
-        description = this[TransactionsTable.description]
+        description = this[TransactionsTable.description],
+        accountId = this[TransactionsTable.accountId]
     )
+
 }

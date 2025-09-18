@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class TransactionDto(
     val id: Int? = null,
+    val accountId: Int,
     val isIncome: Boolean,
     val amount: Double,
     val category: String,
@@ -15,8 +16,10 @@ data class TransactionDto(
     val description: String? = null
 )
 
+// --- Domain -> DTO ---
 fun Transaction.toDto() = TransactionDto(
     id = this.id,
+    accountId = this.accountId,
     isIncome = this.isIncome,
     amount = this.amount,
     category = this.category,
@@ -24,19 +27,18 @@ fun Transaction.toDto() = TransactionDto(
     description = this.description
 )
 
-/**
- * Converts a DTO into a domain Transaction.
- * The userId is injected from session, not from the client.
- */
+// --- DTO -> Domain ---
 fun TransactionDto.toTransaction(userId: Int) = Transaction(
     id = this.id,
-    userId = userId, // injected, never from client
+    userId = userId,
+    accountId = this.accountId,
     isIncome = this.isIncome,
     amount = this.amount,
     category = this.category,
     dateTime = LocalDateTime.parse(this.dateTime),
     description = this.description
 )
+
 
 // --- Validation ---
 

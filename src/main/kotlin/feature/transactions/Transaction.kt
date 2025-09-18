@@ -6,13 +6,13 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Contextual
 
 
-@Serializable
 data class Transaction(
     val id: Int? = null,
     val userId: Int,
+    val accountId: Int,
     val isIncome: Boolean,
     val amount: Double,
     val category: String,
-    @Contextual val dateTime: LocalDateTime,
+    val dateTime: LocalDateTime,
     val description: String? = null
 )
