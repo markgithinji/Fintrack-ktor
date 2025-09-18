@@ -16,13 +16,17 @@ import java.time.LocalDate as JavaLocalDate
 
 class BudgetRepository {
 
-    fun getAllByUser(userId: Int): List<Budget> = transaction {
-        BudgetsTable.selectAll().where { BudgetsTable.userId eq userId }
-            .map { it.toBudget() }
+    fun getAllByUser(userId: Int, accountId: Int? = null): List<Budget> = transaction {
+        var query = BudgetsTable.selectAll().where { BudgetsTable.userId eq userId }
+
+        if (accountId != null) query = query.andWhere { BudgetsTable.accountId eq accountId }
+
+        query.map { it.toBudget() }
     }
 
     fun getById(userId: Int, id: Int): Budget? = transaction {
-        BudgetsTable.selectAll().where { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }
+        BudgetsTable.selectAll()
+            .where { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }
             .map { it.toBudget() }
             .singleOrNull()
     }
@@ -30,6 +34,7 @@ class BudgetRepository {
     fun add(budget: Budget): Budget = transaction {
         val insertStatement = BudgetsTable.insert {
             it[userId] = budget.userId
+            it[accountId] = budget.accountId
             it[name] = budget.name
             it[categories] = Json.encodeToString(budget.categories)
             it[limit] = budget.limit
@@ -44,6 +49,7 @@ class BudgetRepository {
     fun addAll(budgets: List<Budget>): List<Budget> = transaction {
         val inserted = BudgetsTable.batchInsert(budgets, shouldReturnGeneratedValues = true) { budget ->
             this[BudgetsTable.userId] = budget.userId
+            this[BudgetsTable.accountId] = budget.accountId
             this[BudgetsTable.name] = budget.name
             this[BudgetsTable.categories] = Json.encodeToString(budget.categories)
             this[BudgetsTable.limit] = budget.limit
@@ -56,6 +62,7 @@ class BudgetRepository {
 
     fun update(userId: Int, id: Int, budget: Budget): Boolean = transaction {
         BudgetsTable.update({ (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }) {
+            it[accountId] = budget.accountId
             it[name] = budget.name
             it[categories] = Json.encodeToString(budget.categories)
             it[limit] = budget.limit
@@ -77,6 +84,7 @@ fun ResultRow.toBudget(): Budget {
     return Budget(
         id = this[BudgetsTable.id],
         userId = this[BudgetsTable.userId],
+        accountId = this[BudgetsTable.accountId],
         name = this[BudgetsTable.name],
         categories = categories,
         limit = this[BudgetsTable.limit],

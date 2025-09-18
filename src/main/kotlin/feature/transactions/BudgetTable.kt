@@ -7,6 +7,7 @@ import org.jetbrains.exposed.sql.javatime.date
 object BudgetsTable : Table("budgets") {
     val id = integer("id").autoIncrement()
     val userId = integer("user_id")
+    val accountId = integer("account_id")
     val name = varchar("name", 100)
     val categories = text("categories")
     val limit = double("limit")

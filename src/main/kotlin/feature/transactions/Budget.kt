@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 data class Budget(
     val id: Int? = null,
     val userId: Int,
+    val accountId: Int,
     val name: String,
     val categories: List<String>,
     val limit: Double,
@@ -15,11 +16,13 @@ data class Budget(
     val startDate: LocalDate,
     val endDate: LocalDate
 )
+
 
 // --- DTO ---
 @Serializable
 data class BudgetDto(
     val id: Int? = null,
+    val accountId: Int,
     val name: String,
     val categories: List<String>,
     val limit: Double,
@@ -28,11 +31,13 @@ data class BudgetDto(
     val endDate: LocalDate
 )
 
+
 // --- Mappers ---
 fun BudgetDto.toDomain(userId: Int): Budget =
     Budget(
         id = id,
-        userId = userId, // set from JWT
+        userId = userId,
+        accountId = accountId,
         name = name,
         categories = categories,
         limit = limit,
@@ -44,6 +49,7 @@ fun BudgetDto.toDomain(userId: Int): Budget =
 fun Budget.toDto(): BudgetDto =
     BudgetDto(
         id = id,
+        accountId = accountId,
         name = name,
         categories = categories,
         limit = limit,
@@ -51,6 +57,3 @@ fun Budget.toDto(): BudgetDto =
         startDate = startDate,
         endDate = endDate
     )
-
-
-val budgets = mutableListOf<Budget>()
