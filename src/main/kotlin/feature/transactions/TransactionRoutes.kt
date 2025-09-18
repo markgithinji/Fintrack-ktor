@@ -252,5 +252,14 @@ fun Route.transactionRoutes() {
             }
         }
 
+        get("/category-comparison") {
+            val userId = call.userIdOrThrow()
+            val comparisons = repo.getCategoryComparisons(userId)
+            call.respond(
+                HttpStatusCode.OK,
+                ApiResponse.Success(comparisons.map { it.toDto() })
+            )
+        }
+
     }
 }
