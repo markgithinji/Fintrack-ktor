@@ -3,10 +3,10 @@ package feature.transactions
 
 import com.fintrack.core.ApiResponse
 import com.fintrack.core.userIdOrThrow
-import feature.accounts.domain.AccountDto
+import feature.accounts.data.AccountDto
 import feature.accounts.data.AccountsRepository
-import feature.accounts.domain.toDomain
-import feature.accounts.domain.toDto
+import feature.accounts.data.toDomain
+import feature.accounts.data.toDto
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
