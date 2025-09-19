@@ -1,7 +1,7 @@
 package feature.transactions.data
 
 import com.fintrack.feature.user.UsersTable
-import core.AccountsTable
+import feature.accounts.data.AccountsTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.datetime

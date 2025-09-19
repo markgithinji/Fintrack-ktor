@@ -1,20 +1,7 @@
-package core
+package feature.accounts.data
 
-import kotlinx.serialization.Serializable
+import feature.accounts.domain.Account
 
-
-data class Account(
-    val id: Int,
-    val userId: Int,
-    val name: String
-)
-
-@Serializable
-data class AccountDto(
-    val id: Int? = null,
-    val name: String,
-    val balance: Double? = null,
-)
 
 fun Account.toDto(balance: Double? = null): AccountDto = AccountDto(
     id = this.id,

@@ -1,6 +1,5 @@
-package core
+package feature.accounts.data
 
-import com.fintrack.feature.user.UsersTable.integer
 import org.jetbrains.exposed.sql.Table
 
 object AccountsTable : Table("accounts") {

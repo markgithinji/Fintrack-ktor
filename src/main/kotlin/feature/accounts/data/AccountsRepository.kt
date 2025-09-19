@@ -1,19 +1,14 @@
-package core
+package feature.accounts.data
 
-import core.AccountsTable.name
-import core.AccountsTable.userId
-import org.jetbrains.exposed.sql.Op
+import feature.accounts.domain.Account
+import feature.accounts.data.AccountsTable
+import org.jetbrains.exposed.sql.ISqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SqlExpressionBuilder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import org.jetbrains.exposed.sql.selectAll
-
 
 class AccountsRepository {
 
@@ -56,4 +51,3 @@ class AccountsRepository {
         name = row[AccountsTable.name]
     )
 }
-
