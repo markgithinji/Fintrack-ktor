@@ -1,11 +1,11 @@
-package feature.transactions
+package com.fintrack.feature.budget.data
 
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
-data class Budget(
+@Serializable
+data class BudgetDto(
     val id: Int? = null,
-    val userId: Int,
     val accountId: Int,
     val name: String,
     val categories: List<String>,
