@@ -1,14 +1,14 @@
 package feature.transactions.data
 
+import com.fintrack.feature.summary.domain.CategoryComparison
+import com.fintrack.feature.summary.domain.CategorySummary
+import com.fintrack.feature.summary.domain.DaySummary
+import com.fintrack.feature.summary.domain.DistributionSummary
+import com.fintrack.feature.summary.domain.OverviewSummary
 import core.AvailableMonths
 import core.AvailableWeeks
 import core.AvailableYears
-import core.CategoryComparison
-import core.DaySummary
-import core.OverviewSummary
 import core.ValidationException
-import feature.transactions.CategorySummary
-import feature.transactions.DistributionSummary
 import feature.transactions.Highlight
 import feature.transactions.Highlights
 import feature.transactions.HighlightsSummary
