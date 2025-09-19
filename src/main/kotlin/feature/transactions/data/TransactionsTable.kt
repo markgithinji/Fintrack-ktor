@@ -1,10 +1,9 @@
-package feature.transactions
+package feature.transactions.data
 
 import com.fintrack.feature.user.UsersTable
 import core.AccountsTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.javatime.datetime
 
 object TransactionsTable : Table("transactions") {

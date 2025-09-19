@@ -1,20 +1,8 @@
-package core
+package feature.transactions.data
 
-import feature.transactions.Transaction
-import kotlinx.datetime.LocalDate
+import feature.transactions.data.model.TransactionDto
+import feature.transactions.domain.model.Transaction
 import kotlinx.datetime.LocalDateTime
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class TransactionDto(
-    val id: Int? = null,
-    val accountId: Int,
-    val isIncome: Boolean,
-    val amount: Double,
-    val category: String,
-    val dateTime: String,
-    val description: String? = null
-)
 
 // --- Domain -> DTO ---
 fun Transaction.toDto() = TransactionDto(
@@ -38,11 +26,3 @@ fun TransactionDto.toTransaction(userId: Int) = Transaction(
     dateTime = LocalDateTime.parse(this.dateTime),
     description = this.description
 )
-
-
-// --- Validation ---
-
-fun TransactionDto.validate() {
-    require(amount > 0) { "amount must be greater than 0" }
-    require(category.isNotBlank()) { "category must not be empty" }
-}

@@ -1,7 +1,6 @@
-package com.fintrack.feature.transactions
+package com.fintrack.core
 
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.auth.UserIdPrincipal
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.principal
 import javax.naming.AuthenticationException

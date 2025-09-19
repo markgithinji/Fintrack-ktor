@@ -1,6 +1,5 @@
 package feature.transactions
 
-import feature.transactions.TransactionsTable.integer
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.date
 

@@ -1,17 +1,15 @@
 package feature.transactions
 
 import com.fintrack.core.ApiResponse
-import com.fintrack.feature.transactions.userIdOrThrow
-import core.AvailableWeeks
-import core.PaginatedTransactionDto
-import core.TransactionDto
+import com.fintrack.core.userIdOrThrow
+import feature.transactions.data.model.PaginatedTransactionDto
+import feature.transactions.data.model.TransactionDto
 import core.ValidationException
 import core.toDto
-import core.toTransaction
-import core.validate
+import feature.transactions.data.toDto
+import feature.transactions.data.toTransaction
+import feature.transactions.data.TransactionRepository
 import io.ktor.http.*
-import io.ktor.server.auth.jwt.JWTPrincipal
-import io.ktor.server.auth.principal
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -19,10 +17,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.atTime
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import java.time.temporal.IsoFields
 
 fun Route.transactionRoutes() {
     val repo = TransactionRepository()

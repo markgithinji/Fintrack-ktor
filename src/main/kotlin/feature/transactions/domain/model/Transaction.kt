@@ -1,10 +1,6 @@
-package feature.transactions
+package feature.transactions.domain.model
 
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.Contextual
-
 
 data class Transaction(
     val id: Int? = null,
