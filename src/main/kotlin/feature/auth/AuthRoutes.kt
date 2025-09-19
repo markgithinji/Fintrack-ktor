@@ -1,17 +1,11 @@
 package com.fintrack.feature.auth
 
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.authenticate
-import io.ktor.server.auth.jwt.JWTPrincipal
-import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
 import io.ktor.server.routing.post
-import com.fintrack.feature.auth.JwtConfig
 import com.fintrack.feature.user.data.UserRepository
-import com.fintrack.feature.user.data.UserDto
-import feature.auth.AuthResponse
+import feature.auth.data.model.AuthResponse
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.mindrot.jbcrypt.BCrypt

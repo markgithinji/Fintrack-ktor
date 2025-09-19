@@ -1,4 +1,4 @@
-package feature.auth
+package feature.auth.data.model
 
 import kotlinx.serialization.Serializable
 
