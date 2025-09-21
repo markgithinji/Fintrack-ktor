@@ -3,11 +3,11 @@ package feature.transactions
 
 import com.fintrack.core.ApiResponse
 import com.fintrack.core.userIdOrThrow
+import com.fintrack.feature.summary.data.repository.StatisticsRepository
 import feature.accounts.data.AccountDto
 import feature.accounts.data.AccountsRepository
 import feature.accounts.data.toDomain
 import feature.accounts.data.toDto
-import feature.transactions.data.TransactionRepository
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -16,7 +16,7 @@ import io.ktor.server.routing.*
 fun Route.accountsRoutes(
 ) {
     val accountsRepository = AccountsRepository()
-    val transactionsRepository = TransactionRepository()
+    val statisticsRepository = StatisticsRepository()
 
     route("/accounts") {
 
@@ -25,7 +25,7 @@ fun Route.accountsRoutes(
             val userId = call.userIdOrThrow()
             val accounts = accountsRepository.getAllAccounts(userId)
                 .map { account ->
-                    val aggregates = transactionsRepository.getAccountAggregates(userId, account.id)
+                    val aggregates = statisticsRepository.getAccountAggregates(userId, account.id)
                     account.toDto(
                         income = aggregates.income,
                         expense = aggregates.expense,
@@ -48,7 +48,7 @@ fun Route.accountsRoutes(
             if (account == null || account.userId != userId) {
                 call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Account not found"))
             } else {
-                val aggregates = transactionsRepository.getAccountAggregates(userId, account.id)
+                val aggregates = statisticsRepository.getAccountAggregates(userId, account.id)
                 call.respond(
                     ApiResponse.Success(
                         account.toDto(
@@ -102,7 +102,7 @@ fun Route.accountsRoutes(
                 request.toDomain(userId).copy(id = id)
             )
 
-            val aggregates = transactionsRepository.getAccountAggregates(userId, updatedAccount.id)
+            val aggregates = statisticsRepository.getAccountAggregates(userId, updatedAccount.id)
             call.respond(
                 ApiResponse.Success(
                     updatedAccount.toDto(

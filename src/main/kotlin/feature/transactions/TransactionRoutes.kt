@@ -32,7 +32,7 @@ fun Route.transactionRoutes() {
 
     route("/transactions") {
         // DELETE /transactions
-        delete("/transactions/clear") {
+        delete("/clear") {
             val userId = call.userIdOrThrow()
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
 
@@ -175,158 +175,16 @@ fun Route.transactionRoutes() {
             call.respond(ApiResponse.Success(mapOf("message" to "Transaction deleted successfully")))
         }
 
-        // GET /transactions/summary/highlights?type=&start=&end=
-        get("/summary/highlights") {
-            val userId = call.userIdOrThrow()
-
-            // Optional account filter
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-
-            val typeFilter = call.request.queryParameters["type"]?.lowercase()
-            val isIncomeFilter = when (typeFilter) {
-                "income" -> true
-                "expense" -> false
-                else -> null
-            }
-
-            val start: LocalDateTime? = call.request.queryParameters["start"]
-                ?.let { LocalDate.parse(it) }
-                ?.let { date -> LocalDateTime(date, LocalTime(0, 0, 0)) }
-
-            val end: LocalDateTime? = call.request.queryParameters["end"]
-                ?.let { LocalDate.parse(it) }
-                ?.let { date -> LocalDateTime(date, LocalTime(23, 59, 59)) }
-
-            val summary: StatisticsSummary = repo.getStatisticsSummary(
-                userId = userId,
-                accountId = accountId,
-                isIncome = isIncomeFilter,
-                start = start,
-                end = end
-            )
-
-            call.respond(
-                HttpStatusCode.OK,
-                ApiResponse.Success(summary.toDto())
-            )
-        }
-
-        // GET /transactions/summary/distribution?period=2025-W37&type=&start=&end=
-        get("/summary/distribution") {
-            val userId = call.userIdOrThrow()
-            val period = call.request.queryParameters["period"]
-                ?: return@get call.respondText("Missing period parameter", status = HttpStatusCode.BadRequest)
-
-            // Optional account filter
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-
-            val start: LocalDateTime? = call.request.queryParameters["start"]
-                ?.let { LocalDate.parse(it).atTime(0, 0, 0) }
-            val end: LocalDateTime? = call.request.queryParameters["end"]
-                ?.let { LocalDate.parse(it).atTime(23, 59, 59) }
-
-            val typeFilter = call.request.queryParameters["type"]?.lowercase()
-            val isIncomeFilter = when (typeFilter) {
-                "income" -> true
-                "expense" -> false
-                else -> null
-            }
-
-            val distribution: DistributionSummary = repo.getDistributionSummary(
-                userId = userId,
-                accountId = accountId,
-                period = period,
-                isIncome = isIncomeFilter,
-                start = start,
-                end = end
-            )
-
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(distribution.toDto()))
-        }
 
 
-        get("/available-weeks") {
-            val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-
-            val result = repo.getAvailableWeeks(userId, accountId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
-        }
-
-        get("/available-months") {
-            val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-
-            val result = repo.getAvailableMonths(userId, accountId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
-        }
 
 
-        get("/available-years") {
-            val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-
-            val result = repo.getAvailableYears(userId, accountId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
-        }
 
 
-        get("/overview") {
-            val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
 
-            val overview = repo.getOverviewSummary(userId, accountId)
-
-            call.respond(
-                HttpStatusCode.OK,
-                ApiResponse.Success (overview.toDto())
-            )
-        }
 
 
         // Day summaries for a custom date range
-        get("/overview/range") {
-            val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-            val startParam = call.request.queryParameters["start"]
-            val endParam = call.request.queryParameters["end"]
-
-            if (startParam == null || endParam == null) {
-                call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error("start and end query params required (yyyy-MM-dd)")
-                )
-                return@get
-            }
-
-            try {
-                val start = LocalDate.parse(startParam)
-                val end = LocalDate.parse(endParam)
-                val days = repo.getDaySummaries(userId, start, end, accountId)
-
-                call.respond(
-                    HttpStatusCode.OK,
-                    ApiResponse.Success(days.map { it.toDto() })
-                )
-            } catch (e: Exception) {
-                call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error("Invalid date format, expected yyyy-MM-dd")
-                )
-            }
-        }
-
-
-        get("/category-comparison") {
-            val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-            val comparisons = repo.getCategoryComparisons(userId, accountId)
-
-            call.respond(
-                HttpStatusCode.OK,
-                ApiResponse.Success(comparisons.map { it.toDto() })
-            )
-        }
 
 
     }

@@ -1,6 +1,7 @@
 package com.fintrack.plugins
 
 import com.fintrack.feature.auth.authRoutes
+import com.fintrack.feature.summary.summaryRoutes
 import feature.transactions.accountsRoutes
 import feature.transactions.budgetRoutes
 import feature.transactions.transactionRoutes
@@ -24,6 +25,7 @@ fun Application.configureRouting() {
             budgetRoutes()
             userRoutes()
             accountsRoutes()
+            summaryRoutes()
         }
     }
 }
