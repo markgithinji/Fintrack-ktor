@@ -17,23 +17,17 @@ import core.AvailableYears
 import core.DaySummaryDto
 import core.HighlightDto
 import core.HighlightsDto
-import core.HighlightsSummaryDto
+import core.StatisticsSummaryDto
 import core.OverviewSummaryDto
 import feature.transactions.Highlight
 import feature.transactions.Highlights
-import feature.transactions.HighlightsSummary
+import feature.transactions.StatisticsSummary
 
 // Highlights summary
-fun HighlightsSummary.toDto(): HighlightsSummaryDto = HighlightsSummaryDto(
-    income = income,
-    expense = expense,
-    balance = balance,
+fun StatisticsSummary.toDto(): StatisticsSummaryDto = StatisticsSummaryDto(
     incomeHighlights = incomeHighlights.toDto(),
     expenseHighlights = expenseHighlights.toDto()
 )
-
-fun Highlight.toDto(): HighlightDto =
-    HighlightDto(label = label, value = value, amount = amount)
 
 fun Highlights.toDto(): HighlightsDto = HighlightsDto(
     highestMonth = highestMonth?.toDto(),
@@ -41,6 +35,10 @@ fun Highlights.toDto(): HighlightsDto = HighlightsDto(
     highestDay = highestDay?.toDto(),
     averagePerDay = averagePerDay
 )
+
+fun Highlight.toDto(): HighlightDto =
+    HighlightDto(label = label, value = value, amount = amount)
+
 
 // Distribution summary
 fun DistributionSummary.toDto(): DistributionSummaryDto = DistributionSummaryDto(

@@ -3,10 +3,7 @@ package core
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class HighlightsSummaryDto(
-    val income: Double = 0.0,
-    val expense: Double = 0.0,
-    val balance: Double = 0.0,
+data class StatisticsSummaryDto(
     val incomeHighlights: HighlightsDto = HighlightsDto(),
     val expenseHighlights: HighlightsDto = HighlightsDto()
 )

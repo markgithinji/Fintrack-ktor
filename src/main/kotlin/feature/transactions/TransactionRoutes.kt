@@ -22,6 +22,7 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.atTime
 import org.jetbrains.exposed.sql.SortOrder
 
@@ -189,11 +190,14 @@ fun Route.transactionRoutes() {
             }
 
             val start: LocalDateTime? = call.request.queryParameters["start"]
-                ?.let { LocalDate.parse(it).atTime(0, 0, 0) }
-            val end: LocalDateTime? = call.request.queryParameters["end"]
-                ?.let { LocalDate.parse(it).atTime(23, 59, 59) }
+                ?.let { LocalDate.parse(it) }
+                ?.let { date -> LocalDateTime(date, LocalTime(0, 0, 0)) }
 
-            val highlights: HighlightsSummary = repo.getHighlightsSummary(
+            val end: LocalDateTime? = call.request.queryParameters["end"]
+                ?.let { LocalDate.parse(it) }
+                ?.let { date -> LocalDateTime(date, LocalTime(23, 59, 59)) }
+
+            val summary: StatisticsSummary = repo.getStatisticsSummary(
                 userId = userId,
                 accountId = accountId,
                 isIncome = isIncomeFilter,
@@ -201,7 +205,10 @@ fun Route.transactionRoutes() {
                 end = end
             )
 
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(highlights.toDto()))
+            call.respond(
+                HttpStatusCode.OK,
+                ApiResponse.Success(summary.toDto())
+            )
         }
 
         // GET /transactions/summary/distribution?period=2025-W37&type=&start=&end=

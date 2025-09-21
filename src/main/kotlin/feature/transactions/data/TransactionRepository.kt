@@ -11,7 +11,7 @@ import core.AvailableYears
 import core.ValidationException
 import feature.transactions.Highlight
 import feature.transactions.Highlights
-import feature.transactions.HighlightsSummary
+import feature.transactions.StatisticsSummary
 import feature.transactions.domain.model.Transaction
 import feature.transactions.validate
 import kotlinx.datetime.Clock
@@ -147,30 +147,52 @@ class TransactionRepository {
         true
     }
 
+    fun getAccountAggregates(userId: Int, accountId: Int? = null): AccountAggregates = transaction {
+        val baseQuery = TransactionsTable
+            .select(TransactionsTable.amount)
+            .where { TransactionsTable.userId eq userId }
 
-    fun getHighlightsSummary(
+        val accountFilter = accountId?.let { TransactionsTable.accountId eq it }
+
+        val transactions = if (accountFilter != null) {
+            baseQuery.andWhere { accountFilter }
+        } else {
+            baseQuery
+        }.map { it[TransactionsTable.amount] }
+
+        val income = transactions.filter { it > 0 }.sumOf { it }
+        val expense = transactions.filter { it < 0 }.sumOf { -it }
+        val balance = income - expense
+
+        AccountAggregates(income, expense, balance)
+    }
+
+
+    fun getStatisticsSummary(
         userId: Int,
         accountId: Int? = null,
         isIncome: Boolean? = null,
         start: LocalDateTime? = null,
         end: LocalDateTime? = null
-    ): HighlightsSummary = transaction {
+    ): StatisticsSummary = transaction {
         var filteredQuery: Query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq userId }
-        // Account filter
-        if (accountId != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.accountId eq accountId }
 
-        if (isIncome != null) filteredQuery = filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
+        if (accountId != null) filteredQuery =
+            filteredQuery.andWhere { TransactionsTable.accountId eq accountId }
+
+        if (isIncome != null) filteredQuery =
+            filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
+
         if (start != null) filteredQuery =
             filteredQuery.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
+
         if (end != null) filteredQuery =
             filteredQuery.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
+
         val filtered = filteredQuery.map { it.toTransaction() }
         val incomeTxns = filtered.filter { it.isIncome }
         val expenseTxns = filtered.filter { !it.isIncome }
-        val income = incomeTxns.sumOf { it.amount }
-        val expense = expenseTxns.sumOf { it.amount }
-        val balance = income - expense
 
         fun highestMonth(txns: List<Transaction>) =
             txns.groupBy { "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}" }
@@ -194,8 +216,9 @@ class TransactionRepository {
                 .maxByOrNull { it.value }
                 ?.let { Highlight(label = it.key.toString(), value = it.key.toString(), amount = it.value) }
 
-        fun averagePerDay(txns: List<Transaction>, total: Double): Double {
+        fun averagePerDay(txns: List<Transaction>): Double {
             val days = txns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
+            val total = txns.sumOf { it.amount }
             return total / days
         }
 
@@ -203,19 +226,17 @@ class TransactionRepository {
             highestMonth = highestMonth(incomeTxns),
             highestCategory = highestCategory(incomeTxns),
             highestDay = highestDay(incomeTxns),
-            averagePerDay = averagePerDay(incomeTxns, income)
+            averagePerDay = averagePerDay(incomeTxns)
         )
+
         val expenseHighlights = Highlights(
             highestMonth = highestMonth(expenseTxns),
             highestCategory = highestCategory(expenseTxns),
             highestDay = highestDay(expenseTxns),
-            averagePerDay = averagePerDay(expenseTxns, expense)
+            averagePerDay = averagePerDay(expenseTxns)
         )
 
-        HighlightsSummary(
-            income = income,
-            expense = expense,
-            balance = balance,
+        StatisticsSummary(
             incomeHighlights = incomeHighlights,
             expenseHighlights = expenseHighlights
         )
@@ -488,4 +509,9 @@ class TransactionRepository {
         accountId = this[TransactionsTable.accountId]
     )
 
+    data class AccountAggregates(
+        val income: Double = 0.0,
+        val expense: Double = 0.0,
+        val balance: Double = 0.0
+    )
 }
