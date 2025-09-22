@@ -40,28 +40,28 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.time.temporal.IsoFields
 import java.time.temporal.WeekFields
+import kotlin.math.absoluteValue
 
 class StatisticsRepository {
 
     fun getAccountAggregates(userId: Int, accountId: Int? = null): AccountAggregates = transaction {
-        val baseQuery = TransactionsTable
-            .select(TransactionsTable.amount)
+        val query = TransactionsTable
+            .select(TransactionsTable.amount, TransactionsTable.isIncome)
             .where { TransactionsTable.userId eq userId }
 
-        val accountFilter = accountId?.let { TransactionsTable.accountId eq it }
+        // Filter by account if provided
+        val filteredQuery = accountId?.let { query.andWhere { TransactionsTable.accountId eq it } } ?: query
 
-        val transactions = if (accountFilter != null) {
-            baseQuery.andWhere { accountFilter }
-        } else {
-            baseQuery
-        }.map { it[TransactionsTable.amount] }
+        val transactions = filteredQuery.map { it[TransactionsTable.amount] to it[TransactionsTable.isIncome] }
 
-        val income = transactions.filter { it > 0 }.sumOf { it }
-        val expense = transactions.filter { it < 0 }.sumOf { -it }
+        val income = transactions.filter { it.second }.sumOf { it.first }
+        val expense = transactions.filter { !it.second }.sumOf { it.first }
+
         val balance = income - expense
 
         AccountAggregates(income, expense, balance)
     }
+
 
     fun getStatisticsSummary(
     userId: Int,
