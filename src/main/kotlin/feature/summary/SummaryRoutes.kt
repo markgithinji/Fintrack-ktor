@@ -178,5 +178,29 @@ fun Route.summaryRoutes() {
                 ApiResponse.Success(comparisons.map { it.toDto() })
             )
         }
+
+        get("/counts") {
+            val userId = call.userIdOrThrow()
+            val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
+
+            if (accountId == null) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ApiResponse.Error("Missing or invalid accountId")
+                )
+                return@get
+            }
+
+            val summary = repo.getTransactionCountSummary(userId, accountId)
+
+            if (summary == null) {
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    ApiResponse.Error("No transactions found for accountId=$accountId")
+                )
+            } else {
+                call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
+            }
+        }
     }
 }

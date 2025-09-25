@@ -1,6 +1,7 @@
 package com.fintrack.feature.summary.data.repository
 
 import com.fintrack.feature.summary.data.model.AccountAggregates
+import com.fintrack.feature.summary.data.model.TransactionCountSummaryDto
 import com.fintrack.feature.summary.domain.CategoryComparison
 import com.fintrack.feature.summary.domain.CategorySummary
 import com.fintrack.feature.summary.domain.DaySummary
@@ -26,15 +27,18 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.or
+import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -43,20 +47,15 @@ import java.time.temporal.WeekFields
 import kotlin.math.absoluteValue
 
 class StatisticsRepository {
-
     fun getAccountAggregates(userId: Int, accountId: Int? = null): AccountAggregates = transaction {
         val query = TransactionsTable
             .select(TransactionsTable.amount, TransactionsTable.isIncome)
             .where { TransactionsTable.userId eq userId }
-
         // Filter by account if provided
         val filteredQuery = accountId?.let { query.andWhere { TransactionsTable.accountId eq it } } ?: query
-
         val transactions = filteredQuery.map { it[TransactionsTable.amount] to it[TransactionsTable.isIncome] }
-
         val income = transactions.filter { it.second }.sumOf { it.first }
         val expense = transactions.filter { !it.second }.sumOf { it.first }
-
         val balance = income - expense
 
         AccountAggregates(income, expense, balance)
@@ -64,11 +63,11 @@ class StatisticsRepository {
 
 
     fun getStatisticsSummary(
-    userId: Int,
-    accountId: Int? = null,
-    isIncome: Boolean? = null,
-    start: LocalDateTime? = null,
-    end: LocalDateTime? = null
+        userId: Int,
+        accountId: Int? = null,
+        isIncome: Boolean? = null,
+        start: LocalDateTime? = null,
+        end: LocalDateTime? = null
     ): StatisticsSummary = transaction {
         var filteredQuery: Query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq userId }
@@ -84,7 +83,6 @@ class StatisticsRepository {
 
         if (end != null) filteredQuery =
             filteredQuery.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
-
         val filtered = filteredQuery.map { it.toTransaction() }
         val incomeTxns = filtered.filter { it.isIncome }
         val expenseTxns = filtered.filter { !it.isIncome }
@@ -123,7 +121,6 @@ class StatisticsRepository {
             highestDay = highestDay(incomeTxns),
             averagePerDay = averagePerDay(incomeTxns)
         )
-
         val expenseHighlights = Highlights(
             highestMonth = highestMonth(expenseTxns),
             highestCategory = highestCategory(expenseTxns),
@@ -136,7 +133,6 @@ class StatisticsRepository {
             expenseHighlights = expenseHighlights
         )
     }
-
 
     // --- For a single DistributionSummary for a given period ---
     fun getDistributionSummary(
@@ -254,18 +250,14 @@ class StatisticsRepository {
         AvailableYears(years)
     }
 
-
-
     /*** Returns an OverviewSummary containing:
-    *  - weeklyOverview: last 7 days (today included)
-    *  - monthlyOverview: last 30 days (today included)
-    */
+     *  - weeklyOverview: last 7 days (today included)
+     *  - monthlyOverview: last 30 days (today included)
+     */
     fun getOverviewSummary(userId: Int, accountId: Int? = null): OverviewSummary {
         val today = Clock.System.now().toLocalDateTime(TimeZone.Companion.currentSystemDefault()).date
-
         val weeklyStart = today.minus(DatePeriod(days = 6))   // last 7 days
         val monthlyStart = today.minus(DatePeriod(days = 29)) // last 30 days
-
         val weekly = getDaySummaries(userId, weeklyStart, today, accountId)
         val monthly = getDaySummaries(userId, monthlyStart, today, accountId)
 
@@ -376,6 +368,48 @@ class StatisticsRepository {
 
         listOfNotNull(weeklyComparison, monthlyComparison)
     }
+
+    fun getTransactionCountSummary(
+        userId: Int,
+        accountId: Int
+    ): TransactionCountSummaryDto? {
+        return transaction {
+            val incomeCount = TransactionsTable
+                .selectAll()
+                .where {
+                    (TransactionsTable.userId eq userId) and
+                            (TransactionsTable.accountId eq accountId) and
+                            (TransactionsTable.isIncome eq true)
+                }
+                .count()
+            val expenseCount = TransactionsTable
+                .selectAll()
+                .where {
+                    (TransactionsTable.userId eq userId) and
+                            (TransactionsTable.accountId eq accountId) and
+                            (TransactionsTable.isIncome eq false)
+                }
+                .count()
+            val totalCount = TransactionsTable
+                .selectAll()
+                .where {
+                    (TransactionsTable.userId eq userId) and
+                            (TransactionsTable.accountId eq accountId)
+                }
+                .count()
+
+            if (totalCount == 0L) {
+                null
+            } else {
+                TransactionCountSummaryDto(
+                    totalIncomeTransactions = incomeCount.toInt(),
+                    totalExpenseTransactions = expenseCount.toInt(),
+                    totalTransactions = totalCount.toInt()
+                )
+            }
+        }
+    }
+
 
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id],
