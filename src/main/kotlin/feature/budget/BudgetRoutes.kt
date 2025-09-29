@@ -35,37 +35,6 @@ fun Route.budgetRoutes() {
             }
         }
 
-        // GET all budgets for current user (optional account filter)
-        get {
-            try {
-                val principal = call.principal<JWTPrincipal>()!!
-                val userId = principal.payload.getClaim("userId").asInt()
-                val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
-                val budgets = repository.getAllByUser(userId, accountId)
-                call.respond(ApiResponse.Success(budgets.map { it.toDto() }))
-            } catch (e: Exception) {
-                call.respond(HttpStatusCode.InternalServerError, ApiResponse.Error(e.message ?: "Unknown error"))
-            }
-        }
-
-        // GET budget by id (user-specific)
-        get("{id}") {
-            try {
-                val principal = call.principal<JWTPrincipal>()!!
-                val userId = principal.payload.getClaim("userId").asInt()
-                val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Id missing"))
-                val budget = repository.getById(userId, id)
-                if (budget != null) {
-                    call.respond(ApiResponse.Success(budget.toDto()))
-                } else {
-                    call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Budget not found"))
-                }
-            } catch (e: Exception) {
-                call.respond(HttpStatusCode.InternalServerError, ApiResponse.Error(e.message ?: "Unknown error"))
-            }
-        }
-
         // POST a new budget (user-specific, can include accountId)
         post {
             try {
@@ -114,6 +83,46 @@ fun Route.budgetRoutes() {
                 }
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.InternalServerError, ApiResponse.Error(e.message ?: "Unknown error"))
+            }
+        }
+        // GET all budgets (with status)
+        get {
+            try {
+                val principal = call.principal<JWTPrincipal>()!!
+                val userId = principal.payload.getClaim("userId").asInt()
+                val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
+                val budgets = repository.getAllWithStatus(userId, accountId)
+                call.respond(ApiResponse.Success(budgets.map { it.toDto() }))
+            } catch (e: Exception) {
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    ApiResponse.Error(e.message ?: "Unknown error")
+                )
+            }
+        }
+
+        // GET budget by id (with status)
+        get("{id}") {
+            try {
+                val principal = call.principal<JWTPrincipal>()!!
+                val userId = principal.payload.getClaim("userId").asInt()
+                val id = call.parameters["id"]?.toIntOrNull()
+                    ?: return@get call.respond(
+                        HttpStatusCode.BadRequest,
+                        ApiResponse.Error("Id missing")
+                    )
+
+                val budget = repository.getByIdWithStatus(userId, id)
+                if (budget != null) {
+                    call.respond(ApiResponse.Success(budget.toDto()))
+                } else {
+                    call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Budget not found"))
+                }
+            } catch (e: Exception) {
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    ApiResponse.Error(e.message ?: "Unknown error")
+                )
             }
         }
     }
