@@ -81,8 +81,8 @@ class BudgetRepository {
         }.map { it.toBudget() }
     }
 
-    fun update(userId: Int, id: Int, budget: Budget): Boolean = transaction {
-        BudgetsTable.update({ (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }) {
+    fun update(userId: Int, id: Int, budget: Budget): Budget? = transaction {
+        val rows = BudgetsTable.update({ (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }) {
             it[accountId] = budget.accountId
             it[name] = budget.name
             it[categories] = Json.encodeToString(budget.categories)
@@ -90,7 +90,13 @@ class BudgetRepository {
             it[isExpense] = budget.isExpense
             it[startDate] = budget.startDate.toJavaLocalDate()
             it[endDate] = budget.endDate.toJavaLocalDate()
-        } > 0
+        }
+
+        if (rows > 0) {
+            getById(userId, id)
+        } else {
+            null
+        }
     }
 
     fun delete(userId: Int, id: Int): Boolean = transaction {
@@ -103,7 +109,6 @@ class BudgetRepository {
     private fun LocalDate.atEndOfDay(zone: TimeZone = TimeZone.currentSystemDefault()): Instant =
         this.plus(1, DateTimeUnit.DAY).atStartOfDay(zone)
 
-    // --- Status calculation ---
     private fun calculateStatus(budget: Budget): BudgetStatus {
         val tz = TimeZone.currentSystemDefault()
         val start = budget.startDate.atStartOfDay(tz)

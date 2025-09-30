@@ -55,11 +55,12 @@ fun Route.budgetRoutes() {
                 val userId = principal.payload.getClaim("userId").asInt()
                 val id = call.parameters["id"]?.toIntOrNull()
                     ?: return@put call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Id missing"))
-                val budgetDto = call.receive<BudgetDto>()
-                val updated = repository.update(userId, id, budgetDto.toDomain(userId))
 
-                if (updated) {
-                    call.respond(ApiResponse.Success("Updated budget with id: $id"))
+                val budgetDto = call.receive<BudgetDto>()
+                val updatedBudget = repository.update(userId, id, budgetDto.toDomain(userId))
+
+                if (updatedBudget != null) {
+                    call.respond(ApiResponse.Success<BudgetDto>(updatedBudget.toDto()))
                 } else {
                     call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Budget not found"))
                 }
@@ -67,6 +68,7 @@ fun Route.budgetRoutes() {
                 call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Invalid request"))
             }
         }
+
 
         // DELETE a budget by id (user-specific)
         delete("{id}") {
