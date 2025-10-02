@@ -1,10 +1,12 @@
 package com.fintrack.feature.accounts.domain
 
 import com.fintrack.feature.accounts.data.model.AccountDto
+import com.fintrack.feature.accounts.data.model.CreateAccountRequest
+import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.summary.data.model.AccountAggregates
+import core.UnauthorizedAccessException
 import feature.accounts.data.toDomain
 import feature.accounts.data.toDto
-import kotlinx.coroutines.coroutineScope
 
 class AccountServiceImpl(
     private val accountsRepository: AccountsRepository
@@ -40,13 +42,20 @@ class AccountServiceImpl(
         )
     }
 
-    override suspend fun createAccount(userId: Int, request: AccountDto): AccountDto {
+    override suspend fun createAccount(userId: Int, request: CreateAccountRequest): AccountDto {
         val account = accountsRepository.addAccount(request.toDomain(userId))
         return account.toDto()
     }
 
-    override suspend fun updateAccount(userId: Int, accountId: Int, request: AccountDto): AccountDto {
-        val account = request.toDomain(userId).copy(id = accountId)
+    override suspend fun updateAccount(userId: Int, accountId: Int, request: UpdateAccountRequest): AccountDto {
+        val existingAccount = accountsRepository.getAccountById(accountId)
+            ?: throw NoSuchElementException("Account not found")
+
+        if (existingAccount.userId != userId) {
+            throw UnauthorizedAccessException("Account does not belong to user")
+        }
+
+        val account = request.toDomain(userId, accountId)
         val updatedAccount = accountsRepository.updateAccount(account)
         val aggregates = getAccountAggregates(userId, updatedAccount.id)
         return updatedAccount.toDto(

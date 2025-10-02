@@ -1,7 +1,4 @@
-package feature.accounts.domain
-
-import kotlinx.serialization.Serializable
-
+package com.fintrack.feature.accounts.domain
 
 data class Account(
     val id: Int,

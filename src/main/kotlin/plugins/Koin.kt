@@ -13,10 +13,10 @@ fun Application.configureDI() {
     install(Koin) {
         modules(
             accountsModule,
-            transactionsModule,
+            transactionsModule(),
             summaryModule,
             budgetModule,
-            userModule,
+            userModule(),
             authModule
         )
     }

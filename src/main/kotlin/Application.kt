@@ -10,6 +10,7 @@ import io.ktor.server.netty.*
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import plugins.configureStatusPages
+import plugins.configureValidation
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -18,6 +19,7 @@ fun main(args: Array<String>) {
 fun Application.module() {
     DatabaseFactory.init()
     configureDI()
+    configureValidation()
     configureAuth()
     configureSerialization()
     configureStatusPages()

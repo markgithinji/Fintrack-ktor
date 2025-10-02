@@ -6,7 +6,7 @@ import feature.user.domain.UserService
 import feature.user.domain.UserServiceImpl
 import org.koin.dsl.module
 
-val userModule = module {
+fun userModule() = module {
     single<UserRepository> { UserRepositoryImpl() }
     single<UserService> { UserServiceImpl(get()) }
 }

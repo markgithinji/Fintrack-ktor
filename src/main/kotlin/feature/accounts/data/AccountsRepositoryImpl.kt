@@ -2,7 +2,7 @@ package feature.accounts.data
 
 import com.fintrack.feature.accounts.domain.AccountsRepository
 import core.dbQuery
-import feature.accounts.domain.Account
+import com.fintrack.feature.accounts.domain.Account
 import feature.transactions.data.TransactionsTable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

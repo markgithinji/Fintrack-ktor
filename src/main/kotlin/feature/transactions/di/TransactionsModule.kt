@@ -6,7 +6,7 @@ import feature.transactions.domain.TransactionService
 import feature.transactions.domain.TransactionServiceImpl
 import org.koin.dsl.module
 
-val transactionsModule = module {
+fun transactionsModule() = module {
     single<TransactionRepository> { TransactionRepositoryImpl() }
     single<TransactionService> { TransactionServiceImpl(get()) }
 }

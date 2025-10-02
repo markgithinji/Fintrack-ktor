@@ -34,5 +34,6 @@ dependencies {
     implementation("org.mindrot:jbcrypt:0.4") // for password hashing
     implementation("io.insert-koin:koin-core:3.4.3")
     implementation("io.insert-koin:koin-ktor:3.4.3")
+    implementation("io.ktor:ktor-server-request-validation:3.3.0")
 
 }

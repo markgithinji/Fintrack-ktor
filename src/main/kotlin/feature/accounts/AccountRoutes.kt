@@ -4,7 +4,10 @@ package feature.transactions
 import com.fintrack.core.ApiResponse
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.feature.accounts.data.model.AccountDto
+import com.fintrack.feature.accounts.data.model.CreateAccountRequest
+import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.accounts.domain.AccountService
+import core.ValidationException
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -21,21 +24,18 @@ fun Route.accountsRoutes(accountService: AccountService) {
 
         get("/{id}") {
             val accountId = call.parameters["id"]?.toIntOrNull()
-                ?: return@get call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid account id"))
+                ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()
             val account = accountService.getAccount(userId, accountId)
-                ?: return@get call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Account not found"))
+                ?: throw NoSuchElementException("Account not found")
 
             call.respond(ApiResponse.Success(account))
         }
 
         post {
             val userId = call.userIdOrThrow()
-            val request = try { call.receive<AccountDto>() }
-            catch (e: Exception) {
-                return@post call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid request body"))
-            }
+            val request = call.receive<CreateAccountRequest>()
 
             val account = accountService.createAccount(userId, request)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(account))
@@ -43,27 +43,22 @@ fun Route.accountsRoutes(accountService: AccountService) {
 
         put("/{id}") {
             val accountId = call.parameters["id"]?.toIntOrNull()
-                ?: return@put call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid account id"))
+                ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()
-            val request = try { call.receive<AccountDto>() }
-            catch (e: Exception) {
-                return@put call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid request body"))
-            }
+            val request = call.receive<UpdateAccountRequest>()
 
             val updatedAccount = accountService.updateAccount(userId, accountId, request)
-                ?: return@put call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Account not found"))
-
             call.respond(ApiResponse.Success(updatedAccount))
         }
 
         delete("/{id}") {
             val accountId = call.parameters["id"]?.toIntOrNull()
-                ?: return@delete call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid account id"))
+                ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()
             val deleted = accountService.deleteAccount(userId, accountId)
-            if (!deleted) return@delete call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Account not found"))
+            if (!deleted) throw NoSuchElementException("Account not found")
 
             call.respond(ApiResponse.Success("Account deleted successfully"))
         }

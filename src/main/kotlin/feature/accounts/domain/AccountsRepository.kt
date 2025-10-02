@@ -1,6 +1,6 @@
 package com.fintrack.feature.accounts.domain
 
-import feature.accounts.domain.Account
+import com.fintrack.feature.accounts.domain.Account
 
 interface AccountsRepository {
     suspend fun getTransactionAmounts(userId: Int, accountId: Int?): List<Pair<Double, Boolean>>
