@@ -55,7 +55,7 @@ class BudgetServiceImpl(
         return budgetRepository.delete(userId, id)
     }
 
-    private fun calculateBudgetStatus(budget: Budget): BudgetStatus {
+    private suspend fun calculateBudgetStatus(budget: Budget): BudgetStatus {
         val tz = TimeZone.currentSystemDefault()
         val start = budget.startDate.atStartOfDay(tz)
         val end = budget.endDate.atEndOfDay(tz)

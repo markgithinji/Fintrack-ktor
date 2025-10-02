@@ -52,16 +52,7 @@ import kotlin.math.absoluteValue
 class StatisticsService(
     private val statisticsRepository: StatisticsRepository
 ) {
-    fun getAccountAggregates(userId: Int, accountId: Int? = null): AccountAggregates {
-        val transactions = statisticsRepository.getTransactionAmounts(userId, accountId)
-        val income = transactions.filter { it.second }.sumOf { it.first }
-        val expense = transactions.filter { !it.second }.sumOf { it.first }
-        val balance = income - expense
-
-        return AccountAggregates(income, expense, balance)
-    }
-
-    fun getStatisticsSummary(
+    suspend fun getStatisticsSummary(
         userId: Int,
         accountId: Int? = null,
         isIncome: Boolean? = null,
@@ -119,7 +110,7 @@ class StatisticsService(
         )
     }
 
-    fun getDistributionSummary(
+    suspend fun getDistributionSummary(
         userId: Int,
         period: String,
         accountId: Int? = null,
@@ -170,22 +161,22 @@ class StatisticsService(
         )
     }
 
-    fun getAvailableWeeks(userId: Int, accountId: Int? = null): AvailableWeeks {
+    suspend fun getAvailableWeeks(userId: Int, accountId: Int? = null): AvailableWeeks {
         val weeks = statisticsRepository.getAvailablePeriods(userId, accountId, "weeks")
         return AvailableWeeks(weeks)
     }
 
-    fun getAvailableMonths(userId: Int, accountId: Int? = null): AvailableMonths {
+    suspend fun getAvailableMonths(userId: Int, accountId: Int? = null): AvailableMonths {
         val months = statisticsRepository.getAvailablePeriods(userId, accountId, "months")
         return AvailableMonths(months)
     }
 
-    fun getAvailableYears(userId: Int, accountId: Int? = null): AvailableYears {
+    suspend fun getAvailableYears(userId: Int, accountId: Int? = null): AvailableYears {
         val years = statisticsRepository.getAvailablePeriods(userId, accountId, "years")
         return AvailableYears(years)
     }
 
-    fun getOverviewSummary(userId: Int, accountId: Int? = null): OverviewSummary {
+    suspend fun getOverviewSummary(userId: Int, accountId: Int? = null): OverviewSummary {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         val weeklyStart = today.minus(DatePeriod(days = 6))
         val monthlyStart = today.minus(DatePeriod(days = 29))
@@ -195,7 +186,7 @@ class StatisticsService(
         return OverviewSummary(weeklyOverview = weekly, monthlyOverview = monthly)
     }
 
-    fun getDaySummaries(
+    suspend fun getDaySummaries(
         userId: Int,
         start: LocalDate,
         end: LocalDate,
@@ -215,7 +206,7 @@ class StatisticsService(
         }
     }
 
-    fun getCategoryComparisons(
+    suspend fun getCategoryComparisons(
         userId: Int,
         accountId: Int? = null
     ): List<CategoryComparison> {
@@ -264,7 +255,7 @@ class StatisticsService(
         return listOfNotNull(weeklyComparison, monthlyComparison)
     }
 
-    fun getTransactionCountSummary(
+    suspend fun getTransactionCountSummary(
         userId: Int,
         accountId: Int
     ): TransactionCountSummaryDto? {
