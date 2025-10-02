@@ -9,6 +9,7 @@ import feature.transactions.accountsRoutes
 import feature.transactions.budgetRoutes
 import feature.transactions.domain.model.TransactionService
 import feature.transactions.transactionRoutes
+import feature.user.domain.UserService
 import feature.user.userRoutes
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
@@ -22,6 +23,7 @@ fun Application.configureRouting() {
     val transactionService: TransactionService by inject()
     val statisticsService: StatisticsService by inject()
     val budgetService: BudgetService by inject()
+    val userService: UserService by inject()
 
     routing {
         get("/") {
@@ -33,7 +35,7 @@ fun Application.configureRouting() {
         authenticate("auth-jwt") {
             transactionRoutes(transactionService)
             budgetRoutes(budgetService)
-            userRoutes()
+            userRoutes(userService)
             accountsRoutes(accountService)
             summaryRoutes(statisticsService)
         }

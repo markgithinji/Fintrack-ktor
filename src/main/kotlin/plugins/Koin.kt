@@ -4,6 +4,7 @@ import com.fintrack.feature.accounts.di.accountsModule
 import feature.budget.di.budgetModule
 import feature.summary.di.summaryModule
 import feature.transactions.di.transactionsModule
+import feature.user.di.userModule
 import io.ktor.server.application.*
 import org.koin.ktor.plugin.Koin
 
@@ -14,6 +15,7 @@ fun Application.configureDI() {
             transactionsModule,
             summaryModule,
             budgetModule,
+            userModule
         )
     }
 }
