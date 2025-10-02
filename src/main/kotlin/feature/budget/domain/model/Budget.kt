@@ -1,7 +1,6 @@
 package feature.transactions
 
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.Serializable
 
 data class Budget(
     val id: Int? = null,

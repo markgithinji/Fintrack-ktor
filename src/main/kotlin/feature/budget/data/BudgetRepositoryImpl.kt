@@ -1,23 +1,13 @@
 package com.fintrack.feature.budget.data
 
-import com.fintrack.feature.budget.domain.BudgetStatus
-import com.fintrack.feature.budget.domain.BudgetWithStatus
+import feature.budget.domain.BudgetRepository
 import feature.transactions.Budget
 import feature.transactions.BudgetsTable
 import feature.transactions.data.TransactionsTable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.atTime
-import kotlinx.datetime.plus
-import kotlinx.datetime.toInstant
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -25,22 +15,13 @@ import kotlinx.datetime.toJavaLocalDate
 import org.jetbrains.exposed.sql.ResultRow
 import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.datetime.todayIn
-import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.selectAll
 import kotlinx.datetime.*
 import kotlinx.datetime.toJavaLocalDateTime
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.between
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 
-class BudgetRepository {
-    suspend fun getAllByUser(userId: Int, accountId: Int? = null): List<Budget> =
+class BudgetRepositoryImpl : BudgetRepository {
+    override suspend fun getAllByUser(userId: Int, accountId: Int?): List<Budget> =
         withContext(Dispatchers.IO) {
             transaction {
                 var query = BudgetsTable.selectAll().where { BudgetsTable.userId eq userId }
@@ -49,7 +30,7 @@ class BudgetRepository {
             }
         }
 
-    suspend fun getById(userId: Int, id: Int): Budget? =
+    override suspend fun getById(userId: Int, id: Int): Budget? =
         withContext(Dispatchers.IO) {
             transaction {
                 BudgetsTable
@@ -60,7 +41,7 @@ class BudgetRepository {
             }
         }
 
-    suspend fun add(budget: Budget): Budget =
+    override suspend fun add(budget: Budget): Budget =
         withContext(Dispatchers.IO) {
             transaction {
                 val insertStatement = BudgetsTable.insert {
@@ -78,7 +59,7 @@ class BudgetRepository {
             }
         }
 
-    suspend fun addAll(budgets: List<Budget>): List<Budget> =
+    override suspend fun addAll(budgets: List<Budget>): List<Budget> =
         withContext(Dispatchers.IO) {
             transaction {
                 BudgetsTable.batchInsert(budgets, shouldReturnGeneratedValues = true) { budget ->
@@ -94,7 +75,7 @@ class BudgetRepository {
             }
         }
 
-    suspend fun update(userId: Int, id: Int, budget: Budget): Budget? =
+    override suspend fun update(userId: Int, id: Int, budget: Budget): Budget? =
         withContext(Dispatchers.IO) {
             transaction {
                 val rows = BudgetsTable.update({ (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }) {
@@ -118,14 +99,14 @@ class BudgetRepository {
                 }
             }
         }
-    suspend fun delete(userId: Int, id: Int): Boolean =
+    override suspend fun delete(userId: Int, id: Int): Boolean =
         withContext(Dispatchers.IO) {
             transaction {
                 BudgetsTable.deleteWhere { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) } > 0
             }
         }
 
-    suspend fun getTransactionsInDateRange(
+    override suspend fun getTransactionsInDateRange(
         accountId: Int,
         categories: List<String>,
         isExpense: Boolean,

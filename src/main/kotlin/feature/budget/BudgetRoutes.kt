@@ -2,7 +2,6 @@ package feature.transactions
 
 import com.fintrack.core.ApiResponse
 import com.fintrack.feature.budget.data.BudgetDto
-import com.fintrack.feature.budget.data.BudgetRepository
 import com.fintrack.feature.budget.data.toDomain
 import com.fintrack.feature.budget.data.toDto
 import feature.budget.domain.BudgetService
