@@ -38,7 +38,6 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 
 class BudgetRepository {
-
     fun getAllByUser(userId: Int, accountId: Int? = null): List<Budget> = transaction {
         var query = BudgetsTable.selectAll().where { BudgetsTable.userId eq userId }
         if (accountId != null) query = query.andWhere { BudgetsTable.accountId eq accountId }
@@ -103,60 +102,30 @@ class BudgetRepository {
         BudgetsTable.deleteWhere { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) } > 0
     }
 
-    private fun LocalDate.atStartOfDay(zone: TimeZone = TimeZone.currentSystemDefault()): Instant =
-        this.atTime(LocalTime(0, 0)).toInstant(zone)
-
-    private fun LocalDate.atEndOfDay(zone: TimeZone = TimeZone.currentSystemDefault()): Instant =
-        this.plus(1, DateTimeUnit.DAY).atStartOfDay(zone)
-
-    private fun calculateStatus(budget: Budget): BudgetStatus {
-        val tz = TimeZone.currentSystemDefault()
-        val start = budget.startDate.atStartOfDay(tz)
-        val end = budget.endDate.atEndOfDay(tz)
-
-        val spent = transaction {
-            TransactionsTable
-                .select(TransactionsTable.amount.sum())
-                .where {
-                    (TransactionsTable.accountId eq budget.accountId) and
-                            (TransactionsTable.dateTime.between(
-                                start.toLocalDateTime(tz).toJavaLocalDateTime(),
-                                end.toLocalDateTime(tz).toJavaLocalDateTime()
-                            )) and
-                            (TransactionsTable.category inList budget.categories) and
-                            (TransactionsTable.isIncome eq !budget.isExpense)
-                }
-                .firstOrNull()
-                ?.getOrNull(TransactionsTable.amount.sum()) ?: 0.0
-        }
-
-        val remaining = budget.limit - spent
-        val percentageUsed = if (budget.limit > 0) (spent / budget.limit) * 100 else 0.0
-        val isExceeded = spent > budget.limit
-
-        return BudgetStatus(
-            limit = budget.limit,
-            spent = spent,
-            remaining = remaining,
-            percentageUsed = percentageUsed,
-            isExceeded = isExceeded
-        )
+    fun getTransactionsInDateRange(
+        accountId: Int,
+        categories: List<String>,
+        isExpense: Boolean,
+        start: Instant,
+        end: Instant
+    ): List<feature.transactions.domain.model.Transaction> = transaction {
+        TransactionsTable
+            .selectAll()
+            .where {
+                (TransactionsTable.accountId eq accountId) and
+                        (TransactionsTable.dateTime.between(
+                            start.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime(),
+                            end.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime()
+                        )) and
+                        (TransactionsTable.category inList categories) and
+                        (TransactionsTable.isIncome eq !isExpense)
+            }
+            .map { it.toTransaction() }
     }
-
-    fun getAllWithStatus(userId: Int, accountId: Int? = null): List<BudgetWithStatus> {
-        val budgets = getAllByUser(userId, accountId)
-        return budgets.map { budget -> BudgetWithStatus(budget, calculateStatus(budget)) }
-    }
-
-    fun getByIdWithStatus(userId: Int, id: Int): BudgetWithStatus? {
-        val budget = getById(userId, id) ?: return null
-        return BudgetWithStatus(budget, calculateStatus(budget))
-    }
-
 }
 
-// --- DB Row -> Domain ---
-fun ResultRow.toBudget(): Budget {
+// Extension functions
+private fun ResultRow.toBudget(): Budget {
     val categoriesJson = this[BudgetsTable.categories]
     val categories: List<String> = Json.decodeFromString(categoriesJson)
     return Budget(
@@ -172,4 +141,16 @@ fun ResultRow.toBudget(): Budget {
     )
 }
 
+private fun ResultRow.toTransaction(): feature.transactions.domain.model.Transaction {
+    return feature.transactions.domain.model.Transaction(
+        id = this[TransactionsTable.id],
+        userId = this[TransactionsTable.userId],
+        isIncome = this[TransactionsTable.isIncome],
+        amount = this[TransactionsTable.amount],
+        category = this[TransactionsTable.category],
+        dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(),
+        description = this[TransactionsTable.description],
+        accountId = this[TransactionsTable.accountId]
+    )
+}
 
