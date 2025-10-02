@@ -1,6 +1,7 @@
 package plugins
 
 import com.fintrack.core.ApiResponse
+import core.AuthenticationException
 import core.UnauthorizedAccessException
 import core.ValidationException
 import io.ktor.http.*
@@ -16,6 +17,14 @@ fun Application.configureStatusPages() {
             call.respond(
                 HttpStatusCode.BadRequest,
                 ApiResponse.Error(cause.message ?: "Invalid request")
+            )
+        }
+
+        // 401 Unauthorized – for authentication failures
+        exception<AuthenticationException> { call, cause ->
+            call.respond(
+                HttpStatusCode.Unauthorized,
+                ApiResponse.Error(cause.message ?: "Authentication failed")
             )
         }
 

@@ -1,7 +1,8 @@
 package feature.user
 
 import com.fintrack.core.ApiResponse
-import com.fintrack.feature.user.data.UserDto
+import feature.user.data.model.UserDto
+import feature.user.data.model.UserUpdateRequest
 import feature.user.domain.UserService
 import io.ktor.http.*
 import io.ktor.server.auth.*
@@ -13,68 +14,48 @@ import io.ktor.server.routing.*
 fun Route.userRoutes(userService: UserService) {
     route("/users") {
         get("/me") {
-            try {
-                val principal = call.principal<JWTPrincipal>()!!
-                val userId = principal.payload.getClaim("userId").asInt()
-                val user = userService.getUserProfile(userId)
+            val principal = call.principal<JWTPrincipal>()!!
+            val userId = principal.payload.getClaim("userId").asInt()
+            val user = userService.getUserProfile(userId)
 
-                if (user == null) {
-                    call.respond(HttpStatusCode.NotFound, ApiResponse.Error("User not found"))
-                } else {
-                    call.respond(HttpStatusCode.OK, ApiResponse.Success(user))
-                }
-            } catch (e: Exception) {
-                call.respond(HttpStatusCode.InternalServerError, ApiResponse.Error("Failed to retrieve user profile"))
+            if (user == null) {
+                throw NoSuchElementException("User not found")
+            } else {
+                call.respond(HttpStatusCode.OK, ApiResponse.Success(user))
             }
         }
 
         // PUT /users/me - Update user profile
         put("/me") {
-            try {
-                val principal = call.principal<JWTPrincipal>()!!
-                val userId = principal.payload.getClaim("userId").asInt()
-                val updateRequest = call.receive<UserUpdateRequest>()
+            val principal = call.principal<JWTPrincipal>()!!
+            val userId = principal.payload.getClaim("userId").asInt()
+            val updateRequest = call.receive<UserUpdateRequest>()
 
-                val success = userService.updateUser(
-                    userId = userId,
-                    username = updateRequest.username,
-                    password = updateRequest.password
-                )
+            val success = userService.updateUser(
+                userId = userId,
+                username = updateRequest.username,
+                password = updateRequest.password
+            )
 
-                if (success) {
-                    call.respond(HttpStatusCode.OK, ApiResponse.Success("User updated successfully"))
-                } else {
-                    call.respond(HttpStatusCode.NotFound, ApiResponse.Error("User not found"))
-                }
-            } catch (e: IllegalArgumentException) {
-                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error(e.message ?: "Invalid request"))
-            } catch (e: Exception) {
-                call.respond(HttpStatusCode.InternalServerError, ApiResponse.Error("Failed to update user"))
+            if (success) {
+                call.respond(HttpStatusCode.OK, ApiResponse.Success("User updated successfully"))
+            } else {
+                throw NoSuchElementException("User not found")
             }
         }
 
         // DELETE /users/me - Delete user account
         delete("/me") {
-            try {
-                val principal = call.principal<JWTPrincipal>()!!
-                val userId = principal.payload.getClaim("userId").asInt()
+            val principal = call.principal<JWTPrincipal>()!!
+            val userId = principal.payload.getClaim("userId").asInt()
 
-                val success = userService.deleteUser(userId)
+            val success = userService.deleteUser(userId)
 
-                if (success) {
-                    call.respond(HttpStatusCode.OK, ApiResponse.Success("User account deleted successfully"))
-                } else {
-                    call.respond(HttpStatusCode.NotFound, ApiResponse.Error("User not found"))
-                }
-            } catch (e: Exception) {
-                call.respond(HttpStatusCode.InternalServerError, ApiResponse.Error("Failed to delete user account"))
+            if (success) {
+                call.respond(HttpStatusCode.OK, ApiResponse.Success("User account deleted successfully"))
+            } else {
+                throw NoSuchElementException("User not found")
             }
         }
     }
 }
-
-// DTO for user update requests TODO: Refactor location
-data class UserUpdateRequest(
-    val username: String? = null,
-    val password: String? = null
-)

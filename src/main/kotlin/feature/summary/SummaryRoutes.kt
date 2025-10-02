@@ -39,7 +39,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
         get("/distribution") {
             val userId = call.userIdOrThrow()
             val period = call.request.queryParameters["period"]
-                ?: return@get call.respondBadRequest("Missing period parameter")
+                ?: throw IllegalArgumentException("Missing period parameter")
 
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
             val typeFilter = call.request.queryParameters["type"]
@@ -96,17 +96,13 @@ fun Route.summaryRoutes(service: StatisticsService) {
             val endParam = call.request.queryParameters["end"]
 
             if (startParam == null || endParam == null) {
-                return@get call.respondBadRequest("start and end query params required (yyyy-MM-dd)")
+                throw IllegalArgumentException("start and end query params required (yyyy-MM-dd)")
             }
 
-            try {
-                val start = LocalDate.parse(startParam)
-                val end = LocalDate.parse(endParam)
-                val days = service.getDaySummaries(userId, start, end, accountId)
-                call.respond(HttpStatusCode.OK, ApiResponse.Success(days.map { it.toDto() }))
-            } catch (e: Exception) {
-                call.respondBadRequest("Invalid date format, expected yyyy-MM-dd")
-            }
+            val start = LocalDate.parse(startParam)
+            val end = LocalDate.parse(endParam)
+            val days = service.getDaySummaries(userId, start, end, accountId)
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(days.map { it.toDto() }))
         }
 
         get("/category-comparison") {
@@ -119,21 +115,12 @@ fun Route.summaryRoutes(service: StatisticsService) {
         get("/counts") {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
-                ?: return@get call.respondBadRequest("Missing or invalid accountId")
+                ?: throw IllegalArgumentException("Missing or invalid accountId")
 
             val summary = service.getTransactionCountSummary(userId, accountId)
-                ?: return@get call.respondNotFound("No transactions found for accountId=$accountId")
+                ?: throw NoSuchElementException("No transactions found for accountId=$accountId")
 
             call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
         }
     }
-}
-
-// Extension functions for cleaner error handling
-private suspend fun ApplicationCall.respondBadRequest(message: String) {
-    respond(HttpStatusCode.BadRequest, ApiResponse.Error(message))
-}
-
-private suspend fun ApplicationCall.respondNotFound(message: String) {
-    respond(HttpStatusCode.NotFound, ApiResponse.Error(message))
 }

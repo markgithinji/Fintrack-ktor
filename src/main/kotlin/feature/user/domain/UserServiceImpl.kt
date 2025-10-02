@@ -1,6 +1,6 @@
 package feature.user.domain
 
-import com.fintrack.feature.user.data.UserDto
+import feature.user.data.model.UserDto
 import com.fintrack.feature.user.domain.User
 import org.mindrot.jbcrypt.BCrypt
 

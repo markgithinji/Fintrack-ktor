@@ -5,6 +5,7 @@ import com.fintrack.feature.budget.data.BudgetDto
 import com.fintrack.feature.budget.data.toDomain
 import com.fintrack.feature.budget.domain.BudgetStatus
 import com.fintrack.feature.budget.domain.BudgetWithStatus
+import core.ResourceNotFoundException
 import feature.transactions.Budget
 import kotlinx.datetime.*
 
@@ -18,8 +19,8 @@ class BudgetServiceImpl(
         }
     }
 
-    override suspend fun getBudgetById(userId: Int, id: Int): BudgetWithStatus? {
-        val budget = budgetRepository.getById(userId, id) ?: return null
+    override suspend fun getBudgetById(userId: Int, id: Int): BudgetWithStatus {
+        val budget = budgetRepository.getById(userId, id) ?: throw ResourceNotFoundException("Budget $id not found")
         return BudgetWithStatus(budget, calculateBudgetStatus(budget))
     }
 
