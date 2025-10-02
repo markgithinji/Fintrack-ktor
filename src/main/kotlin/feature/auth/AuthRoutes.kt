@@ -12,14 +12,13 @@ import io.ktor.server.routing.*
 import org.mindrot.jbcrypt.BCrypt
 fun Route.authRoutes(authService: AuthService) {
     route("/auth") {
-        // Register route
+
         post("/register") {
             val request = call.receive<AuthRequest>()
             val response = authService.register(request.email, request.password)
             call.respond(HttpStatusCode.Created, response)
         }
 
-        // Login route
         post("/login") {
             val request = call.receive<AuthRequest>()
             val response = authService.login(request.email, request.password)

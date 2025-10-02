@@ -11,20 +11,10 @@ class AuthServiceImpl(
 ) : AuthService {
 
     override suspend fun register(email: String, password: String): AuthResponse {
-        // Validate input
-        if (email.isBlank() || password.isBlank()) {
-            throw IllegalArgumentException("Email and password cannot be empty")
-        }
-
         if (userRepository.userExists(email)) {
             throw IllegalArgumentException("User with email '$email' already exists")
         }
 
-        if (password.length < 6) {
-            throw IllegalArgumentException("Password must be at least 6 characters long")
-        }
-
-        // Create user directly via repository
         val userId = userRepository.createUser(email, password)
         val token = JwtConfig.generateToken(userId)
         return AuthResponse(token = token)
