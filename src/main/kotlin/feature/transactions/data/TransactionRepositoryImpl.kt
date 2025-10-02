@@ -1,6 +1,7 @@
 package feature.transactions.data
 
 import core.ValidationException
+import core.dbQuery
 import feature.transactions.domain.model.Transaction
 import feature.transactions.domain.TransactionRepository
 import feature.transactions.validate
@@ -34,7 +35,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         limit: Int,
         afterDateTime: LocalDateTime?,
         afterId: Int?
-    ): List<Transaction> = newSuspendedTransaction(Dispatchers.IO) {
+    ): List<Transaction> = dbQuery {
         var query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq userId }
 
@@ -63,7 +64,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             .map { it.toTransaction() }
     }
 
-    override suspend fun getById(id: Int, userId: Int): Transaction = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun getById(id: Int, userId: Int): Transaction = dbQuery {
         TransactionsTable
             .selectAll().where { (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId) }
             .map { it.toTransaction() }
@@ -71,7 +72,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             ?: throw NoSuchElementException("Transaction with id $id not found for user $userId")
     }
 
-    override suspend fun add(entity: Transaction): Transaction = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun add(entity: Transaction): Transaction = dbQuery {
         try {
             entity.validate()
         } catch (e: IllegalArgumentException) {
@@ -92,7 +93,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         inserted.toTransaction()
     }
 
-    override suspend fun update(id: Int, userId: Int, entity: Transaction): Transaction = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun update(id: Int, userId: Int, entity: Transaction): Transaction = dbQuery {
         try {
             entity.validate()
         } catch (e: IllegalArgumentException) {
@@ -112,10 +113,15 @@ class TransactionRepositoryImpl : TransactionRepository {
 
         if (updated == 0) throw NoSuchElementException("Transaction with id $id not found for user $userId")
 
-        getById(id, userId)
+        // Re-fetch the updated transaction
+        TransactionsTable
+            .selectAll().where { (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId) }
+            .map { it.toTransaction() }
+            .singleOrNull()
+            ?: throw NoSuchElementException("Transaction with id $id not found after update")
     }
 
-    override suspend fun delete(id: Int, userId: Int): Boolean = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun delete(id: Int, userId: Int): Boolean = dbQuery {
         val deleted = TransactionsTable.deleteWhere {
             (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId)
         }
@@ -123,7 +129,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         true
     }
 
-    override suspend fun clearAll(userId: Int, accountId: Int?): Boolean = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun clearAll(userId: Int, accountId: Int?): Boolean = dbQuery {
         val deleted = if (accountId != null) {
             TransactionsTable.deleteWhere {
                 (TransactionsTable.userId eq userId) and (TransactionsTable.accountId eq accountId)

@@ -1,5 +1,6 @@
 package com.fintrack.feature.summary.data.repository
 
+import core.dbQuery
 import feature.summary.domain.StatisticsRepository
 import feature.transactions.data.TransactionsTable
 import feature.transactions.domain.model.Transaction
@@ -26,18 +27,16 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         start: LocalDateTime?,
         end: LocalDateTime?
     ): List<Transaction> =
-        withContext(Dispatchers.IO) {
-            transaction {
-                var query: Query = TransactionsTable.selectAll()
-                    .andWhere { TransactionsTable.userId eq userId }
+        dbQuery {
+            var query: Query = TransactionsTable.selectAll()
+                .andWhere { TransactionsTable.userId eq userId }
 
-                if (accountId != null) query = query.andWhere { TransactionsTable.accountId eq accountId }
-                if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
-                if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
-                if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
+            if (accountId != null) query = query.andWhere { TransactionsTable.accountId eq accountId }
+            if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
+            if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
+            if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
 
-                query.map { it.toTransaction() }
-            }
+            query.map { it.toTransaction() }
         }
 
     override suspend fun getAvailablePeriods(
@@ -45,42 +44,40 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         accountId: Int?,
         periodType: String
     ): List<String> =
-        withContext(Dispatchers.IO) {
-            transaction {
-                var query = TransactionsTable.selectAll().andWhere { TransactionsTable.userId eq userId }
+        dbQuery {
+            var query = TransactionsTable.selectAll().andWhere { TransactionsTable.userId eq userId }
 
-                if (accountId != null) {
-                    query = query.andWhere { TransactionsTable.accountId eq accountId }
-                }
+            if (accountId != null) {
+                query = query.andWhere { TransactionsTable.accountId eq accountId }
+            }
 
-                when (periodType) {
-                    "weeks" -> query
-                        .map { it[TransactionsTable.dateTime].toLocalDate() }
-                        .map { date ->
-                            val year = date.year
-                            val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
-                            "%04d-W%02d".format(year, week)
-                        }
-                        .distinct()
-                        .sortedDescending()
+            when (periodType) {
+                "weeks" -> query
+                    .map { it[TransactionsTable.dateTime].toLocalDate() }
+                    .map { date ->
+                        val year = date.year
+                        val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+                        "%04d-W%02d".format(year, week)
+                    }
+                    .distinct()
+                    .sortedDescending()
 
-                    "months" -> query
-                        .map { it[TransactionsTable.dateTime].toLocalDate() }
-                        .map { date ->
-                            val year = date.year
-                            val month = date.monthValue
-                            "%04d-%02d".format(year, month)
-                        }
-                        .distinct()
-                        .sortedDescending()
+                "months" -> query
+                    .map { it[TransactionsTable.dateTime].toLocalDate() }
+                    .map { date ->
+                        val year = date.year
+                        val month = date.monthValue
+                        "%04d-%02d".format(year, month)
+                    }
+                    .distinct()
+                    .sortedDescending()
 
-                    "years" -> query
-                        .map { it[TransactionsTable.dateTime].toLocalDate().year.toString() }
-                        .distinct()
-                        .sortedDescending()
+                "years" -> query
+                    .map { it[TransactionsTable.dateTime].toLocalDate().year.toString() }
+                    .distinct()
+                    .sortedDescending()
 
-                    else -> emptyList()
-                }
+                else -> emptyList()
             }
         }
 
@@ -90,23 +87,21 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         end: LocalDate,
         accountId: Int?
     ): List<Transaction> =
-        withContext(Dispatchers.IO) {
-            transaction {
-                val startJ = java.time.LocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0, 0, 0)
-                val endJ = java.time.LocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59, 999_999_999)
+        dbQuery {
+            val startJ = java.time.LocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0, 0, 0)
+            val endJ = java.time.LocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59, 999_999_999)
 
-                var query = TransactionsTable.selectAll().where {
-                    (TransactionsTable.userId eq userId) and
-                            (TransactionsTable.dateTime greaterEq startJ) and
-                            (TransactionsTable.dateTime lessEq endJ)
-                }
-
-                if (accountId != null) {
-                    query = query.andWhere { TransactionsTable.accountId eq accountId }
-                }
-
-                query.map { it.toTransaction() }
+            var query = TransactionsTable.selectAll().where {
+                (TransactionsTable.userId eq userId) and
+                        (TransactionsTable.dateTime greaterEq startJ) and
+                        (TransactionsTable.dateTime lessEq endJ)
             }
+
+            if (accountId != null) {
+                query = query.andWhere { TransactionsTable.accountId eq accountId }
+            }
+
+            query.map { it.toTransaction() }
         }
 
     override suspend fun getCategoryTotals(
@@ -115,56 +110,52 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         end: LocalDate?,
         accountId: Int?
     ): Map<String, Double> =
-        withContext(Dispatchers.IO) {
-            transaction {
-                var query = TransactionsTable.selectAll().where { TransactionsTable.userId eq userId }
+        dbQuery {
+            var query = TransactionsTable.selectAll().where { TransactionsTable.userId eq userId }
 
-                if (accountId != null) query = query.andWhere { TransactionsTable.accountId eq accountId }
-                if (start != null) {
-                    val startJ = java.time.LocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0)
-                    query = query.andWhere { TransactionsTable.dateTime greaterEq startJ }
-                }
-                if (end != null) {
-                    val endJ = java.time.LocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59)
-                    query = query.andWhere { TransactionsTable.dateTime lessEq endJ }
-                }
-
-                query
-                    .groupBy { it[TransactionsTable.category] }
-                    .mapValues { (_, rows) -> rows.sumOf { it[TransactionsTable.amount] } }
+            if (accountId != null) query = query.andWhere { TransactionsTable.accountId eq accountId }
+            if (start != null) {
+                val startJ = java.time.LocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0)
+                query = query.andWhere { TransactionsTable.dateTime greaterEq startJ }
             }
+            if (end != null) {
+                val endJ = java.time.LocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59)
+                query = query.andWhere { TransactionsTable.dateTime lessEq endJ }
+            }
+
+            query
+                .groupBy { it[TransactionsTable.category] }
+                .mapValues { (_, rows) -> rows.sumOf { it[TransactionsTable.amount] } }
         }
 
     override suspend fun getTransactionCounts(
         userId: Int,
         accountId: Int?
     ): TransactionCounts =
-        withContext(Dispatchers.IO) {
-            transaction {
-                val incomeCount = TransactionsTable
-                    .selectAll()
-                    .where {
-                        (TransactionsTable.userId eq userId) and
-                                (accountId?.let { TransactionsTable.accountId eq it } ?: Op.TRUE) and
-                                (TransactionsTable.isIncome eq true)
-                    }
-                    .count()
+        dbQuery {
+            val incomeCount = TransactionsTable
+                .selectAll()
+                .where {
+                    (TransactionsTable.userId eq userId) and
+                            (accountId?.let { TransactionsTable.accountId eq it } ?: Op.TRUE) and
+                            (TransactionsTable.isIncome eq true)
+                }
+                .count()
 
-                val expenseCount = TransactionsTable
-                    .selectAll()
-                    .where {
-                        (TransactionsTable.userId eq userId) and
-                                (accountId?.let { TransactionsTable.accountId eq it } ?: Op.TRUE) and
-                                (TransactionsTable.isIncome eq false)
-                    }
-                    .count()
+            val expenseCount = TransactionsTable
+                .selectAll()
+                .where {
+                    (TransactionsTable.userId eq userId) and
+                            (accountId?.let { TransactionsTable.accountId eq it } ?: Op.TRUE) and
+                            (TransactionsTable.isIncome eq false)
+                }
+                .count()
 
-                TransactionCounts(
-                    incomeCount = incomeCount.toInt(),
-                    expenseCount = expenseCount.toInt(),
-                    totalCount = (incomeCount + expenseCount).toInt()
-                )
-            }
+            TransactionCounts(
+                incomeCount = incomeCount.toInt(),
+                expenseCount = expenseCount.toInt(),
+                totalCount = (incomeCount + expenseCount).toInt()
+            )
         }
 
     private fun ResultRow.toTransaction() = Transaction(

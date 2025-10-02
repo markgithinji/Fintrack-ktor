@@ -1,5 +1,6 @@
 package com.fintrack.feature.budget.data
 
+import core.dbQuery
 import feature.budget.domain.BudgetRepository
 import feature.transactions.Budget
 import feature.transactions.BudgetsTable
@@ -19,91 +20,79 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.selectAll
 import kotlinx.datetime.*
 import kotlinx.datetime.toJavaLocalDateTime
-
 class BudgetRepositoryImpl : BudgetRepository {
     override suspend fun getAllByUser(userId: Int, accountId: Int?): List<Budget> =
-        withContext(Dispatchers.IO) {
-            transaction {
-                var query = BudgetsTable.selectAll().where { BudgetsTable.userId eq userId }
-                if (accountId != null) query = query.andWhere { BudgetsTable.accountId eq accountId }
-                query.map { it.toBudget() }
-            }
+        dbQuery {
+            var query = BudgetsTable.selectAll().where { BudgetsTable.userId eq userId }
+            if (accountId != null) query = query.andWhere { BudgetsTable.accountId eq accountId }
+            query.map { it.toBudget() }
         }
 
     override suspend fun getById(userId: Int, id: Int): Budget? =
-        withContext(Dispatchers.IO) {
-            transaction {
+        dbQuery {
+            BudgetsTable
+                .selectAll()
+                .where { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }
+                .map { it.toBudget() }
+                .singleOrNull()
+        }
+
+    override suspend fun add(budget: Budget): Budget =
+        dbQuery {
+            val insertStatement = BudgetsTable.insert {
+                it[userId] = budget.userId
+                it[accountId] = budget.accountId
+                it[name] = budget.name
+                it[categories] = Json.encodeToString(budget.categories)
+                it[limit] = budget.limit
+                it[isExpense] = budget.isExpense
+                it[startDate] = budget.startDate.toJavaLocalDate()
+                it[endDate] = budget.endDate.toJavaLocalDate()
+            }
+            val generatedId = insertStatement[BudgetsTable.id]
+            budget.copy(id = generatedId)
+        }
+
+    override suspend fun addAll(budgets: List<Budget>): List<Budget> =
+        dbQuery {
+            BudgetsTable.batchInsert(budgets, shouldReturnGeneratedValues = true) { budget ->
+                this[BudgetsTable.userId] = budget.userId
+                this[BudgetsTable.accountId] = budget.accountId
+                this[BudgetsTable.name] = budget.name
+                this[BudgetsTable.categories] = Json.encodeToString(budget.categories)
+                this[BudgetsTable.limit] = budget.limit
+                this[BudgetsTable.isExpense] = budget.isExpense
+                this[BudgetsTable.startDate] = budget.startDate.toJavaLocalDate()
+                this[BudgetsTable.endDate] = budget.endDate.toJavaLocalDate()
+            }.map { it.toBudget() }
+        }
+
+    override suspend fun update(userId: Int, id: Int, budget: Budget): Budget? =
+        dbQuery {
+            val rows = BudgetsTable.update({ (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }) {
+                it[accountId] = budget.accountId
+                it[name] = budget.name
+                it[categories] = Json.encodeToString(budget.categories)
+                it[limit] = budget.limit
+                it[isExpense] = budget.isExpense
+                it[startDate] = budget.startDate.toJavaLocalDate()
+                it[endDate] = budget.endDate.toJavaLocalDate()
+            }
+
+            if (rows > 0) {
                 BudgetsTable
                     .selectAll()
                     .where { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }
                     .map { it.toBudget() }
                     .singleOrNull()
+            } else {
+                null
             }
         }
 
-    override suspend fun add(budget: Budget): Budget =
-        withContext(Dispatchers.IO) {
-            transaction {
-                val insertStatement = BudgetsTable.insert {
-                    it[userId] = budget.userId
-                    it[accountId] = budget.accountId
-                    it[name] = budget.name
-                    it[categories] = Json.encodeToString(budget.categories)
-                    it[limit] = budget.limit
-                    it[isExpense] = budget.isExpense
-                    it[startDate] = budget.startDate.toJavaLocalDate()
-                    it[endDate] = budget.endDate.toJavaLocalDate()
-                }
-                val generatedId = insertStatement[BudgetsTable.id]
-                budget.copy(id = generatedId)
-            }
-        }
-
-    override suspend fun addAll(budgets: List<Budget>): List<Budget> =
-        withContext(Dispatchers.IO) {
-            transaction {
-                BudgetsTable.batchInsert(budgets, shouldReturnGeneratedValues = true) { budget ->
-                    this[BudgetsTable.userId] = budget.userId
-                    this[BudgetsTable.accountId] = budget.accountId
-                    this[BudgetsTable.name] = budget.name
-                    this[BudgetsTable.categories] = Json.encodeToString(budget.categories)
-                    this[BudgetsTable.limit] = budget.limit
-                    this[BudgetsTable.isExpense] = budget.isExpense
-                    this[BudgetsTable.startDate] = budget.startDate.toJavaLocalDate()
-                    this[BudgetsTable.endDate] = budget.endDate.toJavaLocalDate()
-                }.map { it.toBudget() }
-            }
-        }
-
-    override suspend fun update(userId: Int, id: Int, budget: Budget): Budget? =
-        withContext(Dispatchers.IO) {
-            transaction {
-                val rows = BudgetsTable.update({ (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }) {
-                    it[accountId] = budget.accountId
-                    it[name] = budget.name
-                    it[categories] = Json.encodeToString(budget.categories)
-                    it[limit] = budget.limit
-                    it[isExpense] = budget.isExpense
-                    it[startDate] = budget.startDate.toJavaLocalDate()
-                    it[endDate] = budget.endDate.toJavaLocalDate()
-                }
-
-                if (rows > 0) {
-                    BudgetsTable
-                        .selectAll()
-                        .where { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) }
-                        .map { it.toBudget() }
-                        .singleOrNull()
-                } else {
-                    null
-                }
-            }
-        }
     override suspend fun delete(userId: Int, id: Int): Boolean =
-        withContext(Dispatchers.IO) {
-            transaction {
-                BudgetsTable.deleteWhere { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) } > 0
-            }
+        dbQuery {
+            BudgetsTable.deleteWhere { (BudgetsTable.id eq id) and (BudgetsTable.userId eq userId) } > 0
         }
 
     override suspend fun getTransactionsInDateRange(
@@ -113,21 +102,19 @@ class BudgetRepositoryImpl : BudgetRepository {
         start: Instant,
         end: Instant
     ): List<feature.transactions.domain.model.Transaction> =
-        withContext(Dispatchers.IO) {
-            transaction {
-                TransactionsTable
-                    .selectAll()
-                    .where {
-                        (TransactionsTable.accountId eq accountId) and
-                                (TransactionsTable.dateTime.between(
-                                    start.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime(),
-                                    end.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime()
-                                )) and
-                                (TransactionsTable.category inList categories) and
-                                (TransactionsTable.isIncome eq !isExpense)
-                    }
-                    .map { it.toTransaction() }
-            }
+        dbQuery {
+            TransactionsTable
+                .selectAll()
+                .where {
+                    (TransactionsTable.accountId eq accountId) and
+                            (TransactionsTable.dateTime.between(
+                                start.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime(),
+                                end.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime()
+                            )) and
+                            (TransactionsTable.category inList categories) and
+                            (TransactionsTable.isIncome eq !isExpense)
+                }
+                .map { it.toTransaction() }
         }
 }
 
@@ -160,4 +147,3 @@ private fun ResultRow.toTransaction(): feature.transactions.domain.model.Transac
         accountId = this[TransactionsTable.accountId]
     )
 }
-
