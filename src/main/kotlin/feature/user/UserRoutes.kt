@@ -2,7 +2,6 @@ package feature.user
 
 import com.fintrack.core.ApiResponse
 import com.fintrack.feature.user.data.UserDto
-import com.fintrack.feature.user.data.UserRepository
 import feature.user.domain.UserService
 import io.ktor.http.*
 import io.ktor.server.auth.*

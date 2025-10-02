@@ -1,8 +1,8 @@
 package feature.auth.domain
 
 import com.fintrack.feature.auth.JwtConfig
-import com.fintrack.feature.user.data.UserRepository
 import feature.auth.data.model.AuthResponse
+import feature.user.domain.UserRepository
 import feature.user.domain.UserService
 import org.mindrot.jbcrypt.BCrypt
 

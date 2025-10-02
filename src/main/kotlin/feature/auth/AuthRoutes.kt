@@ -5,7 +5,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
-import com.fintrack.feature.user.data.UserRepository
 import feature.auth.data.model.AuthResponse
 import feature.auth.domain.AuthService
 import feature.auth.domain.AuthenticationException
