@@ -3,12 +3,10 @@ package feature.transactions
 import com.fintrack.core.ApiResponse
 import com.fintrack.core.userIdOrThrow
 import core.ValidationException
-import feature.transactions.data.TransactionRepository
 import feature.transactions.data.model.PaginatedTransactionDto
 import feature.transactions.data.model.TransactionDto
 import feature.transactions.data.model.toDto
-import feature.transactions.data.model.toTransaction
-import feature.transactions.domain.model.TransactionService
+import feature.transactions.domain.TransactionService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -52,7 +50,6 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         get {
             val userId = call.userIdOrThrow()
-            // parse query params...
             val transactions = service.getAllCursor(
                 userId = userId,
                 accountId = call.request.queryParameters["accountId"]?.toIntOrNull(),

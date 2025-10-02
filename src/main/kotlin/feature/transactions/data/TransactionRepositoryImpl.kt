@@ -1,31 +1,11 @@
 package feature.transactions.data
 
-import com.fintrack.feature.summary.data.model.AccountAggregates
-import com.fintrack.feature.summary.domain.CategoryComparison
-import com.fintrack.feature.summary.domain.CategorySummary
-import com.fintrack.feature.summary.domain.DaySummary
-import com.fintrack.feature.summary.domain.DistributionSummary
-import com.fintrack.feature.summary.domain.OverviewSummary
-import core.AvailableMonths
-import core.AvailableWeeks
-import core.AvailableYears
 import core.ValidationException
-import feature.transactions.Highlight
-import feature.transactions.Highlights
-import feature.transactions.StatisticsSummary
 import feature.transactions.domain.model.Transaction
+import feature.transactions.domain.TransactionRepository
 import feature.transactions.validate
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DatePeriod
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDateTime
-import kotlinx.datetime.toLocalDateTime
-import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -35,32 +15,25 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import java.time.temporal.IsoFields
-import java.time.temporal.WeekFields
-
 import kotlinx.coroutines.Dispatchers
-import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import kotlinx.datetime.LocalDateTime as KxLocalDateTime
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toKotlinLocalDateTime
+import kotlinx.datetime.LocalDateTime
 
-class TransactionRepository {
+class TransactionRepositoryImpl : TransactionRepository {
 
-    suspend fun getAllCursor(
+    override suspend fun getAllCursor(
         userId: Int,
-        accountId: Int? = null,
-        isIncome: Boolean? = null,
-        categories: List<String>? = null,
-        start: KxLocalDateTime? = null,
-        end: KxLocalDateTime? = null,
-        sortBy: String = "dateTime",
-        order: SortOrder = SortOrder.ASC,
-        limit: Int = 20,
-        afterDateTime: KxLocalDateTime? = null,
-        afterId: Int? = null
+        accountId: Int?,
+        isIncome: Boolean?,
+        categories: List<String>?,
+        start: LocalDateTime?,
+        end: LocalDateTime?,
+        sortBy: String,
+        order: SortOrder,
+        limit: Int,
+        afterDateTime: LocalDateTime?,
+        afterId: Int?
     ): List<Transaction> = newSuspendedTransaction(Dispatchers.IO) {
         var query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq userId }
@@ -90,7 +63,7 @@ class TransactionRepository {
             .map { it.toTransaction() }
     }
 
-    suspend fun getById(id: Int, userId: Int): Transaction = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun getById(id: Int, userId: Int): Transaction = newSuspendedTransaction(Dispatchers.IO) {
         TransactionsTable
             .selectAll().where { (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId) }
             .map { it.toTransaction() }
@@ -98,7 +71,7 @@ class TransactionRepository {
             ?: throw NoSuchElementException("Transaction with id $id not found for user $userId")
     }
 
-    suspend fun add(entity: Transaction): Transaction = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun add(entity: Transaction): Transaction = newSuspendedTransaction(Dispatchers.IO) {
         try {
             entity.validate()
         } catch (e: IllegalArgumentException) {
@@ -111,7 +84,7 @@ class TransactionRepository {
             row[isIncome] = entity.isIncome
             row[amount] = entity.amount
             row[category] = entity.category
-            row[dateTime] = entity.dateTime.toJavaLocalDateTime() // only here
+            row[dateTime] = entity.dateTime.toJavaLocalDateTime()
             row[description] = entity.description
         }.resultedValues?.singleOrNull()
             ?: throw IllegalStateException("Failed to insert transaction")
@@ -119,7 +92,7 @@ class TransactionRepository {
         inserted.toTransaction()
     }
 
-    suspend fun update(id: Int, userId: Int, entity: Transaction): Transaction = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun update(id: Int, userId: Int, entity: Transaction): Transaction = newSuspendedTransaction(Dispatchers.IO) {
         try {
             entity.validate()
         } catch (e: IllegalArgumentException) {
@@ -142,7 +115,7 @@ class TransactionRepository {
         getById(id, userId)
     }
 
-    suspend fun delete(id: Int, userId: Int): Boolean = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun delete(id: Int, userId: Int): Boolean = newSuspendedTransaction(Dispatchers.IO) {
         val deleted = TransactionsTable.deleteWhere {
             (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId)
         }
@@ -150,7 +123,7 @@ class TransactionRepository {
         true
     }
 
-    suspend fun clearAll(userId: Int, accountId: Int? = null): Boolean = newSuspendedTransaction(Dispatchers.IO) {
+    override suspend fun clearAll(userId: Int, accountId: Int?): Boolean = newSuspendedTransaction(Dispatchers.IO) {
         val deleted = if (accountId != null) {
             TransactionsTable.deleteWhere {
                 (TransactionsTable.userId eq userId) and (TransactionsTable.accountId eq accountId)
@@ -167,7 +140,7 @@ class TransactionRepository {
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         category = this[TransactionsTable.category],
-        dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(), // back to kotlinx
+        dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(),
         description = this[TransactionsTable.description],
         accountId = this[TransactionsTable.accountId]
     )

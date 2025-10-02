@@ -1,10 +1,12 @@
 package feature.transactions.di
 
-import feature.transactions.data.TransactionRepository
-import feature.transactions.domain.model.TransactionService
+import feature.transactions.data.TransactionRepositoryImpl
+import feature.transactions.domain.TransactionRepository
+import feature.transactions.domain.TransactionService
+import feature.transactions.domain.TransactionServiceImpl
 import org.koin.dsl.module
 
 val transactionsModule = module {
-    single { TransactionRepository() }
-    single { TransactionService(get()) }
+    single<TransactionRepository> { TransactionRepositoryImpl() }
+    single<TransactionService> { TransactionServiceImpl(get()) }
 }
