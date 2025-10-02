@@ -3,6 +3,7 @@ package com.fintrack.plugins
 import com.fintrack.feature.accounts.domain.AccountService
 import com.fintrack.feature.auth.authRoutes
 import com.fintrack.feature.summary.summaryRoutes
+import feature.auth.domain.AuthService
 import feature.budget.domain.BudgetService
 import feature.summary.domain.StatisticsService
 import feature.transactions.accountsRoutes
@@ -24,13 +25,14 @@ fun Application.configureRouting() {
     val statisticsService: StatisticsService by inject()
     val budgetService: BudgetService by inject()
     val userService: UserService by inject()
+    val authService: AuthService by inject()
 
     routing {
         get("/") {
             call.respondText("Hello World!")
         }
 
-        authRoutes()
+        authRoutes(authService)
 
         authenticate("auth-jwt") {
             transactionRoutes(transactionService)

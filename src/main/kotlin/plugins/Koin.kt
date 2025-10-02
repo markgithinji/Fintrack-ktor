@@ -1,6 +1,7 @@
 package com.fintrack.plugins
 
 import com.fintrack.feature.accounts.di.accountsModule
+import feature.auth.di.authModule
 import feature.budget.di.budgetModule
 import feature.summary.di.summaryModule
 import feature.transactions.di.transactionsModule
@@ -15,7 +16,8 @@ fun Application.configureDI() {
             transactionsModule,
             summaryModule,
             budgetModule,
-            userModule
+            userModule,
+            authModule
         )
     }
 }
