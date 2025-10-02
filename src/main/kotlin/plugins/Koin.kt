@@ -1,6 +1,7 @@
 package com.fintrack.plugins
 
 import com.fintrack.feature.accounts.di.accountsModule
+import feature.budget.di.budgetModule
 import feature.summary.di.summaryModule
 import feature.transactions.di.transactionsModule
 import io.ktor.server.application.*
@@ -12,6 +13,7 @@ fun Application.configureDI() {
             accountsModule,
             transactionsModule,
             summaryModule,
+            budgetModule,
         )
     }
 }
