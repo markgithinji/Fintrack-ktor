@@ -18,9 +18,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.atTime
-fun Route.summaryRoutes() {
-    val repo = StatisticsRepository()
-    val service = StatisticsService(repo)
+fun Route.summaryRoutes(service: StatisticsService) {
 
     route("/transactions/summary") {
         get("/highlights") {

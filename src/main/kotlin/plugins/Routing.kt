@@ -3,6 +3,7 @@ package com.fintrack.plugins
 import com.fintrack.feature.accounts.domain.AccountService
 import com.fintrack.feature.auth.authRoutes
 import com.fintrack.feature.summary.summaryRoutes
+import feature.summary.domain.StatisticsService
 import feature.transactions.accountsRoutes
 import feature.transactions.budgetRoutes
 import feature.transactions.domain.model.TransactionService
@@ -16,10 +17,9 @@ import io.ktor.server.routing.routing
 import org.koin.ktor.ext.inject
 
 fun Application.configureRouting() {
-
     val accountService: AccountService by inject()
     val transactionService: TransactionService by inject()
-
+    val statisticsService: StatisticsService by inject()
 
     routing {
         get("/") {
@@ -33,7 +33,7 @@ fun Application.configureRouting() {
             budgetRoutes()
             userRoutes()
             accountsRoutes(accountService)
-            summaryRoutes()
+            summaryRoutes(statisticsService)
         }
     }
 }
