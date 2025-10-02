@@ -2,6 +2,7 @@ package feature.accounts.data
 
 import com.fintrack.feature.accounts.domain.AccountsRepository
 import feature.accounts.domain.Account
+import feature.transactions.data.TransactionsTable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.*
@@ -57,6 +58,21 @@ class AccountsRepositoryImpl : AccountsRepository {
                 AccountsTable.deleteWhere { AccountsTable.id eq id }
             }
         }
+    override suspend fun getTransactionAmounts(userId: Int, accountId: Int?): List<Pair<Double, Boolean>> =
+        withContext(Dispatchers.IO) {
+            transaction {
+                val query = TransactionsTable
+                    .select(TransactionsTable.amount, TransactionsTable.isIncome)
+                    .where { TransactionsTable.userId eq userId }
+
+                val filteredQuery = accountId?.let { query.andWhere { TransactionsTable.accountId eq it } } ?: query
+                filteredQuery.map { it[TransactionsTable.amount] to it[TransactionsTable.isIncome] }
+            }
+        }
+
+    // Add an overloaded function with default parameter for convenience
+    suspend fun getTransactionAmounts(userId: Int): List<Pair<Double, Boolean>> =
+        getTransactionAmounts(userId, null)
 
     private fun toAccount(row: ResultRow): Account = Account(
         id = row[AccountsTable.id],
