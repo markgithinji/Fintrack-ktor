@@ -5,8 +5,10 @@ import com.fintrack.core.userIdOrThrow
 import com.fintrack.feature.summary.data.repository.StatisticsRepository
 import com.fintrack.feature.summary.data.toDto
 import com.fintrack.feature.summary.domain.DistributionSummary
+import feature.summary.domain.StatisticsService
 import feature.transactions.StatisticsSummary
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
@@ -16,33 +18,22 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.atTime
-
 fun Route.summaryRoutes() {
     val repo = StatisticsRepository()
+    val service = StatisticsService(repo)
 
     route("/transactions/summary") {
         get("/highlights") {
             val userId = call.userIdOrThrow()
-
-            // Optional account filter
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val typeFilter = call.request.queryParameters["type"]
+            val startDate = call.request.queryParameters["start"]
+            val endDate = call.request.queryParameters["end"]
 
-            val typeFilter = call.request.queryParameters["type"]?.lowercase()
-            val isIncomeFilter = when (typeFilter) {
-                "income" -> true
-                "expense" -> false
-                else -> null
-            }
+            val (start, end) = service.parseDateRange(startDate, endDate)
+            val isIncomeFilter = service.parseTypeFilter(typeFilter)
 
-            val start: LocalDateTime? = call.request.queryParameters["start"]
-                ?.let { LocalDate.parse(it) }
-                ?.let { date -> LocalDateTime(date, LocalTime(0, 0, 0)) }
-
-            val end: LocalDateTime? = call.request.queryParameters["end"]
-                ?.let { LocalDate.parse(it) }
-                ?.let { date -> LocalDateTime(date, LocalTime(23, 59, 59)) }
-
-            val summary: StatisticsSummary = repo.getStatisticsSummary(
+            val summary = service.getStatisticsSummary(
                 userId = userId,
                 accountId = accountId,
                 isIncome = isIncomeFilter,
@@ -50,34 +41,23 @@ fun Route.summaryRoutes() {
                 end = end
             )
 
-            call.respond(
-                HttpStatusCode.OK,
-                ApiResponse.Success(summary.toDto())
-            )
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(summary.toDto()))
         }
 
-        // GET /transactions/summary/distribution?period=2025-W37&type=&start=&end=
         get("/distribution") {
             val userId = call.userIdOrThrow()
             val period = call.request.queryParameters["period"]
-                ?: return@get call.respondText("Missing period parameter", status = HttpStatusCode.BadRequest)
+                ?: return@get call.respondBadRequest("Missing period parameter")
 
-            // Optional account filter
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val typeFilter = call.request.queryParameters["type"]
+            val startDate = call.request.queryParameters["start"]
+            val endDate = call.request.queryParameters["end"]
 
-            val start: LocalDateTime? = call.request.queryParameters["start"]
-                ?.let { LocalDate.parse(it).atTime(0, 0, 0) }
-            val end: LocalDateTime? = call.request.queryParameters["end"]
-                ?.let { LocalDate.parse(it).atTime(23, 59, 59) }
+            val (start, end) = service.parseDateRange(startDate, endDate)
+            val isIncomeFilter = service.parseTypeFilter(typeFilter)
 
-            val typeFilter = call.request.queryParameters["type"]?.lowercase()
-            val isIncomeFilter = when (typeFilter) {
-                "income" -> true
-                "expense" -> false
-                else -> null
-            }
-
-            val distribution: DistributionSummary = repo.getDistributionSummary(
+            val distribution = service.getDistributionSummary(
                 userId = userId,
                 accountId = accountId,
                 period = period,
@@ -92,39 +72,31 @@ fun Route.summaryRoutes() {
         get("/available-weeks") {
             val userId = call.userIdOrThrow()
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-
-            val result = repo.getAvailableWeeks(userId, accountId)
+            val result = service.getAvailableWeeks(userId, accountId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
         }
 
         get("/available-months") {
             val userId = call.userIdOrThrow()
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-
-            val result = repo.getAvailableMonths(userId, accountId)
+            val result = service.getAvailableMonths(userId, accountId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
         }
-
 
         get("/available-years") {
             val userId = call.userIdOrThrow()
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-
-            val result = repo.getAvailableYears(userId, accountId)
+            val result = service.getAvailableYears(userId, accountId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
         }
 
         get("/overview") {
             val userId = call.userIdOrThrow()
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-
-            val overview = repo.getOverviewSummary(userId, accountId)
-
-            call.respond(
-                HttpStatusCode.OK,
-                ApiResponse.Success (overview.toDto())
-            )
+            val overview = service.getOverviewSummary(userId, accountId)
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(overview.toDto()))
         }
+
         get("/overview/range") {
             val userId = call.userIdOrThrow()
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
@@ -132,64 +104,44 @@ fun Route.summaryRoutes() {
             val endParam = call.request.queryParameters["end"]
 
             if (startParam == null || endParam == null) {
-                call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error("start and end query params required (yyyy-MM-dd)")
-                )
-                return@get
+                return@get call.respondBadRequest("start and end query params required (yyyy-MM-dd)")
             }
 
             try {
                 val start = LocalDate.parse(startParam)
                 val end = LocalDate.parse(endParam)
-                val days = repo.getDaySummaries(userId, start, end, accountId)
-
-                call.respond(
-                    HttpStatusCode.OK,
-                    ApiResponse.Success(days.map { it.toDto() })
-                )
+                val days = service.getDaySummaries(userId, start, end, accountId)
+                call.respond(HttpStatusCode.OK, ApiResponse.Success(days.map { it.toDto() }))
             } catch (e: Exception) {
-                call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error("Invalid date format, expected yyyy-MM-dd")
-                )
+                call.respondBadRequest("Invalid date format, expected yyyy-MM-dd")
             }
         }
-
 
         get("/category-comparison") {
             val userId = call.userIdOrThrow()
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
-            val comparisons = repo.getCategoryComparisons(userId, accountId)
-
-            call.respond(
-                HttpStatusCode.OK,
-                ApiResponse.Success(comparisons.map { it.toDto() })
-            )
+            val comparisons = service.getCategoryComparisons(userId, accountId)
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(comparisons.map { it.toDto() }))
         }
 
         get("/counts") {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
+                ?: return@get call.respondBadRequest("Missing or invalid accountId")
 
-            if (accountId == null) {
-                call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error("Missing or invalid accountId")
-                )
-                return@get
-            }
+            val summary = service.getTransactionCountSummary(userId, accountId)
+                ?: return@get call.respondNotFound("No transactions found for accountId=$accountId")
 
-            val summary = repo.getTransactionCountSummary(userId, accountId)
-
-            if (summary == null) {
-                call.respond(
-                    HttpStatusCode.NotFound,
-                    ApiResponse.Error("No transactions found for accountId=$accountId")
-                )
-            } else {
-                call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
-            }
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
         }
     }
+}
+
+// Extension functions for cleaner error handling
+private suspend fun ApplicationCall.respondBadRequest(message: String) {
+    respond(HttpStatusCode.BadRequest, ApiResponse.Error(message))
+}
+
+private suspend fun ApplicationCall.respondNotFound(message: String) {
+    respond(HttpStatusCode.NotFound, ApiResponse.Error(message))
 }

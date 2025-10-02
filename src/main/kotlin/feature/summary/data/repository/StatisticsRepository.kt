@@ -47,103 +47,22 @@ import java.time.temporal.WeekFields
 import kotlin.math.absoluteValue
 
 class StatisticsRepository {
-    fun getAccountAggregates(userId: Int, accountId: Int? = null): AccountAggregates = transaction {
+    fun getTransactionAmounts(userId: Int, accountId: Int? = null): List<Pair<Double, Boolean>> = transaction {
         val query = TransactionsTable
             .select(TransactionsTable.amount, TransactionsTable.isIncome)
             .where { TransactionsTable.userId eq userId }
-        // Filter by account if provided
+
         val filteredQuery = accountId?.let { query.andWhere { TransactionsTable.accountId eq it } } ?: query
-        val transactions = filteredQuery.map { it[TransactionsTable.amount] to it[TransactionsTable.isIncome] }
-        val income = transactions.filter { it.second }.sumOf { it.first }
-        val expense = transactions.filter { !it.second }.sumOf { it.first }
-        val balance = income - expense
-
-        AccountAggregates(income, expense, balance)
+        filteredQuery.map { it[TransactionsTable.amount] to it[TransactionsTable.isIncome] }
     }
 
-
-    fun getStatisticsSummary(
+    fun getTransactions(
         userId: Int,
         accountId: Int? = null,
         isIncome: Boolean? = null,
         start: LocalDateTime? = null,
         end: LocalDateTime? = null
-    ): StatisticsSummary = transaction {
-        var filteredQuery: Query = TransactionsTable.selectAll()
-            .andWhere { TransactionsTable.userId eq userId }
-
-        if (accountId != null) filteredQuery =
-            filteredQuery.andWhere { TransactionsTable.accountId eq accountId }
-
-        if (isIncome != null) filteredQuery =
-            filteredQuery.andWhere { TransactionsTable.isIncome eq isIncome }
-
-        if (start != null) filteredQuery =
-            filteredQuery.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
-
-        if (end != null) filteredQuery =
-            filteredQuery.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
-        val filtered = filteredQuery.map { it.toTransaction() }
-        val incomeTxns = filtered.filter { it.isIncome }
-        val expenseTxns = filtered.filter { !it.isIncome }
-
-        fun highestMonth(txns: List<Transaction>) =
-            txns.groupBy { "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}" }
-                .mapValues { it.value.sumOf { t -> t.amount } }
-                .maxByOrNull { it.value }
-                ?.let { Highlight(label = it.key, value = it.key, amount = it.value) }
-
-        fun highestCategory(txns: List<Transaction>) =
-            txns.groupBy { it.category.trim().lowercase() }
-                .mapValues { it.value.sumOf { t -> t.amount } }
-                .maxByOrNull { it.value }
-                ?.let { entry ->
-                    val displayName =
-                        txns.firstOrNull { it.category.trim().lowercase() == entry.key }?.category ?: entry.key
-                    Highlight(label = displayName, value = displayName, amount = entry.value)
-                }
-
-        fun highestDay(txns: List<Transaction>) =
-            txns.groupBy { it.dateTime.date }
-                .mapValues { it.value.sumOf { t -> t.amount } }
-                .maxByOrNull { it.value }
-                ?.let { Highlight(label = it.key.toString(), value = it.key.toString(), amount = it.value) }
-
-        fun averagePerDay(txns: List<Transaction>): Double {
-            val days = txns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
-            val total = txns.sumOf { it.amount }
-            return total / days
-        }
-
-        val incomeHighlights = Highlights(
-            highestMonth = highestMonth(incomeTxns),
-            highestCategory = highestCategory(incomeTxns),
-            highestDay = highestDay(incomeTxns),
-            averagePerDay = averagePerDay(incomeTxns)
-        )
-        val expenseHighlights = Highlights(
-            highestMonth = highestMonth(expenseTxns),
-            highestCategory = highestCategory(expenseTxns),
-            highestDay = highestDay(expenseTxns),
-            averagePerDay = averagePerDay(expenseTxns)
-        )
-
-        StatisticsSummary(
-            incomeHighlights = incomeHighlights,
-            expenseHighlights = expenseHighlights
-        )
-    }
-
-    // --- For a single DistributionSummary for a given period ---
-    fun getDistributionSummary(
-        userId: Int,
-        period: String,
-        accountId: Int? = null,
-        isIncome: Boolean? = null,
-        start: LocalDateTime? = null,
-        end: LocalDateTime? = null
-    ): DistributionSummary = transaction {
-        // --- Filter transactions by user, type, optional account, and date ---
+    ): List<Transaction> = transaction {
         var query: Query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq userId }
 
@@ -151,132 +70,60 @@ class StatisticsRepository {
         if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
         if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
         if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
-        val filtered = query.map { it.toTransaction() }
-        val incomeTxns = filtered.filter { it.isIncome }
-        val expenseTxns = filtered.filter { !it.isIncome }
-        // --- Determine period type ---
-        val weekMode = period.contains("W")
-        val yearMode = !weekMode && period.length == 4
-        val monthMode = !weekMode && !yearMode
 
-        fun categorySummary(txns: List<Transaction>): List<CategorySummary> {
-            val grouped = when {
-                weekMode -> txns.groupBy {
-                    val javaDateTime = it.dateTime.toJavaLocalDateTime()
-                    val week = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
-                    "${javaDateTime.year}-W${week.toString().padStart(2, '0')}"
+        query.map { it.toTransaction() }
+    }
+
+    fun getAvailablePeriods(
+        userId: Int,
+        accountId: Int? = null,
+        periodType: String
+    ): List<String> = transaction {
+        var query = TransactionsTable.selectAll().andWhere { TransactionsTable.userId eq userId }
+
+        if (accountId != null) {
+            query = query.andWhere { TransactionsTable.accountId eq accountId }
+        }
+
+        when (periodType) {
+            "weeks" -> query
+                .map { it[TransactionsTable.dateTime].toLocalDate() }
+                .map { date ->
+                    val year = date.year
+                    val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+                    "%04d-W%02d".format(year, week)
                 }
+                .distinct()
+                .sortedDescending()
 
-                monthMode -> txns.groupBy {
-                    "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}"
+            "months" -> query
+                .map { it[TransactionsTable.dateTime].toLocalDate() }
+                .map { date ->
+                    val year = date.year
+                    val month = date.monthValue
+                    "%04d-%02d".format(year, month)
                 }
+                .distinct()
+                .sortedDescending()
 
-                yearMode -> txns.groupBy { it.dateTime.year.toString() }
-                else -> emptyMap()
-            }
-            val txnsInPeriod = grouped[period].orEmpty()
-            val deduped = txnsInPeriod.groupBy { it.category.trim().lowercase() }.map { (_, list) ->
-                val sum = list.sumOf { it.amount }
-                val displayName = list.first().category
-                CategorySummary(category = displayName, total = sum, percentage = 0.0)
-            }
-            val totalAmount = deduped.sumOf { it.total }
-            return deduped.map {
-                it.copy(percentage = if (totalAmount > 0) (it.total / totalAmount) * 100 else 0.0)
-            }
+            "years" -> query
+                .map { it[TransactionsTable.dateTime].toLocalDate().year.toString() }
+                .distinct()
+                .sortedDescending()
+
+            else -> emptyList()
         }
-
-        val incomeCategoriesFinal = if (isIncome != false) categorySummary(incomeTxns) else emptyList()
-        val expenseCategoriesFinal = if (isIncome != true) categorySummary(expenseTxns) else emptyList()
-
-        DistributionSummary(
-            period = period,
-            incomeCategories = incomeCategoriesFinal,
-            expenseCategories = expenseCategoriesFinal
-        )
     }
 
-
-    fun getAvailableWeeks(userId: Int, accountId: Int? = null): AvailableWeeks = transaction {
-        var query = TransactionsTable.selectAll().andWhere { TransactionsTable.userId eq userId }
-
-        if (accountId != null) {
-            query = query.andWhere { TransactionsTable.accountId eq accountId }
-        }
-        val weeks = query
-            .map { it[TransactionsTable.dateTime].toLocalDate() }
-            .map { date ->
-                val year = date.year
-                val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
-                "%04d-W%02d".format(year, week)
-            }
-            .distinct()
-            .sortedDescending()
-
-        AvailableWeeks(weeks)
-    }
-
-    fun getAvailableMonths(userId: Int, accountId: Int? = null): AvailableMonths = transaction {
-        var query = TransactionsTable.selectAll().andWhere { TransactionsTable.userId eq userId }
-
-        if (accountId != null) {
-            query = query.andWhere { TransactionsTable.accountId eq accountId }
-        }
-        val months = query
-            .map { it[TransactionsTable.dateTime].toLocalDate() }
-            .map { date ->
-                val year = date.year
-                val month = date.monthValue
-                "%04d-%02d".format(year, month)
-            }
-            .distinct()
-            .sortedDescending()
-
-        AvailableMonths(months)
-    }
-
-
-    fun getAvailableYears(userId: Int, accountId: Int? = null): AvailableYears = transaction {
-        var query = TransactionsTable.selectAll().andWhere { TransactionsTable.userId eq userId }
-
-        if (accountId != null) {
-            query = query.andWhere { TransactionsTable.accountId eq accountId }
-        }
-        val years = query
-            .map { it[TransactionsTable.dateTime].toLocalDate().year.toString() }
-            .distinct()
-            .sortedDescending()
-
-        AvailableYears(years)
-    }
-
-    /*** Returns an OverviewSummary containing:
-     *  - weeklyOverview: last 7 days (today included)
-     *  - monthlyOverview: last 30 days (today included)
-     */
-    fun getOverviewSummary(userId: Int, accountId: Int? = null): OverviewSummary {
-        val today = Clock.System.now().toLocalDateTime(TimeZone.Companion.currentSystemDefault()).date
-        val weeklyStart = today.minus(DatePeriod(days = 6))   // last 7 days
-        val monthlyStart = today.minus(DatePeriod(days = 29)) // last 30 days
-        val weekly = getDaySummaries(userId, weeklyStart, today, accountId)
-        val monthly = getDaySummaries(userId, monthlyStart, today, accountId)
-
-        return OverviewSummary(weeklyOverview = weekly, monthlyOverview = monthly)
-    }
-
-    /**
-     * Returns list of DaySummary for the inclusive date range [start. .end].
-     * This function opens a transaction (Exposed).
-     */
-    fun getDaySummaries(
+    fun getTransactionsByDateRange(
         userId: Int,
         start: LocalDate,
         end: LocalDate,
         accountId: Int? = null
-    ): List<DaySummary> = transaction {
+    ): List<Transaction> = transaction {
         val startJ = java.time.LocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0, 0, 0)
         val endJ = java.time.LocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59, 999_999_999)
-        // Query rows in the range for the user (and optional account)
+
         var query = TransactionsTable.selectAll().where {
             (TransactionsTable.userId eq userId) and
                     (TransactionsTable.dateTime greaterEq startJ) and
@@ -286,130 +133,61 @@ class StatisticsRepository {
         if (accountId != null) {
             query = query.andWhere { TransactionsTable.accountId eq accountId }
         }
-        val rows = query.map { row ->
-            val jdt = row[TransactionsTable.dateTime]
-            val jDate = jdt.toLocalDate()
-            val kDate = LocalDate(jDate.year, jDate.monthValue, jDate.dayOfMonth)
-            Triple(kDate, row[TransactionsTable.isIncome], row[TransactionsTable.amount])
-        }
-        val dates = generateSequence(start) { current ->
-            if (current < end) current.plus(DatePeriod(days = 1)) else null
-        }.toList()
 
-        dates.map { date ->
-            val dayTxs = rows.filter { it.first == date }
-            val income = dayTxs.filter { it.second }.sumOf { it.third }
-            val expense = dayTxs.filter { !it.second }.sumOf { it.third }
-            DaySummary(date = date, income = income, expense = expense)
-        }
+        query.map { it.toTransaction() }
     }
 
-    fun getCategoryComparisons(
+    fun getCategoryTotals(
+        userId: Int,
+        start: LocalDate? = null,
+        end: LocalDate? = null,
+        accountId: Int? = null
+    ): Map<String, Double> = transaction {
+        var query = TransactionsTable.selectAll().where { TransactionsTable.userId eq userId }
+
+        if (accountId != null) query = query.andWhere { TransactionsTable.accountId eq accountId }
+        if (start != null) {
+            val startJ = java.time.LocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0)
+            query = query.andWhere { TransactionsTable.dateTime greaterEq startJ }
+        }
+        if (end != null) {
+            val endJ = java.time.LocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59)
+            query = query.andWhere { TransactionsTable.dateTime lessEq endJ }
+        }
+
+        query
+            .groupBy { it[TransactionsTable.category] }
+            .mapValues { (_, rows) -> rows.sumOf { it[TransactionsTable.amount] } }
+    }
+
+    fun getTransactionCounts(
         userId: Int,
         accountId: Int? = null
-    ): List<CategoryComparison> = transaction {
-        val now = Clock.System.now().toLocalDateTime(TimeZone.Companion.currentSystemDefault()).date
-        // --- Period boundaries ---
-        val thisWeekStart = now.minus(DatePeriod(days = 6))
-        val lastWeekStart = thisWeekStart.minus(DatePeriod(days = 7))
-        val lastWeekEnd = thisWeekStart.minus(DatePeriod(days = 1))
-        val thisMonthStart = now.minus(DatePeriod(days = 29))
-        val lastMonthStart = thisMonthStart.minus(DatePeriod(days = 30))
-        val lastMonthEnd = thisMonthStart.minus(DatePeriod(days = 1))
-
-        // --- Helper to get category totals for a range ---
-        fun totalsByCategory(start: LocalDate, end: LocalDate): Map<String, Double> {
-            val startJ = java.time.LocalDateTime.of(start.year, start.monthNumber, start.dayOfMonth, 0, 0)
-            val endJ = java.time.LocalDateTime.of(end.year, end.monthNumber, end.dayOfMonth, 23, 59, 59)
-            var query = TransactionsTable.selectAll().where {
+    ): TransactionCounts = transaction {
+        val incomeCount = TransactionsTable
+            .selectAll()
+            .where {
                 (TransactionsTable.userId eq userId) and
-                        (TransactionsTable.dateTime greaterEq startJ) and
-                        (TransactionsTable.dateTime lessEq endJ)
+                        (accountId?.let { TransactionsTable.accountId eq it } ?: Op.TRUE) and
+                        (TransactionsTable.isIncome eq true)
             }
+            .count()
 
-            if (accountId != null) {
-                query = query.andWhere { TransactionsTable.accountId eq accountId }
+        val expenseCount = TransactionsTable
+            .selectAll()
+            .where {
+                (TransactionsTable.userId eq userId) and
+                        (accountId?.let { TransactionsTable.accountId eq it } ?: Op.TRUE) and
+                        (TransactionsTable.isIncome eq false)
             }
+            .count()
 
-            return query
-                .groupBy { it[TransactionsTable.category] }
-                .mapValues { (_, rows) -> rows.sumOf { it[TransactionsTable.amount] } }
-        }
-        // --- Weekly comparison ---
-        val thisWeekTotals = totalsByCategory(thisWeekStart, now)
-        val lastWeekTotals = totalsByCategory(lastWeekStart, lastWeekEnd)
-        val topWeekCategory = thisWeekTotals.maxByOrNull { it.value }?.key
-        val weeklyComparison = topWeekCategory?.let { category ->
-            val current = thisWeekTotals[category] ?: 0.0
-            val previous = lastWeekTotals[category] ?: 0.0
-            CategoryComparison(
-                period = "weekly",
-                category = category,
-                currentTotal = current,
-                previousTotal = previous,
-                changePercentage = if (previous != 0.0) (current - previous) / previous * 100 else 100.0
-            )
-        }
-        // --- Monthly comparison ---
-        val thisMonthTotals = totalsByCategory(thisMonthStart, now)
-        val lastMonthTotals = totalsByCategory(lastMonthStart, lastMonthEnd)
-        val topMonthCategory = thisMonthTotals.maxByOrNull { it.value }?.key
-        val monthlyComparison = topMonthCategory?.let { category ->
-            val current = thisMonthTotals[category] ?: 0.0
-            val previous = lastMonthTotals[category] ?: 0.0
-            CategoryComparison(
-                period = "monthly",
-                category = category,
-                currentTotal = current,
-                previousTotal = previous,
-                changePercentage = if (previous != 0.0) (current - previous) / previous * 100 else 100.0
-            )
-        }
-
-        listOfNotNull(weeklyComparison, monthlyComparison)
+        TransactionCounts(
+            incomeCount = incomeCount.toInt(),
+            expenseCount = expenseCount.toInt(),
+            totalCount = (incomeCount + expenseCount).toInt()
+        )
     }
-
-    fun getTransactionCountSummary(
-        userId: Int,
-        accountId: Int
-    ): TransactionCountSummaryDto? {
-        return transaction {
-            val incomeCount = TransactionsTable
-                .selectAll()
-                .where {
-                    (TransactionsTable.userId eq userId) and
-                            (TransactionsTable.accountId eq accountId) and
-                            (TransactionsTable.isIncome eq true)
-                }
-                .count()
-            val expenseCount = TransactionsTable
-                .selectAll()
-                .where {
-                    (TransactionsTable.userId eq userId) and
-                            (TransactionsTable.accountId eq accountId) and
-                            (TransactionsTable.isIncome eq false)
-                }
-                .count()
-            val totalCount = TransactionsTable
-                .selectAll()
-                .where {
-                    (TransactionsTable.userId eq userId) and
-                            (TransactionsTable.accountId eq accountId)
-                }
-                .count()
-
-            if (totalCount == 0L) {
-                null
-            } else {
-                TransactionCountSummaryDto(
-                    totalIncomeTransactions = incomeCount.toInt(),
-                    totalExpenseTransactions = expenseCount.toInt(),
-                    totalTransactions = totalCount.toInt()
-                )
-            }
-        }
-    }
-
 
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id],
@@ -422,3 +200,9 @@ class StatisticsRepository {
         accountId = this[TransactionsTable.accountId]
     )
 }
+
+data class TransactionCounts(
+    val incomeCount: Int,
+    val expenseCount: Int,
+    val totalCount: Int
+)
