@@ -3,133 +3,68 @@ package feature.transactions
 
 import com.fintrack.core.ApiResponse
 import com.fintrack.core.userIdOrThrow
-import com.fintrack.feature.summary.data.repository.StatisticsRepository
-import feature.accounts.data.AccountDto
-import feature.accounts.data.AccountsRepository
-import feature.accounts.data.toDomain
-import feature.accounts.data.toDto
+import com.fintrack.feature.accounts.data.model.AccountDto
+import com.fintrack.feature.accounts.domain.AccountService
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.accountsRoutes(
-) {
-    val accountsRepository = AccountsRepository()
-    val statisticsRepository = StatisticsRepository()
-
+fun Route.accountsRoutes(accountService: AccountService) {
     route("/accounts") {
 
-        // Get all accounts for current user
         get {
             val userId = call.userIdOrThrow()
-            val accounts = accountsRepository.getAllAccounts(userId)
-                .map { account ->
-                    val aggregates = statisticsRepository.getAccountAggregates(userId, account.id)
-                    account.toDto(
-                        income = aggregates.income,
-                        expense = aggregates.expense,
-                        balance = aggregates.balance
-                    )
-                }
+            val accounts = accountService.getAllAccounts(userId)
             call.respond(ApiResponse.Success(accounts))
         }
 
-        // Get a single account by ID
         get("/{id}") {
-            val id = call.parameters["id"]?.toIntOrNull()
-                ?: return@get call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error("Missing or invalid account id")
-                )
+            val accountId = call.parameters["id"]?.toIntOrNull()
+                ?: return@get call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid account id"))
 
             val userId = call.userIdOrThrow()
-            val account = accountsRepository.getAccountById(id)
-            if (account == null || account.userId != userId) {
-                call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Account not found"))
-            } else {
-                val aggregates = statisticsRepository.getAccountAggregates(userId, account.id)
-                call.respond(
-                    ApiResponse.Success(
-                        account.toDto(
-                            income = aggregates.income,
-                            expense = aggregates.expense,
-                            balance = aggregates.balance
-                        )
-                    )
-                )
-            }
+            val account = accountService.getAccount(userId, accountId)
+                ?: return@get call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Account not found"))
+
+            call.respond(ApiResponse.Success(account))
         }
 
-        // Create a new account
         post {
             val userId = call.userIdOrThrow()
-            val request = try {
-                call.receive<AccountDto>()
-            } catch (e: Exception) {
-                return@post call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error("Invalid request body")
-                )
+            val request = try { call.receive<AccountDto>() }
+            catch (e: Exception) {
+                return@post call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid request body"))
             }
 
-            val account = accountsRepository.addAccount(request.toDomain(userId))
-            call.respond(
-                HttpStatusCode.Created,
-                ApiResponse.Success(account.toDto()) // no aggregates yet (brand new account)
-            )
+            val account = accountService.createAccount(userId, request)
+            call.respond(HttpStatusCode.Created, ApiResponse.Success(account))
         }
 
-        // Update an existing account
         put("/{id}") {
-            val id = call.parameters["id"]?.toIntOrNull()
-                ?: return@put call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error("Missing or invalid account id")
-                )
+            val accountId = call.parameters["id"]?.toIntOrNull()
+                ?: return@put call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid account id"))
 
             val userId = call.userIdOrThrow()
-            val request = try {
-                call.receive<AccountDto>()
-            } catch (e: Exception) {
-                return@put call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error("Invalid request body")
-                )
+            val request = try { call.receive<AccountDto>() }
+            catch (e: Exception) {
+                return@put call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid request body"))
             }
 
-            val updatedAccount = accountsRepository.updateAccount(
-                request.toDomain(userId).copy(id = id)
-            )
+            val updatedAccount = accountService.updateAccount(userId, accountId, request)
+                ?: return@put call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Account not found"))
 
-            val aggregates = statisticsRepository.getAccountAggregates(userId, updatedAccount.id)
-            call.respond(
-                ApiResponse.Success(
-                    updatedAccount.toDto(
-                        income = aggregates.income,
-                        expense = aggregates.expense,
-                        balance = aggregates.balance
-                    )
-                )
-            )
+            call.respond(ApiResponse.Success(updatedAccount))
         }
 
-        // Delete an account
         delete("/{id}") {
-            val id = call.parameters["id"]?.toIntOrNull()
-                ?: return@delete call.respond(
-                    HttpStatusCode.BadRequest,
-                    ApiResponse.Error("Missing or invalid account id")
-                )
+            val accountId = call.parameters["id"]?.toIntOrNull()
+                ?: return@delete call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid account id"))
 
             val userId = call.userIdOrThrow()
-            val account = accountsRepository.getAccountById(id)
-            if (account == null || account.userId != userId) {
-                call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Account not found"))
-                return@delete
-            }
+            val deleted = accountService.deleteAccount(userId, accountId)
+            if (!deleted) return@delete call.respond(HttpStatusCode.NotFound, ApiResponse.Error("Account not found"))
 
-            accountsRepository.deleteAccount(id)
             call.respond(ApiResponse.Success("Account deleted successfully"))
         }
     }

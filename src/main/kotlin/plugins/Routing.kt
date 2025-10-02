@@ -1,5 +1,6 @@
 package com.fintrack.plugins
 
+import com.fintrack.feature.accounts.domain.AccountService
 import com.fintrack.feature.auth.authRoutes
 import com.fintrack.feature.summary.summaryRoutes
 import feature.transactions.accountsRoutes
@@ -11,8 +12,12 @@ import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import org.koin.ktor.ext.inject
 
 fun Application.configureRouting() {
+
+    val accountService: AccountService by inject()
+
     routing {
         get("/") {
             call.respondText("Hello World!")
@@ -24,7 +29,7 @@ fun Application.configureRouting() {
             transactionRoutes()
             budgetRoutes()
             userRoutes()
-            accountsRoutes()
+            accountsRoutes(accountService)
             summaryRoutes()
         }
     }
