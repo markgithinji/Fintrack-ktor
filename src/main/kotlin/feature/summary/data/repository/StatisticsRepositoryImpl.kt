@@ -1,59 +1,30 @@
 package com.fintrack.feature.summary.data.repository
 
-import com.fintrack.feature.summary.data.model.AccountAggregates
-import com.fintrack.feature.summary.data.model.TransactionCountSummaryDto
-import com.fintrack.feature.summary.domain.CategoryComparison
-import com.fintrack.feature.summary.domain.CategorySummary
-import com.fintrack.feature.summary.domain.DaySummary
-import com.fintrack.feature.summary.domain.DistributionSummary
-import com.fintrack.feature.summary.domain.OverviewSummary
-import core.AvailableMonths
-import core.AvailableWeeks
-import core.AvailableYears
-import core.ValidationException
-import feature.transactions.Highlight
-import feature.transactions.Highlights
-import feature.transactions.StatisticsSummary
+import feature.summary.domain.StatisticsRepository
 import feature.transactions.data.TransactionsTable
 import feature.transactions.domain.model.Transaction
-import feature.transactions.validate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDateTime
-import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.or
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import java.time.temporal.IsoFields
-import java.time.temporal.WeekFields
-import kotlin.math.absoluteValue
-class StatisticsRepository {
-    suspend fun getTransactions(
+
+class StatisticsRepositoryImpl : StatisticsRepository {
+    override suspend fun getTransactions(
         userId: Int,
-        accountId: Int? = null,
-        isIncome: Boolean? = null,
-        start: LocalDateTime? = null,
-        end: LocalDateTime? = null
+        accountId: Int?,
+        isIncome: Boolean?,
+        start: LocalDateTime?,
+        end: LocalDateTime?
     ): List<Transaction> =
         withContext(Dispatchers.IO) {
             transaction {
@@ -69,9 +40,9 @@ class StatisticsRepository {
             }
         }
 
-    suspend fun getAvailablePeriods(
+    override suspend fun getAvailablePeriods(
         userId: Int,
-        accountId: Int? = null,
+        accountId: Int?,
         periodType: String
     ): List<String> =
         withContext(Dispatchers.IO) {
@@ -113,11 +84,11 @@ class StatisticsRepository {
             }
         }
 
-    suspend fun getTransactionsByDateRange(
+    override suspend fun getTransactionsByDateRange(
         userId: Int,
         start: LocalDate,
         end: LocalDate,
-        accountId: Int? = null
+        accountId: Int?
     ): List<Transaction> =
         withContext(Dispatchers.IO) {
             transaction {
@@ -138,11 +109,11 @@ class StatisticsRepository {
             }
         }
 
-    suspend fun getCategoryTotals(
+    override suspend fun getCategoryTotals(
         userId: Int,
-        start: LocalDate? = null,
-        end: LocalDate? = null,
-        accountId: Int? = null
+        start: LocalDate?,
+        end: LocalDate?,
+        accountId: Int?
     ): Map<String, Double> =
         withContext(Dispatchers.IO) {
             transaction {
@@ -164,9 +135,9 @@ class StatisticsRepository {
             }
         }
 
-    suspend fun getTransactionCounts(
+    override suspend fun getTransactionCounts(
         userId: Int,
-        accountId: Int? = null
+        accountId: Int?
     ): TransactionCounts =
         withContext(Dispatchers.IO) {
             transaction {

@@ -2,22 +2,16 @@ package com.fintrack.feature.summary
 
 import com.fintrack.core.ApiResponse
 import com.fintrack.core.userIdOrThrow
-import com.fintrack.feature.summary.data.repository.StatisticsRepository
 import com.fintrack.feature.summary.data.toDto
-import com.fintrack.feature.summary.domain.DistributionSummary
 import feature.summary.domain.StatisticsService
-import feature.transactions.StatisticsSummary
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
-import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.LocalTime
-import kotlinx.datetime.atTime
+
 fun Route.summaryRoutes(service: StatisticsService) {
 
     route("/transactions/summary") {

@@ -1,7 +1,4 @@
 package feature.transactions
-
-import kotlinx.serialization.Serializable
-
 // --------- Domain ---------
 
 data class StatisticsSummary(
