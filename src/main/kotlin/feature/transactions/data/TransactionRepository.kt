@@ -40,30 +40,37 @@ import org.jetbrains.exposed.sql.update
 import java.time.temporal.IsoFields
 import java.time.temporal.WeekFields
 
+import kotlinx.coroutines.Dispatchers
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import kotlinx.datetime.LocalDateTime as KxLocalDateTime
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
+
 class TransactionRepository {
-    fun getAllCursor(
+
+    suspend fun getAllCursor(
         userId: Int,
         accountId: Int? = null,
         isIncome: Boolean? = null,
         categories: List<String>? = null,
-        start: LocalDateTime? = null,
-        end: LocalDateTime? = null,
+        start: KxLocalDateTime? = null,
+        end: KxLocalDateTime? = null,
         sortBy: String = "dateTime",
         order: SortOrder = SortOrder.ASC,
         limit: Int = 20,
-        afterDateTime: LocalDateTime? = null,
+        afterDateTime: KxLocalDateTime? = null,
         afterId: Int? = null
-    ): List<Transaction> = transaction {
+    ): List<Transaction> = newSuspendedTransaction(Dispatchers.IO) {
         var query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq userId }
-        // Filter by account
+
         if (accountId != null) query = query.andWhere { TransactionsTable.accountId eq accountId }
-        // Apply filters
         if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
         if (!categories.isNullOrEmpty()) query = query.andWhere { TransactionsTable.category inList categories }
         if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
         if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
-        // Cursor filter
+
         if (afterDateTime != null && afterId != null) {
             query = query.andWhere {
                 (TransactionsTable.dateTime greater afterDateTime.toJavaLocalDateTime()) or
@@ -71,21 +78,19 @@ class TransactionRepository {
                                 (TransactionsTable.id greater afterId))
             }
         }
-        // Sorting
+
         val orderColumn = when (sortBy) {
             "amount" -> TransactionsTable.amount
             else -> TransactionsTable.dateTime
         }
 
         query.orderBy(orderColumn, order)
-            .orderBy(TransactionsTable.id, order) // tie-breaker
+            .orderBy(TransactionsTable.id, order)
             .limit(limit)
             .map { it.toTransaction() }
     }
 
-
-
-    fun getById(id: Int, userId: Int): Transaction = transaction {
+    suspend fun getById(id: Int, userId: Int): Transaction = newSuspendedTransaction(Dispatchers.IO) {
         TransactionsTable
             .selectAll().where { (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId) }
             .map { it.toTransaction() }
@@ -93,20 +98,20 @@ class TransactionRepository {
             ?: throw NoSuchElementException("Transaction with id $id not found for user $userId")
     }
 
-
-    fun add(entity: Transaction): Transaction = transaction {
+    suspend fun add(entity: Transaction): Transaction = newSuspendedTransaction(Dispatchers.IO) {
         try {
             entity.validate()
         } catch (e: IllegalArgumentException) {
             throw ValidationException(e.message ?: "Invalid transaction")
         }
+
         val inserted = TransactionsTable.insert { row ->
             row[userId] = entity.userId
             row[accountId] = entity.accountId
             row[isIncome] = entity.isIncome
             row[amount] = entity.amount
             row[category] = entity.category
-            row[dateTime] = entity.dateTime.toJavaLocalDateTime()
+            row[dateTime] = entity.dateTime.toJavaLocalDateTime() // only here
             row[description] = entity.description
         }.resultedValues?.singleOrNull()
             ?: throw IllegalStateException("Failed to insert transaction")
@@ -114,15 +119,13 @@ class TransactionRepository {
         inserted.toTransaction()
     }
 
-
-
-
-    fun update(id: Int, userId: Int, entity: Transaction): Transaction = transaction {
+    suspend fun update(id: Int, userId: Int, entity: Transaction): Transaction = newSuspendedTransaction(Dispatchers.IO) {
         try {
             entity.validate()
         } catch (e: IllegalArgumentException) {
             throw ValidationException(e.message ?: "Invalid transaction")
         }
+
         val updated = TransactionsTable.update(
             where = { (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId) }
         ) { row ->
@@ -139,8 +142,7 @@ class TransactionRepository {
         getById(id, userId)
     }
 
-
-    fun delete(id: Int, userId: Int): Boolean = transaction {
+    suspend fun delete(id: Int, userId: Int): Boolean = newSuspendedTransaction(Dispatchers.IO) {
         val deleted = TransactionsTable.deleteWhere {
             (TransactionsTable.id eq id) and (TransactionsTable.userId eq userId)
         }
@@ -148,15 +150,7 @@ class TransactionRepository {
         true
     }
 
-
-
-
-
-
-
-
-
-    fun clearAll(userId: Int, accountId: Int? = null): Boolean = transaction {
+    suspend fun clearAll(userId: Int, accountId: Int? = null): Boolean = newSuspendedTransaction(Dispatchers.IO) {
         val deleted = if (accountId != null) {
             TransactionsTable.deleteWhere {
                 (TransactionsTable.userId eq userId) and (TransactionsTable.accountId eq accountId)
@@ -167,19 +161,13 @@ class TransactionRepository {
         deleted > 0
     }
 
-
-
-
-
-
-
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id],
         userId = this[TransactionsTable.userId],
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         category = this[TransactionsTable.category],
-        dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(),
+        dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(), // back to kotlinx
         description = this[TransactionsTable.description],
         accountId = this[TransactionsTable.accountId]
     )
