@@ -5,28 +5,17 @@ import com.fintrack.core.userIdOrThrow
 import com.fintrack.feature.summary.data.repository.StatisticsRepository
 import com.fintrack.feature.summary.data.toDto
 import com.fintrack.feature.summary.domain.DistributionSummary
-import core.ValidationException
 import feature.transactions.StatisticsSummary
-import feature.transactions.data.TransactionRepository
-import feature.transactions.data.model.PaginatedTransactionDto
-import feature.transactions.data.model.TransactionDto
-import feature.transactions.data.toDto
-import feature.transactions.data.toTransaction
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
-import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.atTime
-import org.jetbrains.exposed.sql.SortOrder
 
 fun Route.summaryRoutes() {
     val repo = StatisticsRepository()

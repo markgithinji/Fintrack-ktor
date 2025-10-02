@@ -5,6 +5,7 @@ import com.fintrack.feature.auth.authRoutes
 import com.fintrack.feature.summary.summaryRoutes
 import feature.transactions.accountsRoutes
 import feature.transactions.budgetRoutes
+import feature.transactions.domain.model.TransactionService
 import feature.transactions.transactionRoutes
 import feature.user.userRoutes
 import io.ktor.server.application.Application
@@ -17,6 +18,8 @@ import org.koin.ktor.ext.inject
 fun Application.configureRouting() {
 
     val accountService: AccountService by inject()
+    val transactionService: TransactionService by inject()
+
 
     routing {
         get("/") {
@@ -26,7 +29,7 @@ fun Application.configureRouting() {
         authRoutes()
 
         authenticate("auth-jwt") {
-            transactionRoutes()
+            transactionRoutes(transactionService)
             budgetRoutes()
             userRoutes()
             accountsRoutes(accountService)
