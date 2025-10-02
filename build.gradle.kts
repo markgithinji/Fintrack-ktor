@@ -32,5 +32,7 @@ dependencies {
     implementation("io.ktor:ktor-server-auth:2.3.0")
     implementation("io.ktor:ktor-server-auth-jwt:2.3.7")
     implementation("org.mindrot:jbcrypt:0.4") // for password hashing
+    implementation("io.insert-koin:koin-core:3.4.3")
+    implementation("io.insert-koin:koin-ktor:3.4.3")
 
 }
