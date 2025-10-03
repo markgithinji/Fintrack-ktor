@@ -1,7 +1,9 @@
 package feature.transaction
 
 import com.fintrack.core.ApiResponse
+import com.fintrack.core.logger
 import com.fintrack.core.userIdOrThrow
+import com.fintrack.core.withContext
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import core.ValidationException
@@ -23,13 +25,21 @@ import kotlinx.datetime.atTime
 import org.jetbrains.exposed.sql.SortOrder
 
 fun Route.transactionRoutes(service: TransactionService) {
+    val log = logger()
 
     route("/transactions") {
         delete("/clear") {
             val userId = call.userIdOrThrow()
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
 
+            log.withContext(
+                "userId" to userId,
+                "accountId" to accountId,
+                "endpoint" to "DELETE /transactions/clear"
+            ).warn("Clear all transactions request received")
+
             service.clearAll(userId, accountId)
+
             call.respond(
                 ApiResponse.Success(
                     mapOf(
@@ -44,32 +54,71 @@ fun Route.transactionRoutes(service: TransactionService) {
         post("/bulk") {
             val userId = call.userIdOrThrow()
             val requests = call.receive<List<CreateTransactionRequest>>()
+
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "POST /transactions/bulk",
+                "transactionCount" to requests.size
+            ).info("Bulk transaction creation request received")
+
             val saved = service.addBulk(userId, requests).map { it.toDto() }
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
         }
 
         get {
             val userId = call.userIdOrThrow()
+            val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val typeFilter = call.request.queryParameters["type"]
+            val categories = call.request.queryParameters["category"]?.split(",")
+            val startDate = call.request.queryParameters["start"]
+            val endDate = call.request.queryParameters["end"]
+            val sortBy = call.request.queryParameters["sortBy"] ?: "dateTime"
+            val order = call.request.queryParameters["order"]?.uppercase()
+            val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceAtMost(50) ?: 20
+            val afterDateTime = call.request.queryParameters["afterDateTime"]
+            val afterId = call.request.queryParameters["afterId"]?.toIntOrNull()
+
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "GET /transactions",
+                "accountId" to accountId,
+                "typeFilter" to typeFilter,
+                "categoryCount" to categories?.size,
+                "startDate" to startDate,
+                "endDate" to endDate,
+                "sortBy" to sortBy,
+                "order" to order,
+                "limit" to limit,
+                "afterDateTime" to afterDateTime,
+                "afterId" to afterId
+            ).info("Transaction list request received")
+
             val transactions = service.getAllCursor(
                 userId = userId,
-                accountId = call.request.queryParameters["accountId"]?.toIntOrNull(),
-                isIncome = when (call.request.queryParameters["type"]?.lowercase()) {
+                accountId = accountId,
+                isIncome = when (typeFilter?.lowercase()) {
                     "income" -> true
                     "expense" -> false
                     else -> null
                 },
-                categories = call.request.queryParameters["category"]?.split(","),
-                start = call.request.queryParameters["start"]?.let { LocalDate.parse(it).atTime(0,0,0) },
-                end = call.request.queryParameters["end"]?.let { LocalDate.parse(it).atTime(23,59,59) },
-                sortBy = call.request.queryParameters["sortBy"] ?: "dateTime",
-                order = if (call.request.queryParameters["order"]?.uppercase() == "DESC") SortOrder.DESC else SortOrder.ASC,
-                limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceAtMost(50) ?: 20,
-                afterDateTime = call.request.queryParameters["afterDateTime"]?.let { LocalDateTime.parse(it) },
-                afterId = call.request.queryParameters["afterId"]?.toIntOrNull()
+                categories = categories,
+                start = startDate?.let { LocalDate.parse(it).atTime(0, 0, 0) },
+                end = endDate?.let { LocalDate.parse(it).atTime(23, 59, 59) },
+                sortBy = sortBy,
+                order = if (order == "DESC") SortOrder.DESC else SortOrder.ASC,
+                limit = limit,
+                afterDateTime = afterDateTime?.let { LocalDateTime.parse(it) },
+                afterId = afterId
             ).map { it.toDto() }
 
             val last = transactions.lastOrNull()
             val nextCursor = last?.let { "${it.dateTime}|${it.id}" }
+
+            log.withContext(
+                "userId" to userId,
+                "transactionCount" to transactions.size,
+                "hasNextCursor" to (nextCursor != null)
+            ).debug("Transaction list retrieved successfully")
 
             call.respond(ApiResponse.Success(PaginatedTransactionDto(transactions, nextCursor)))
         }
@@ -78,6 +127,13 @@ fun Route.transactionRoutes(service: TransactionService) {
             val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.toIntOrNull()
                 ?: throw ValidationException("Invalid ID")
+
+            log.withContext(
+                "userId" to userId,
+                "transactionId" to id,
+                "endpoint" to "GET /transactions/{id}"
+            ).info("Get transaction by ID request received")
+
             val transaction = service.getById(userId, id)
             call.respond(ApiResponse.Success(transaction.toDto()))
         }
@@ -85,6 +141,16 @@ fun Route.transactionRoutes(service: TransactionService) {
         post {
             val userId = call.userIdOrThrow()
             val request = call.receive<CreateTransactionRequest>()
+
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "POST /transactions",
+                "accountId" to request.accountId,
+                "amount" to request.amount,
+                "isIncome" to request.isIncome,
+                "category" to request.category
+            ).info("Create transaction request received")
+
             val saved = service.add(userId, request)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved.toDto()))
         }
@@ -94,6 +160,15 @@ fun Route.transactionRoutes(service: TransactionService) {
             val id = call.parameters["id"]?.toIntOrNull()
                 ?: throw ValidationException("Invalid ID")
             val request = call.receive<UpdateTransactionRequest>()
+
+            log.withContext(
+                "userId" to userId,
+                "transactionId" to id,
+                "endpoint" to "PUT /transactions/{id}",
+                "accountId" to request.accountId,
+                "amount" to request.amount
+            ).info("Update transaction request received")
+
             val updated = service.update(userId, id, request)
             call.respond(ApiResponse.Success(updated.toDto()))
         }
@@ -102,9 +177,15 @@ fun Route.transactionRoutes(service: TransactionService) {
             val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.toIntOrNull()
                 ?: throw ValidationException("Invalid ID")
+
+            log.withContext(
+                "userId" to userId,
+                "transactionId" to id,
+                "endpoint" to "DELETE /transactions/{id}"
+            ).info("Delete transaction request received")
+
             service.delete(userId, id)
             call.respond(ApiResponse.Success(mapOf("message" to "Transaction deleted successfully")))
         }
     }
 }
-
