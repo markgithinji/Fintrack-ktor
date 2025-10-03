@@ -13,6 +13,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     DatabaseFactory.init()
+    configureLogging()
     configureDI()
     configureValidation()
     configureAuth()

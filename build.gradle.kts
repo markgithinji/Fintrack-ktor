@@ -35,5 +35,7 @@ dependencies {
     implementation("io.insert-koin:koin-core:3.4.3")
     implementation("io.insert-koin:koin-ktor:3.4.3")
     implementation("io.ktor:ktor-server-request-validation:3.3.0")
-
+    implementation("io.ktor:ktor-server-call-logging:3.3.0")
+    implementation("ch.qos.logback:logback-classic:1.5.13")
+    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 }
