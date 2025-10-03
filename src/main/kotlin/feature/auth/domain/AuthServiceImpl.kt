@@ -2,7 +2,7 @@ package feature.auth.domain
 
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
-import com.fintrack.core.JwtConfig
+import com.fintrack.feature.auth.JwtConfig
 import core.AuthenticationException
 import feature.auth.data.model.AuthResponse
 import feature.user.domain.UserRepository

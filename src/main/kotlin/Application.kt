@@ -1,7 +1,7 @@
 package com.fintrack
 
 import com.fintrack.core.DatabaseConfig
-import com.fintrack.core.JwtConfig
+import com.fintrack.feature.auth.JwtConfig
 import com.fintrack.plugins.*
 import core.DatabaseFactory
 import io.ktor.server.application.*
