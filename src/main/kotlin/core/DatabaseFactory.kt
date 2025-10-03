@@ -41,49 +41,33 @@ object DatabaseFactory {
         ).info("Database connection pool initialized")
 
         // Run schema migrations (auto create tables for now)
-        try {
-            transaction {
-                SchemaUtils.create(TransactionsTable)
-            }
-            log.info("Database schema initialized successfully")
-        } catch (e: Exception) {
-            log.withContext("error" to e.message).error("Failed to initialize database schema")
-            throw e
+        transaction {
+            SchemaUtils.create(TransactionsTable)
         }
+        log.info("Database schema initialized successfully")
     }
 
     fun checkConnection(): Boolean {
-        return try {
-            transaction {
-                // Simple query to test connection
-                exec("SELECT 1") { }
-            }
-            log.debug("Database health check passed")
-            true
-        } catch (e: Exception) {
-            log.withContext("error" to e.message).warn("Database health check failed")
-            false
+        transaction {
+            // Simple query to test connection
+            exec("SELECT 1") { }
         }
+        log.debug("Database health check passed")
+        return true
     }
 
     fun getPoolStats(): Map<String, Any> {
-        return if (::dataSource.isInitialized && dataSource.isRunning) {
-            try {
-                val pool = dataSource.hikariPoolMXBean
-
-                mapOf(
-                    "activeConnections" to pool.activeConnections,
-                    "idleConnections" to pool.idleConnections,
-                    "totalConnections" to pool.totalConnections,
-                    "threadsAwaitingConnection" to pool.threadsAwaitingConnection,
-                    "maximumPoolSize" to dataSource.maximumPoolSize
-                )
-            } catch (e: Exception) {
-                log.withContext("error" to e.message).debug("Failed to get pool stats")
-                emptyMap()
-            }
-        } else {
-            emptyMap()
+        if (!::dataSource.isInitialized || !dataSource.isRunning) {
+            return emptyMap()
         }
+
+        val pool = dataSource.hikariPoolMXBean
+        return mapOf(
+            "activeConnections" to pool.activeConnections,
+            "idleConnections" to pool.idleConnections,
+            "totalConnections" to pool.totalConnections,
+            "threadsAwaitingConnection" to pool.threadsAwaitingConnection,
+            "maximumPoolSize" to dataSource.maximumPoolSize
+        )
     }
 }
