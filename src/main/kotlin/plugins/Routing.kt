@@ -30,33 +30,52 @@ fun Application.configureRouting() {
     val healthService: HealthService by inject()
 
     routing {
-        get("/") {
-            call.respondText("Hello World!")
-        }
+        // Core endpoints
+        get("/") { call.respondText("Hello World!") }
 
-        // Health endpoints with rate limiting
-        withHealthRateLimit {
-            get("/metrics") {
-                call.respondText(appMicrometerRegistry.scrape())
-            }
+        // Monitoring endpoints
+        monitoringRoutes(healthService)
 
-            healthRoutes(healthService)
-        }
+        // Authentication endpoints
+        authenticationRoutes(authService)
 
-        // Auth routes with strict rate limiting
-        withAuthRateLimit {
-            authRoutes(authService)
-        }
+        // Business API endpoints
+        apiRoutes(accountService, transactionService, statisticsService, budgetService, userService)
+    }
+}
 
-        // Protected routes with user-based rate limiting
-        authenticate("auth-jwt") {
-            withProtectedRateLimit {
-                transactionRoutes(transactionService)
-                budgetRoutes(budgetService)
-                userRoutes(userService)
-                accountsRoutes(accountService)
-                summaryRoutes(statisticsService)
-            }
+fun Routing.monitoringRoutes(healthService: HealthService) {
+    withHealthRateLimit {
+        get("/metrics") { call.respondText(appMicrometerRegistry.scrape()) }
+        healthRoutes(healthService)
+    }
+}
+
+fun Routing.authenticationRoutes(authService: AuthService) {
+    withAuthRateLimit {
+        authRoutes(authService)
+    }
+}
+
+fun Routing.apiRoutes(
+    accountService: AccountService,
+    transactionService: TransactionService,
+    statisticsService: StatisticsService,
+    budgetService: BudgetService,
+    userService: UserService
+) {
+    authenticate("auth-jwt") {
+        withProtectedRateLimit {
+            // Financial data
+            route("/transactions") { transactionRoutes(transactionService) }
+            route("/accounts") { accountsRoutes(accountService) }
+            route("/budgets") { budgetRoutes(budgetService) }
+
+            // Analytics
+            route("/summary") { summaryRoutes(statisticsService) }
+
+            // User management
+            route("/user") { userRoutes(userService) }
         }
     }
 }
