@@ -19,6 +19,7 @@ fun Application.module() {
     configureAuth()
     configureSerialization()
     configureStatusPages()
+    configureRateLimiting()
     configureMetrics()
     configureHealthChecks()
     configureRouting()

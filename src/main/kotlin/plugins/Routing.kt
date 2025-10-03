@@ -34,20 +34,29 @@ fun Application.configureRouting() {
             call.respondText("Hello World!")
         }
 
-        get("/metrics") {
-            call.respondText(appMicrometerRegistry.scrape())
+        // Health endpoints with rate limiting
+        withHealthRateLimit {
+            get("/metrics") {
+                call.respondText(appMicrometerRegistry.scrape())
+            }
+
+            healthRoutes(healthService)
         }
 
-        healthRoutes(healthService)
+        // Auth routes with strict rate limiting
+        withAuthRateLimit {
+            authRoutes(authService)
+        }
 
-        authRoutes(authService)
-
+        // Protected routes with user-based rate limiting
         authenticate("auth-jwt") {
-            transactionRoutes(transactionService)
-            budgetRoutes(budgetService)
-            userRoutes(userService)
-            accountsRoutes(accountService)
-            summaryRoutes(statisticsService)
+            withProtectedRateLimit {
+                transactionRoutes(transactionService)
+                budgetRoutes(budgetService)
+                userRoutes(userService)
+                accountsRoutes(accountService)
+                summaryRoutes(statisticsService)
+            }
         }
     }
 }

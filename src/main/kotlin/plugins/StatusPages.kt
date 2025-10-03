@@ -1,22 +1,19 @@
 package plugins
 
 import com.fintrack.core.ApiResponse
-import com.fintrack.core.error
-import com.fintrack.core.info
 import com.fintrack.core.logger
-import com.fintrack.core.warn
 import com.fintrack.core.withContext
 import core.AuthenticationException
 import core.UnauthorizedAccessException
 import core.ValidationException
 import io.ktor.http.*
 import io.ktor.server.application.*
-import io.ktor.server.auth.UserIdPrincipal
-import io.ktor.server.auth.principal
+import io.ktor.server.plugins.*
 import io.ktor.server.plugins.statuspages.*
-import io.ktor.server.request.httpMethod
-import io.ktor.server.request.uri
+import io.ktor.server.request.*
 import io.ktor.server.response.*
+
+
 fun Application.configureStatusPages() {
     install(StatusPages) {
         val log = this@configureStatusPages.logger<Application>()
@@ -75,15 +72,17 @@ fun Application.configureStatusPages() {
                 ApiResponse.Error(cause.message ?: "Validation failed")
             )
         }
-
-        exception<Throwable> { call, cause ->
+        // Handle rate limit exceeded
+        status(HttpStatusCode.TooManyRequests) { call, status ->
             log.withContext(
                 "path" to call.request.uri,
-                "method" to call.request.httpMethod.value
-            ).error("Unhandled exception: ${cause.message}", cause)
+                "method" to call.request.httpMethod.value,
+                "clientIp" to call.request.origin.remoteHost
+            ).warn("Rate limit exceeded")
+
             call.respond(
-                HttpStatusCode.InternalServerError,
-                ApiResponse.Error("Internal server error")
+                status,
+                ApiResponse.Error("Rate limit exceeded")
             )
         }
 
@@ -103,6 +102,17 @@ fun Application.configureStatusPages() {
                 "method" to call.request.httpMethod.value
             ).info("401 Unauthorized")
             call.respond(ApiResponse.Error("Unauthorized access"))
+        }
+
+        exception<Throwable> { call, cause ->
+            log.withContext(
+                "path" to call.request.uri,
+                "method" to call.request.httpMethod.value
+            ).error("Unhandled exception: ${cause.message}", cause)
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                ApiResponse.Error("Internal server error")
+            )
         }
     }
 }

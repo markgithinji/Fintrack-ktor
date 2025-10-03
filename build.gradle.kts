@@ -40,4 +40,5 @@ dependencies {
     implementation("net.logstash.logback:logstash-logback-encoder:7.4")
     implementation("io.ktor:ktor-server-metrics-micrometer:3.3.0")
     implementation("io.micrometer:micrometer-registry-prometheus:1.11.5")
+    implementation("io.ktor:ktor-server-rate-limit:3.3.0")
 }
