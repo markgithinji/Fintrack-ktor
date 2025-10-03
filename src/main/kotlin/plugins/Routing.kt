@@ -12,11 +12,10 @@ import feature.transaction.domain.TransactionService
 import feature.transaction.transactionRoutes
 import feature.user.domain.UserService
 import feature.user.userRoutes
-import io.ktor.server.application.Application
-import io.ktor.server.auth.authenticate
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.routing
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import org.koin.ktor.ext.inject
 
 fun Application.configureRouting() {
@@ -30,6 +29,10 @@ fun Application.configureRouting() {
     routing {
         get("/") {
             call.respondText("Hello World!")
+        }
+
+        get("/metrics") {
+            call.respondText(appMicrometerRegistry.scrape())
         }
 
         authRoutes(authService)

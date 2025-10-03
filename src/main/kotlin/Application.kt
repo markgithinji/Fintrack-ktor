@@ -1,7 +1,7 @@
 package com.fintrack
 
-import core.DatabaseFactory
 import com.fintrack.plugins.*
+import core.DatabaseFactory
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import plugins.configureStatusPages
@@ -19,5 +19,6 @@ fun Application.module() {
     configureAuth()
     configureSerialization()
     configureStatusPages()
+    configureMetrics()
     configureRouting()
 }
