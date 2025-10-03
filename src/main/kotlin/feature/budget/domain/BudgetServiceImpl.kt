@@ -2,6 +2,8 @@ package feature.budget.domain
 
 
 import com.fintrack.feature.budget.data.BudgetDto
+import com.fintrack.feature.budget.data.model.CreateBudgetRequest
+import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import com.fintrack.feature.budget.data.toDomain
 import com.fintrack.feature.budget.domain.BudgetStatus
 import com.fintrack.feature.budget.domain.BudgetWithStatus
@@ -24,20 +26,25 @@ class BudgetServiceImpl(
         return BudgetWithStatus(budget, calculateBudgetStatus(budget))
     }
 
-    override suspend fun createBudget(userId: Int, budgetDto: BudgetDto): BudgetWithStatus {
-        val budget = budgetRepository.add(budgetDto.toDomain(userId))
+    override suspend fun createBudget(userId: Int, request: CreateBudgetRequest): BudgetWithStatus {
+        val budget = budgetRepository.add(request.toDomain(userId))
         return BudgetWithStatus(budget, calculateBudgetStatus(budget))
     }
 
-    override suspend fun createBudgets(userId: Int, budgetDtos: List<BudgetDto>): List<BudgetWithStatus> {
-        val budgets = budgetRepository.addAll(budgetDtos.map { it.toDomain(userId) })
+    override suspend fun createBudgets(userId: Int, requests: List<CreateBudgetRequest>): List<BudgetWithStatus> {
+        val budgets = budgetRepository.addAll(requests.map { it.toDomain(userId) })
         return budgets.map { budget ->
             BudgetWithStatus(budget, calculateBudgetStatus(budget))
         }
     }
 
-    override suspend fun updateBudget(userId: Int, id: Int, budgetDto: BudgetDto): BudgetWithStatus? {
-        val updatedBudget = budgetRepository.update(userId, id, budgetDto.toDomain(userId)) ?: return null
+    override suspend fun updateBudget(userId: Int, id: Int, request: UpdateBudgetRequest): BudgetWithStatus {
+        val existingBudget = budgetRepository.getById(userId, id)
+            ?: throw ResourceNotFoundException("Budget $id not found")
+
+        val updatedBudget = budgetRepository.update(userId, id, request.toDomain(userId, id))
+            ?: throw IllegalStateException("Failed to update budget $id")
+
         return BudgetWithStatus(updatedBudget, calculateBudgetStatus(updatedBudget))
     }
 

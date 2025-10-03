@@ -1,9 +1,13 @@
 package feature.transactions
 
 import com.fintrack.core.ApiResponse
+import com.fintrack.core.userIdOrThrow
 import com.fintrack.feature.budget.data.BudgetDto
+import com.fintrack.feature.budget.data.model.CreateBudgetRequest
+import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import com.fintrack.feature.budget.data.toDomain
 import com.fintrack.feature.budget.data.toDto
+import core.ValidationException
 import feature.budget.domain.BudgetService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.jwt.JWTPrincipal
@@ -21,58 +25,46 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
     route("/budgets") {
         // POST bulk budgets
         post("/bulk") {
-            val principal = call.principal<JWTPrincipal>()!!
-            val userId = principal.payload.getClaim("userId").asInt()
-            val budgetDtos = call.receive<List<BudgetDto>>()
-            val saved = budgetService.createBudgets(userId, budgetDtos)
+            val userId = call.userIdOrThrow()
+            val requests = call.receive<List<CreateBudgetRequest>>()
+            val saved = budgetService.createBudgets(userId, requests)
             call.respond(ApiResponse.Success(saved.map { it.toDto() }))
         }
 
         // POST a new budget
         post {
-            val principal = call.principal<JWTPrincipal>()!!
-            val userId = principal.payload.getClaim("userId").asInt()
-            val budgetDto = call.receive<BudgetDto>()
-            val budget = budgetService.createBudget(userId, budgetDto)
+            val userId = call.userIdOrThrow()
+            val request = call.receive<CreateBudgetRequest>()
+            val budget = budgetService.createBudget(userId, request)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(budget.toDto()))
         }
 
         // PUT update by id
         put("{id}") {
-            val principal = call.principal<JWTPrincipal>()!!
-            val userId = principal.payload.getClaim("userId").asInt()
+            val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.toIntOrNull()
-                ?: throw IllegalArgumentException("Id missing")
+                ?: throw ValidationException("Invalid budget ID")
 
-            val budgetDto = call.receive<BudgetDto>()
-            val updatedBudget = budgetService.updateBudget(userId, id, budgetDto)
-
-            if (updatedBudget != null) {
-                call.respond(ApiResponse.Success(updatedBudget.toDto()))
-            } else {
-                throw NoSuchElementException("Budget not found")
-            }
+            val request = call.receive<UpdateBudgetRequest>()
+            val updatedBudget = budgetService.updateBudget(userId, id, request)
+            call.respond(ApiResponse.Success(updatedBudget.toDto()))
         }
 
         // DELETE a budget by id
         delete("{id}") {
-            val principal = call.principal<JWTPrincipal>()!!
-            val userId = principal.payload.getClaim("userId").asInt()
+            val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.toIntOrNull()
-                ?: throw IllegalArgumentException("Id missing")
+                ?: throw ValidationException("Invalid budget ID")
 
             val removed = budgetService.deleteBudget(userId, id)
-            if (removed) {
-                call.respond(ApiResponse.Success("Deleted budget with id: $id"))
-            } else {
-                throw NoSuchElementException("Budget not found")
-            }
+            if (!removed) throw NoSuchElementException("Budget not found")
+
+            call.respond(ApiResponse.Success("Deleted budget with id: $id"))
         }
 
         // GET all budgets (with status)
         get {
-            val principal = call.principal<JWTPrincipal>()!!
-            val userId = principal.payload.getClaim("userId").asInt()
+            val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
             val budgets = budgetService.getAllBudgets(userId, accountId)
             call.respond(ApiResponse.Success(budgets.map { it.toDto() }))
@@ -80,17 +72,12 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
 
         // GET budget by id (with status)
         get("{id}") {
-            val principal = call.principal<JWTPrincipal>()!!
-            val userId = principal.payload.getClaim("userId").asInt()
+            val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.toIntOrNull()
-                ?: throw IllegalArgumentException("Id missing")
+                ?: throw ValidationException("Invalid budget ID")
 
             val budget = budgetService.getBudgetById(userId, id)
-            if (budget != null) {
-                call.respond(ApiResponse.Success(budget.toDto()))
-            } else {
-                throw NoSuchElementException("Budget not found")
-            }
+            call.respond(ApiResponse.Success(budget.toDto()))
         }
     }
 }
