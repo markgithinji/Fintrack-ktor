@@ -1,6 +1,24 @@
 ktor:
-    application:
-        modules:
-            - com.fintrack.ApplicationKt.module
-    deployment:
-        port: 8080
+  deployment:
+    port: 8080
+    host: "0.0.0.0"
+
+  application:
+    modules:
+      - com.fintrack.ApplicationKt.module
+
+database:
+  url: "jdbc:postgresql://localhost:5432/fintrack_db"
+  driver: "org.postgresql.Driver"
+  user: "fintrack"
+  password: "secret"
+  poolSize: 5
+  connectionTimeout: 30000
+  validationTimeout: 5000
+  leakDetectionThreshold: 60000
+
+jwt:
+  secret: "development-secret-change-in-production"
+  issuer: "fintrack-app"
+  audience: "fintrack-users"
+  realm: "FinTrack API"

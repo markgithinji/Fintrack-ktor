@@ -1,5 +1,6 @@
 package core
 
+import com.fintrack.core.DatabaseConfig
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import feature.transaction.data.TransactionsTable
@@ -14,20 +15,19 @@ object DatabaseFactory {
     private lateinit var dataSource: HikariDataSource
     private val log = logger<DatabaseFactory>()
 
-    fun init() {
+    fun init(databaseConfig: DatabaseConfig) {
         val config = HikariConfig().apply {
-            driverClassName = "org.postgresql.Driver"
-            jdbcUrl = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/fintrack_db"
-            username = System.getenv("DB_USER") ?: "fintrack"
-            password = System.getenv("DB_PASSWORD") ?: "secret"
-            maximumPoolSize = 5
+            driverClassName = databaseConfig.driver
+            jdbcUrl = databaseConfig.url
+            username = databaseConfig.user
+            password = databaseConfig.password
+            maximumPoolSize = databaseConfig.poolSize
             isAutoCommit = false
 
-            // Add health check related settings
-            connectionTimeout = TimeUnit.SECONDS.toMillis(30) // 30 seconds
-            validationTimeout = TimeUnit.SECONDS.toMillis(5)  // 5 seconds
-            leakDetectionThreshold = TimeUnit.SECONDS.toMillis(60) // 1 minute
-            connectionTestQuery = "SELECT 1" // Simple query to test connections
+            connectionTimeout = databaseConfig.connectionTimeout
+            validationTimeout = databaseConfig.validationTimeout
+            leakDetectionThreshold = databaseConfig.leakDetectionThreshold
+            connectionTestQuery = "SELECT 1"
 
             validate()
         }
@@ -36,11 +36,11 @@ object DatabaseFactory {
         Database.connect(dataSource)
 
         log.withContext(
-            "url" to config.jdbcUrl.replace(Regex(":[^:]*@"), ":****@"), // Hide password in logs
+            "url" to config.jdbcUrl.replace(Regex(":[^:]*@"), ":****@"),
             "poolSize" to config.maximumPoolSize
         ).info("Database connection pool initialized")
 
-        // Run schema migrations (auto create tables for now)
+        // Run schema migrations
         transaction {
             SchemaUtils.create(TransactionsTable)
         }
