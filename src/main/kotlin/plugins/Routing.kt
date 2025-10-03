@@ -66,16 +66,11 @@ fun Routing.apiRoutes(
 ) {
     authenticate("auth-jwt") {
         withProtectedRateLimit {
-            // Financial data
-            route("/transactions") { transactionRoutes(transactionService) }
-            route("/accounts") { accountsRoutes(accountService) }
-            route("/budgets") { budgetRoutes(budgetService) }
-
-            // Analytics
-            route("/summary") { summaryRoutes(statisticsService) }
-
-            // User management
-            route("/user") { userRoutes(userService) }
+            transactionRoutes(transactionService)
+            accountsRoutes(accountService)
+            budgetRoutes(budgetService)
+            summaryRoutes(statisticsService)
+            userRoutes(userService)
         }
     }
 }
