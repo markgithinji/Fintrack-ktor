@@ -3,6 +3,7 @@ package com.fintrack.feature.summary
 import com.fintrack.core.ApiResponse
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.feature.summary.data.toDto
+import core.ValidationException
 import feature.summary.domain.StatisticsService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
@@ -13,7 +14,6 @@ import io.ktor.server.routing.route
 import kotlinx.datetime.LocalDate
 
 fun Route.summaryRoutes(service: StatisticsService) {
-
     route("/transactions/summary") {
         get("/highlights") {
             val userId = call.userIdOrThrow()
@@ -39,7 +39,12 @@ fun Route.summaryRoutes(service: StatisticsService) {
         get("/distribution") {
             val userId = call.userIdOrThrow()
             val period = call.request.queryParameters["period"]
-                ?: throw IllegalArgumentException("Missing period parameter")
+                ?: throw ValidationException("Missing period parameter")
+
+            // Validate period format
+            if (!period.matches(Regex("^(\\d{4}-W\\d{2}|\\d{4}-\\d{2}|\\d{4})$"))) {
+                throw ValidationException("Period must be in format: YYYY-Www, YYYY-MM, or YYYY")
+            }
 
             val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
             val typeFilter = call.request.queryParameters["type"]
@@ -96,12 +101,16 @@ fun Route.summaryRoutes(service: StatisticsService) {
             val endParam = call.request.queryParameters["end"]
 
             if (startParam == null || endParam == null) {
-                throw IllegalArgumentException("start and end query params required (yyyy-MM-dd)")
+                throw ValidationException("start and end query params required (yyyy-MM-dd)")
             }
 
-            val start = LocalDate.parse(startParam)
-            val end = LocalDate.parse(endParam)
-            val days = service.getDaySummaries(userId, start, end, accountId)
+            val (start, end) = service.parseDateRange(startParam, endParam)
+
+            // Convert LocalDateTime? to LocalDate with null safety
+            val startDate = start?.date ?: throw ValidationException("Invalid start date")
+            val endDate = end?.date ?: throw ValidationException("Invalid end date")
+
+            val days = service.getDaySummaries(userId, startDate, endDate, accountId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(days.map { it.toDto() }))
         }
 
@@ -115,7 +124,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
         get("/counts") {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
-                ?: throw IllegalArgumentException("Missing or invalid accountId")
+                ?: throw ValidationException("Missing or invalid accountId")
 
             val summary = service.getTransactionCountSummary(userId, accountId)
                 ?: throw NoSuchElementException("No transactions found for accountId=$accountId")

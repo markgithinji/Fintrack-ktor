@@ -7,6 +7,7 @@ import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import io.ktor.server.application.*
 import io.ktor.server.plugins.requestvalidation.*
+import kotlinx.datetime.LocalDateTime
 
 fun Application.configureValidation() {
     install(RequestValidation) {
@@ -134,6 +135,14 @@ fun Application.configureValidation() {
 
             if (allViolations.isNotEmpty()) {
                 ValidationResult.Invalid(allViolations.joinToString(", "))
+            } else {
+                ValidationResult.Valid
+            }
+        }
+
+        validate<Pair<LocalDateTime?, LocalDateTime?>> { (start, end) ->
+            if (start != null && end != null && start > end) {
+                ValidationResult.Invalid("Start date cannot be after end date")
             } else {
                 ValidationResult.Valid
             }

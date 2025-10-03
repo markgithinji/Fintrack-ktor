@@ -9,6 +9,7 @@ import com.fintrack.feature.summary.domain.OverviewSummary
 import core.AvailableMonths
 import core.AvailableWeeks
 import core.AvailableYears
+import core.ValidationException
 import feature.transactions.Highlight
 import feature.transactions.Highlights
 import feature.transactions.StatisticsSummary
@@ -249,20 +250,36 @@ class StatisticsServiceImpl(
         }
     }
 
-    // Helper methods for route parameter processing
+    // ---- Helper methods for route parameter processing ----
     override fun parseTypeFilter(typeFilter: String?): Boolean? = when (typeFilter?.lowercase()) {
         "income" -> true
         "expense" -> false
-        else -> null
+        "" -> null
+        null -> null
+        else -> throw ValidationException("Type filter must be 'income' or 'expense'")
     }
 
     override fun parseDateRange(startDate: String?, endDate: String?): Pair<LocalDateTime?, LocalDateTime?> {
         val start = startDate?.let {
-            LocalDate.parse(it).atTime(LocalTime(0, 0, 0))
+            try {
+                LocalDate.parse(it).atTime(LocalTime(0, 0, 0))
+            } catch (e: Exception) {
+                throw ValidationException("Invalid start date format. Use yyyy-MM-dd")
+            }
         }
         val end = endDate?.let {
-            LocalDate.parse(it).atTime(LocalTime(23, 59, 59))
+            try {
+                LocalDate.parse(it).atTime(LocalTime(23, 59, 59))
+            } catch (e: Exception) {
+                throw ValidationException("Invalid end date format. Use yyyy-MM-dd")
+            }
         }
+
+        // Validate date range logic
+        if (start != null && end != null && start > end) {
+            throw ValidationException("Start date cannot be after end date")
+        }
+
         return start to end
     }
 }
