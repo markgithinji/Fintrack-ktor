@@ -1,7 +1,9 @@
 package feature.user
 
 import com.fintrack.core.ApiResponse
+import com.fintrack.core.logger
 import com.fintrack.core.userIdOrThrow
+import com.fintrack.core.withContext
 import feature.user.data.model.UpdateUserRequest
 import feature.user.data.model.UserDto
 import feature.user.data.model.UserUpdateRequest
@@ -14,9 +16,17 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Route.userRoutes(userService: UserService) {
+    val log = logger()
+
     route("/users") {
         get("/me") {
             val userId = call.userIdOrThrow()
+
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "GET /users/me"
+            ).info("Get user profile request received")
+
             val user = userService.getUserProfile(userId)
                 ?: throw NoSuchElementException("User not found")
 
@@ -27,6 +37,13 @@ fun Route.userRoutes(userService: UserService) {
         put("/me") {
             val userId = call.userIdOrThrow()
             val updateRequest = call.receive<UpdateUserRequest>()
+
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "PUT /users/me",
+                "usernameUpdate" to (updateRequest.username != null),
+                "passwordUpdate" to (updateRequest.password != null)
+            ).info("Update user profile request received")
 
             val success = userService.updateUser(userId, updateRequest)
 
@@ -41,9 +58,15 @@ fun Route.userRoutes(userService: UserService) {
         delete("/me") {
             val userId = call.userIdOrThrow()
 
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "DELETE /users/me"
+            ).warn("Delete user account request received") // Warn level for destructive operation
+
             val success = userService.deleteUser(userId)
 
             if (success) {
+                log.withContext("userId" to userId).warn("User account deletion completed")
                 call.respond(HttpStatusCode.OK, ApiResponse.Success("User account deleted successfully"))
             } else {
                 throw NoSuchElementException("User not found")
