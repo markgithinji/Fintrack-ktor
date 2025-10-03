@@ -1,12 +1,14 @@
 package feature.transactions.domain
 
+import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
+import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import feature.transactions.data.model.TransactionDto
+import feature.transactions.data.model.toDomain
 import feature.transactions.data.model.toTransaction
 import feature.transactions.domain.model.Transaction
 import feature.transactions.validate
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.exposed.sql.SortOrder
-
 class TransactionServiceImpl(
     private val repo: TransactionRepository
 ) : TransactionService {
@@ -34,15 +36,13 @@ class TransactionServiceImpl(
         return repo.getById(id, userId)
     }
 
-    override suspend fun add(userId: Int, dto: TransactionDto): Transaction {
-        dto.validate()
-        val transaction = dto.toTransaction(userId)
+    override suspend fun add(userId: Int, request: CreateTransactionRequest): Transaction {
+        val transaction = request.toDomain(userId)
         return repo.add(transaction)
     }
 
-    override suspend fun update(userId: Int, id: Int, dto: TransactionDto): Transaction {
-        dto.validate()
-        val transaction = dto.toTransaction(userId).copy(id = id)
+    override suspend fun update(userId: Int, id: Int, request: UpdateTransactionRequest): Transaction {
+        val transaction = request.toDomain(userId, id)
         return repo.update(id, userId, transaction)
     }
 
@@ -54,10 +54,10 @@ class TransactionServiceImpl(
         return repo.clearAll(userId, accountId)
     }
 
-    override suspend fun addBulk(userId: Int, dtos: List<TransactionDto>): List<Transaction> {
-        return dtos.map { dto ->
-            dto.validate()
-            repo.add(dto.toTransaction(userId))
+    override suspend fun addBulk(userId: Int, requests: List<CreateTransactionRequest>): List<Transaction> {
+        return requests.map { request ->
+            val transaction = request.toDomain(userId)
+            repo.add(transaction)
         }
     }
 }

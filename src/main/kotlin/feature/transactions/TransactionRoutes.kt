@@ -2,6 +2,8 @@ package feature.transactions
 
 import com.fintrack.core.ApiResponse
 import com.fintrack.core.userIdOrThrow
+import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
+import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import core.ValidationException
 import feature.transactions.data.model.PaginatedTransactionDto
 import feature.transactions.data.model.TransactionDto
@@ -20,7 +22,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.atTime
 import org.jetbrains.exposed.sql.SortOrder
-
 
 fun Route.transactionRoutes(service: TransactionService) {
 
@@ -43,8 +44,8 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         post("/bulk") {
             val userId = call.userIdOrThrow()
-            val dtos = call.receive<List<TransactionDto>>()
-            val saved = service.addBulk(userId, dtos).map { it.toDto() }
+            val requests = call.receive<List<CreateTransactionRequest>>()
+            val saved = service.addBulk(userId, requests).map { it.toDto() }
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
         }
 
@@ -84,8 +85,8 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         post {
             val userId = call.userIdOrThrow()
-            val dto = call.receive<TransactionDto>()
-            val saved = service.add(userId, dto)
+            val request = call.receive<CreateTransactionRequest>()
+            val saved = service.add(userId, request)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved.toDto()))
         }
 
@@ -93,8 +94,8 @@ fun Route.transactionRoutes(service: TransactionService) {
             val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.toIntOrNull()
                 ?: throw ValidationException("Invalid ID")
-            val dto = call.receive<TransactionDto>()
-            val updated = service.update(userId, id, dto)
+            val request = call.receive<UpdateTransactionRequest>()
+            val updated = service.update(userId, id, request)
             call.respond(ApiResponse.Success(updated.toDto()))
         }
 

@@ -1,5 +1,8 @@
 package feature.transactions.data.model
 
+import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
+import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
+import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import feature.transactions.domain.model.Transaction
 import kotlinx.datetime.LocalDateTime
 
@@ -24,4 +27,26 @@ fun TransactionDto.toTransaction(userId: Int) = Transaction(
     category = this.category,
     dateTime = LocalDateTime.parse(this.dateTime),
     description = this.description
+)
+
+fun CreateTransactionRequest.toDomain(userId: Int) = Transaction(
+    id = 0,
+    userId = userId,
+    accountId = accountId,
+    isIncome = isIncome,
+    amount = amount,
+    category = category,
+    dateTime = dateTime,
+    description = description
+)
+
+fun UpdateTransactionRequest.toDomain(userId: Int, transactionId: Int) = Transaction(
+    id = transactionId,
+    userId = userId,
+    accountId = accountId,
+    isIncome = isIncome,
+    amount = amount,
+    category = category,
+    dateTime = dateTime,
+    description = description
 )
