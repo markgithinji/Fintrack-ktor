@@ -20,5 +20,6 @@ fun Application.module() {
     configureSerialization()
     configureStatusPages()
     configureMetrics()
+    configureHealthChecks()
     configureRouting()
 }

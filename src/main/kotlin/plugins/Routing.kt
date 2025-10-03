@@ -1,5 +1,7 @@
 package com.fintrack.plugins
 
+import com.fintrack.feature.health.HealthService
+import com.fintrack.feature.health.healthRoutes
 import com.fintrack.feature.accounts.domain.AccountService
 import com.fintrack.feature.auth.authRoutes
 import com.fintrack.feature.summary.summaryRoutes
@@ -25,6 +27,7 @@ fun Application.configureRouting() {
     val budgetService: BudgetService by inject()
     val userService: UserService by inject()
     val authService: AuthService by inject()
+    val healthService: HealthService by inject()
 
     routing {
         get("/") {
@@ -34,6 +37,8 @@ fun Application.configureRouting() {
         get("/metrics") {
             call.respondText(appMicrometerRegistry.scrape())
         }
+
+        healthRoutes(healthService)
 
         authRoutes(authService)
 
