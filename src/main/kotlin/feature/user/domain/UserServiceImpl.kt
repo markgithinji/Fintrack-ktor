@@ -2,6 +2,8 @@ package feature.user.domain
 
 import feature.user.data.model.UserDto
 import com.fintrack.feature.user.domain.User
+import feature.user.data.model.CreateUserRequest
+import feature.user.data.model.UpdateUserRequest
 import org.mindrot.jbcrypt.BCrypt
 
 class UserServiceImpl(
@@ -16,44 +18,26 @@ class UserServiceImpl(
         )
     }
 
-    override suspend fun createUser(username: String, password: String): Int {
-        // Validate input
-        if (username.isBlank() || password.isBlank()) {
-            throw IllegalArgumentException("Username and password cannot be empty")
+    override suspend fun createUser(request: CreateUserRequest): Int {
+        if (userRepository.userExists(request.username)) {
+            throw IllegalArgumentException("User with username '${request.username}' already exists")
         }
 
-        if (userRepository.userExists(username)) {
-            throw IllegalArgumentException("User with username '$username' already exists")
-        }
-
-        // Validate password strength
-        if (password.length < 6) {
-            throw IllegalArgumentException("Password must be at least 6 characters long")
-        }
-
-        return userRepository.createUser(username, password)
+        return userRepository.createUser(request.username, request.password)
     }
 
-    override suspend fun updateUser(userId: Int, username: String?, password: String?): Boolean {
+    override suspend fun updateUser(userId: Int, request: UpdateUserRequest): Boolean {
         // Validate user exists
         val existingUser = userRepository.findById(userId) ?: return false
 
-        // Validate new username if provided
-        if (username != null) {
-            if (username.isBlank()) {
-                throw IllegalArgumentException("Username cannot be empty")
-            }
-            if (username != existingUser.username && userRepository.userExists(username)) {
-                throw IllegalArgumentException("Username '$username' is already taken")
+        // Check if username is taken
+        if (request.username != null && request.username != existingUser.username) {
+            if (userRepository.userExists(request.username)) {
+                throw IllegalArgumentException("Username '${request.username}' is already taken")
             }
         }
 
-        // Validate new password if provided
-        if (password != null && password.length < 6) {
-            throw IllegalArgumentException("Password must be at least 6 characters long")
-        }
-
-        return userRepository.updateUser(userId, username, password)
+        return userRepository.updateUser(userId, request.username, request.password)
     }
 
     override suspend fun deleteUser(userId: Int): Boolean {
