@@ -5,5 +5,6 @@ import org.koin.dsl.module
 fun healthModule() = module {
     single<DatabaseHealthIndicator> { DatabaseHealthIndicator() }
     single<MemoryHealthIndicator> { MemoryHealthIndicator() }
-    single<HealthService> { HealthService(get(), get()) }
+    single<RateLimitMetrics> { RateLimitMetrics() }
+    single<HealthService> { HealthService(get(), get(), get()) }
 }

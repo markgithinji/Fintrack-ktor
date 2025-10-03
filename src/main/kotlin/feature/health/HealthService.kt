@@ -7,8 +7,10 @@ import java.lang.Runtime
 
 class HealthService(
     private val databaseHealthIndicator: DatabaseHealthIndicator,
-    private val memoryHealthIndicator: MemoryHealthIndicator
+    private val memoryHealthIndicator: MemoryHealthIndicator,
+    private val rateLimitMetrics: RateLimitMetrics = RateLimitMetrics()
 ) {
+
     fun getDetailedHealthStatus(): Map<String, Any> {
         // Check database health
         val dbHealthy = DatabaseFactory.checkConnection()
@@ -32,6 +34,10 @@ class HealthService(
                     "usedMB" to (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024,
                     "maxMB" to runtime.maxMemory() / 1024 / 1024
                 )
+            ),
+            "rateLimiting" to mapOf(
+                "status" to "UP", // Rate limiting is always UP as it's in-memory
+                "details" to rateLimitMetrics.getMetrics()
             ),
             "application" to mapOf(
                 "status" to "UP",
@@ -69,7 +75,8 @@ class HealthService(
         return mapOf(
             "health" to mapOf(
                 "database" to if (DatabaseFactory.checkConnection()) "healthy" else "unhealthy",
-                "memory" to if (memoryUsage < 0.9) "healthy" else "unhealthy"
+                "memory" to if (memoryUsage < 0.9) "healthy" else "unhealthy",
+                "rateLimiting" to "healthy"
             ),
             "resources" to mapOf(
                 "memory" to mapOf(
@@ -79,6 +86,7 @@ class HealthService(
                 ),
                 "processors" to runtime.availableProcessors()
             ),
+            "rateLimiting" to rateLimitMetrics.getMetrics(),
             "database" to DatabaseFactory.getPoolStats()
         )
     }
