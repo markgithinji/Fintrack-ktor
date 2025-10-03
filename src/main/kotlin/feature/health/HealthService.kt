@@ -9,8 +9,6 @@ class HealthService(
     private val databaseHealthIndicator: DatabaseHealthIndicator,
     private val memoryHealthIndicator: MemoryHealthIndicator
 ) {
-    private val log = logger<HealthService>()
-
     fun getDetailedHealthStatus(): Map<String, Any> {
         // Check database health
         val dbHealthy = DatabaseFactory.checkConnection()
