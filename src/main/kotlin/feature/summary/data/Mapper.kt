@@ -19,9 +19,9 @@ import core.HighlightDto
 import core.HighlightsDto
 import core.StatisticsSummaryDto
 import core.OverviewSummaryDto
-import feature.transactions.Highlight
-import feature.transactions.Highlights
-import feature.transactions.StatisticsSummary
+import feature.transaction.Highlight
+import feature.transaction.Highlights
+import feature.transaction.StatisticsSummary
 
 // Highlights summary
 fun StatisticsSummary.toDto(): StatisticsSummaryDto = StatisticsSummaryDto(

@@ -1,6 +1,6 @@
 package feature.budget.domain
 
-import feature.transactions.Budget
+import feature.transaction.Budget
 import kotlinx.datetime.Instant
 
 interface BudgetRepository {
@@ -16,5 +16,5 @@ interface BudgetRepository {
         isExpense: Boolean,
         start: Instant,
         end: Instant
-    ): List<feature.transactions.domain.model.Transaction>
+    ): List<feature.transaction.domain.model.Transaction>
 }

@@ -6,10 +6,10 @@ import com.fintrack.feature.summary.summaryRoutes
 import feature.auth.domain.AuthService
 import feature.budget.domain.BudgetService
 import feature.summary.domain.StatisticsService
-import feature.transactions.accountsRoutes
-import feature.transactions.budgetRoutes
-import feature.transactions.domain.TransactionService
-import feature.transactions.transactionRoutes
+import feature.transaction.accountsRoutes
+import feature.transaction.budgetRoutes
+import feature.transaction.domain.TransactionService
+import feature.transaction.transactionRoutes
 import feature.user.domain.UserService
 import feature.user.userRoutes
 import io.ktor.server.application.Application

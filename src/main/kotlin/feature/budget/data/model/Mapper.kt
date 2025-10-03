@@ -4,7 +4,7 @@ import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import com.fintrack.feature.budget.domain.BudgetStatus
 import com.fintrack.feature.budget.domain.BudgetWithStatus
-import feature.transactions.Budget
+import feature.transaction.Budget
 
 fun BudgetDto.toDomain(userId: Int): Budget =
     Budget(

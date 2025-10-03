@@ -10,10 +10,10 @@ import core.AvailableMonths
 import core.AvailableWeeks
 import core.AvailableYears
 import core.ValidationException
-import feature.transactions.Highlight
-import feature.transactions.Highlights
-import feature.transactions.StatisticsSummary
-import feature.transactions.domain.model.Transaction
+import feature.transaction.Highlight
+import feature.transaction.Highlights
+import feature.transaction.StatisticsSummary
+import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate

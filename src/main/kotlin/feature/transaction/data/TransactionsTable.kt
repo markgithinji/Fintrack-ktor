@@ -1,4 +1,4 @@
-package feature.transactions.data
+package feature.transaction.data
 
 import com.fintrack.feature.user.UsersTable
 import feature.accounts.data.AccountsTable

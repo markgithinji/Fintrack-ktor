@@ -2,16 +2,13 @@ package com.fintrack.feature.budget.data
 
 import core.dbQuery
 import feature.budget.domain.BudgetRepository
-import feature.transactions.Budget
-import feature.transactions.BudgetsTable
-import feature.transactions.data.TransactionsTable
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import feature.transaction.Budget
+import feature.transaction.BudgetsTable
+import feature.transaction.data.TransactionsTable
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
 import kotlinx.datetime.toJavaLocalDate
 import org.jetbrains.exposed.sql.ResultRow
 import kotlinx.datetime.toKotlinLocalDate
@@ -101,7 +98,7 @@ class BudgetRepositoryImpl : BudgetRepository {
         isExpense: Boolean,
         start: Instant,
         end: Instant
-    ): List<feature.transactions.domain.model.Transaction> =
+    ): List<feature.transaction.domain.model.Transaction> =
         dbQuery {
             TransactionsTable
                 .selectAll()
@@ -135,8 +132,8 @@ private fun ResultRow.toBudget(): Budget {
     )
 }
 
-private fun ResultRow.toTransaction(): feature.transactions.domain.model.Transaction {
-    return feature.transactions.domain.model.Transaction(
+private fun ResultRow.toTransaction(): feature.transaction.domain.model.Transaction {
+    return feature.transaction.domain.model.Transaction(
         id = this[TransactionsTable.id],
         userId = this[TransactionsTable.userId],
         isIncome = this[TransactionsTable.isIncome],

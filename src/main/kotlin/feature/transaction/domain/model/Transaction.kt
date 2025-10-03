@@ -1,4 +1,4 @@
-package feature.transactions.domain.model
+package feature.transaction.domain.model
 
 import kotlinx.datetime.LocalDateTime
 

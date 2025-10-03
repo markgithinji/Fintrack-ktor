@@ -1,10 +1,10 @@
-package feature.transactions.data
+package feature.transaction.data
 
 import core.ValidationException
 import core.dbQuery
-import feature.transactions.domain.model.Transaction
-import feature.transactions.domain.TransactionRepository
-import feature.transactions.validate
+import feature.transaction.domain.model.Transaction
+import feature.transaction.domain.TransactionRepository
+import feature.transaction.validate
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDateTime
 import org.jetbrains.exposed.sql.ResultRow
@@ -17,8 +17,6 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
-import kotlinx.coroutines.Dispatchers
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import kotlinx.datetime.LocalDateTime
 
 class TransactionRepositoryImpl : TransactionRepository {

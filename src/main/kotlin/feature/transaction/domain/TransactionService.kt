@@ -1,9 +1,8 @@
-package feature.transactions.domain
+package feature.transaction.domain
 
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
-import feature.transactions.data.model.TransactionDto
-import feature.transactions.domain.model.Transaction
+import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.exposed.sql.SortOrder
 

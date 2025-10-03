@@ -1,6 +1,5 @@
 package com.fintrack.feature.budget.data.model
 
-import feature.transactions.Budget
 import kotlinx.datetime.LocalDate
 
 

@@ -1,7 +1,7 @@
-package feature.transactions
+package feature.transaction
 
-import feature.transactions.data.model.TransactionDto
-import feature.transactions.domain.model.Transaction
+import feature.transaction.data.model.TransactionDto
+import feature.transaction.domain.model.Transaction
 import kotlin.text.isNotBlank
 
 fun Transaction.validate() {

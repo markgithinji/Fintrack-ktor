@@ -1,7 +1,7 @@
 package feature.summary.domain
 
 import com.fintrack.feature.summary.data.repository.TransactionCounts
-import feature.transactions.domain.model.Transaction
+import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 

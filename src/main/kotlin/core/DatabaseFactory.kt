@@ -2,7 +2,7 @@ package core
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import feature.transactions.data.TransactionsTable
+import feature.transaction.data.TransactionsTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction

@@ -1,14 +1,13 @@
-package feature.transactions
+package feature.transaction
 
 import com.fintrack.core.ApiResponse
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import core.ValidationException
-import feature.transactions.data.model.PaginatedTransactionDto
-import feature.transactions.data.model.TransactionDto
-import feature.transactions.data.model.toDto
-import feature.transactions.domain.TransactionService
+import feature.transaction.data.model.PaginatedTransactionDto
+import feature.transaction.data.model.toDto
+import feature.transaction.domain.TransactionService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond

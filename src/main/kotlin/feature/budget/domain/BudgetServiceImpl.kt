@@ -1,14 +1,13 @@
 package feature.budget.domain
 
 
-import com.fintrack.feature.budget.data.BudgetDto
 import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import com.fintrack.feature.budget.data.toDomain
 import com.fintrack.feature.budget.domain.BudgetStatus
 import com.fintrack.feature.budget.domain.BudgetWithStatus
 import core.ResourceNotFoundException
-import feature.transactions.Budget
+import feature.transaction.Budget
 import kotlinx.datetime.*
 
 class BudgetServiceImpl(

@@ -1,4 +1,4 @@
-package feature.transactions.domain
+package feature.transaction.domain
 
 
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest

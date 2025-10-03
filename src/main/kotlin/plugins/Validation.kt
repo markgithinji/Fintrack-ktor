@@ -3,7 +3,7 @@ package plugins
 import feature.accounts.domain.configureAccountValidation
 import feature.auth.domain.configureAuthValidation
 import feature.budget.domain.configureBudgetValidation
-import feature.transactions.domain.configureTransactionValidation
+import feature.transaction.domain.configureTransactionValidation
 import feature.user.domain.configureUserValidation
 import io.ktor.server.application.*
 import io.ktor.server.plugins.requestvalidation.*

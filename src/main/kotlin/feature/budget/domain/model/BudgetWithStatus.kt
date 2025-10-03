@@ -1,6 +1,6 @@
 package com.fintrack.feature.budget.domain
 
-import feature.transactions.Budget
+import feature.transaction.Budget
 
 data class BudgetWithStatus(
     val budget: Budget,

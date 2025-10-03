@@ -1,9 +1,8 @@
-package feature.transactions.data.model
+package feature.transaction.data.model
 
-import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
-import feature.transactions.domain.model.Transaction
+import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.LocalDateTime
 
 // --- Domain -> DTO ---

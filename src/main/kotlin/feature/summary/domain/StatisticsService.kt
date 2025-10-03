@@ -8,7 +8,7 @@ import com.fintrack.feature.summary.domain.OverviewSummary
 import core.AvailableMonths
 import core.AvailableWeeks
 import core.AvailableYears
-import feature.transactions.StatisticsSummary
+import feature.transaction.StatisticsSummary
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 

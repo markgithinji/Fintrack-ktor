@@ -1,6 +1,5 @@
 package com.fintrack.feature.transactions.data.model
 
-import feature.transactions.domain.model.Transaction
 import kotlinx.datetime.LocalDateTime
 
 data class CreateTransactionRequest(

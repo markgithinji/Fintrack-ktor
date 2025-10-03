@@ -2,10 +2,8 @@ package com.fintrack.feature.summary.data.repository
 
 import core.dbQuery
 import feature.summary.domain.StatisticsRepository
-import feature.transactions.data.TransactionsTable
-import feature.transactions.domain.model.Transaction
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import feature.transaction.data.TransactionsTable
+import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toJavaLocalDateTime
@@ -16,7 +14,6 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.temporal.IsoFields
 
 class StatisticsRepositoryImpl : StatisticsRepository {

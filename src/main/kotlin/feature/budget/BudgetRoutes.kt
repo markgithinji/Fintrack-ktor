@@ -1,17 +1,13 @@
-package feature.transactions
+package feature.transaction
 
 import com.fintrack.core.ApiResponse
 import com.fintrack.core.userIdOrThrow
-import com.fintrack.feature.budget.data.BudgetDto
 import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
-import com.fintrack.feature.budget.data.toDomain
 import com.fintrack.feature.budget.data.toDto
 import core.ValidationException
 import feature.budget.domain.BudgetService
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.jwt.JWTPrincipal
-import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route

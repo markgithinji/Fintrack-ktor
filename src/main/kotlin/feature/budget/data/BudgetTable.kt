@@ -1,4 +1,4 @@
-package feature.transactions
+package feature.transaction
 
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.date
