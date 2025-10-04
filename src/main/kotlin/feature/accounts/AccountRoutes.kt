@@ -5,6 +5,7 @@ import com.fintrack.core.ApiResponse
 import com.fintrack.core.logger
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
+import com.fintrack.feature.accounts.data.model.AccountDto
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.accounts.domain.AccountService
@@ -22,9 +23,9 @@ fun Route.accountsRoutes(accountService: AccountService) {
         get {
             val userId = call.userIdOrThrow()
             log.withContext("userId" to userId, "endpoint" to "GET /accounts")
-                .info { "Request received" }
+                .info { "Fetching all accounts request received" }
 
-            val accounts = accountService.getAllAccounts(userId)
+            val accounts: List<AccountDto> = accountService.getAllAccounts(userId)
             call.respond(ApiResponse.Success(accounts))
         }
 
@@ -33,10 +34,13 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()
-            log.withContext("userId" to userId, "accountId" to accountId, "endpoint" to "GET /accounts/{id}")
-                .info { "Request received" }
+            log.withContext(
+                "userId" to userId,
+                "accountId" to accountId,
+                "endpoint" to "GET /accounts/{id}"
+            ).info { "Fetching account request received" }
 
-            val account = accountService.getAccount(userId, accountId)
+            val account: AccountDto = accountService.getAccount(userId, accountId)
                 ?: throw NoSuchElementException("Account not found")
 
             call.respond(ApiResponse.Success(account))
@@ -50,9 +54,9 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 "userId" to userId,
                 "endpoint" to "POST /accounts",
                 "accountName" to request.name
-            ).info { "Request received" }
+            ).info { "Create account request received" }
 
-            val account = accountService.createAccount(userId, request)
+            val account: AccountDto = accountService.createAccount(userId, request)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(account))
         }
 
@@ -68,9 +72,9 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 "accountId" to accountId,
                 "endpoint" to "PUT /accounts/{id}",
                 "accountName" to request.name
-            ).info { "Request received" }
+            ).info { "Update account request received" }
 
-            val updatedAccount = accountService.updateAccount(userId, accountId, request)
+            val updatedAccount: AccountDto = accountService.updateAccount(userId, accountId, request)
             call.respond(ApiResponse.Success(updatedAccount))
         }
 
@@ -79,10 +83,13 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()
-            log.withContext("userId" to userId, "accountId" to accountId, "endpoint" to "DELETE /accounts/{id}")
-                .info { "Request received" }
+            log.withContext(
+                "userId" to userId,
+                "accountId" to accountId,
+                "endpoint" to "DELETE /accounts/{id}"
+            ).info { "Delete account request received" }
 
-            val deleted = accountService.deleteAccount(userId, accountId)
+            val deleted: Boolean = accountService.deleteAccount(userId, accountId)
             if (!deleted) throw NoSuchElementException("Account not found")
 
             call.respond(ApiResponse.Success("Account deleted successfully"))
