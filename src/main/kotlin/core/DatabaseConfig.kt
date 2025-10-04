@@ -11,7 +11,9 @@ data class DatabaseConfig(
     val poolSize: Int,
     val connectionTimeout: Long,
     val validationTimeout: Long,
-    val leakDetectionThreshold: Long
+    val leakDetectionThreshold: Long,
+    val minimumIdle: Int? = null,
+    val maxLifetime: Long? = null
 ) {
     companion object {
         fun fromEnvironment(config: ApplicationConfig): DatabaseConfig {
@@ -33,7 +35,10 @@ data class DatabaseConfig(
                 validationTimeout = config.propertyOrNull("database.validationTimeout")?.getString()?.toLongOrNull()
                     ?: TimeUnit.SECONDS.toMillis(5),
                 leakDetectionThreshold = config.propertyOrNull("database.leakDetectionThreshold")?.getString()?.toLongOrNull()
-                    ?: TimeUnit.SECONDS.toMillis(60)
+                    ?: TimeUnit.SECONDS.toMillis(60),
+                minimumIdle = config.propertyOrNull("database.minimumIdle")?.getString()?.toIntOrNull(),
+                maxLifetime = config.propertyOrNull("database.maxLifetime")?.getString()?.toLongOrNull()
+                    ?: TimeUnit.MINUTES.toMillis(30) // Default 30 minutes
             )
         }
     }

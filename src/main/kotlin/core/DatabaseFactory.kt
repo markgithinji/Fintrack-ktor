@@ -12,35 +12,69 @@ import com.fintrack.core.withContext
 import java.util.concurrent.TimeUnit
 
 object DatabaseFactory {
-    private lateinit var dataSource: HikariDataSource
+    private var dataSource: HikariDataSource? = null
     private val log = logger<DatabaseFactory>()
 
+    @Volatile
+    private var initialized = false
+    private val initLock = Any()
+
     fun init(databaseConfig: DatabaseConfig) {
-        val config = HikariConfig().apply {
-            driverClassName = databaseConfig.driver
-            jdbcUrl = databaseConfig.url
-            username = databaseConfig.user
-            password = databaseConfig.password
-            maximumPoolSize = databaseConfig.poolSize
-            isAutoCommit = false
+        synchronized(initLock) {
+            if (initialized) {
+                log.warn("DatabaseFactory already initialized")
+                return
+            }
 
-            connectionTimeout = databaseConfig.connectionTimeout
-            validationTimeout = databaseConfig.validationTimeout
-            leakDetectionThreshold = databaseConfig.leakDetectionThreshold
-            connectionTestQuery = "SELECT 1"
+            val config = HikariConfig().apply {
+                driverClassName = databaseConfig.driver
+                jdbcUrl = databaseConfig.url
+                username = databaseConfig.user
+                password = databaseConfig.password
+                maximumPoolSize = databaseConfig.poolSize
+                minimumIdle = databaseConfig.minimumIdle ?: (databaseConfig.poolSize / 2)
+                maxLifetime = databaseConfig.maxLifetime ?: 1800000
+                isAutoCommit = false
+                transactionIsolation = "TRANSACTION_READ_COMMITTED"
 
-            validate()
+                connectionTimeout = databaseConfig.connectionTimeout
+                validationTimeout = databaseConfig.validationTimeout
+                leakDetectionThreshold = databaseConfig.leakDetectionThreshold
+                connectionTestQuery = "SELECT 1"
+
+                addDataSourceProperty("cachePrepStmts", "true")
+                addDataSourceProperty("prepStmtCacheSize", "250")
+                addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
+            }
+
+            dataSource = HikariDataSource(config)
+            Database.connect(dataSource!!)
+
+            log.withContext(
+                "url" to config.jdbcUrl.replace(Regex(":[^:]*@"), ":****@"),
+                "poolSize" to config.maximumPoolSize,
+                "minIdle" to config.minimumIdle
+            ).info("Database connection pool initialized")
+
+            // Test connection - let exceptions propagate for startup failure
+            testConnection()
+
+            // Run schema migrations - let exceptions propagate
+            runMigrations()
+
+            initialized = true
+            log.info("DatabaseFactory initialized successfully")
         }
+    }
 
-        dataSource = HikariDataSource(config)
-        Database.connect(dataSource)
+    private fun testConnection() {
+        transaction {
+            exec("SELECT 1") { }
+        }
+        log.debug("Initial database connection test passed")
+    }
 
-        log.withContext(
-            "url" to config.jdbcUrl.replace(Regex(":[^:]*@"), ":****@"),
-            "poolSize" to config.maximumPoolSize
-        ).info("Database connection pool initialized")
-
-        // Run schema migrations
+    private fun runMigrations() {
         transaction {
             SchemaUtils.create(TransactionsTable)
         }
@@ -48,26 +82,44 @@ object DatabaseFactory {
     }
 
     fun checkConnection(): Boolean {
-        transaction {
-            // Simple query to test connection
-            exec("SELECT 1") { }
+        if (!initialized) {
+            log.warn("DatabaseFactory not initialized")
+            return false
         }
-        log.debug("Database health check passed")
-        return true
+
+        return try {
+            transaction {
+                exec("SELECT 1") { }
+            }
+            log.debug("Database health check passed")
+            true
+        } catch (e: Exception) {
+            log.error("Database health check failed", e)
+            false
+        }
     }
 
     fun getPoolStats(): Map<String, Any> {
-        if (!::dataSource.isInitialized || !dataSource.isRunning) {
-            return emptyMap()
-        }
+        val ds = dataSource ?: return emptyMap()
 
-        val pool = dataSource.hikariPoolMXBean
-        return mapOf(
-            "activeConnections" to pool.activeConnections,
-            "idleConnections" to pool.idleConnections,
-            "totalConnections" to pool.totalConnections,
-            "threadsAwaitingConnection" to pool.threadsAwaitingConnection,
-            "maximumPoolSize" to dataSource.maximumPoolSize
-        )
+        return try {
+            if (!ds.isRunning) {
+                return emptyMap()
+            }
+
+            val pool = ds.hikariPoolMXBean
+            mapOf(
+                "activeConnections" to pool.activeConnections,
+                "idleConnections" to pool.idleConnections,
+                "totalConnections" to pool.totalConnections,
+                "threadsAwaitingConnection" to pool.threadsAwaitingConnection,
+                "maximumPoolSize" to ds.maximumPoolSize,
+                "minimumIdle" to ds.minimumIdle,
+                "state" to if (ds.isRunning) "running" else "stopped"
+            )
+        } catch (e: Exception) {
+            log.warn("Failed to get pool stats", e)
+            emptyMap()
+        }
     }
 }
