@@ -20,7 +20,7 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 
 fun Route.budgetRoutes(budgetService: BudgetService) {
-    val log = logger()
+    val log = logger("BudgetRoutes")
 
     route("/budgets") {
         // POST bulk budgets
@@ -32,7 +32,7 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "userId" to userId,
                 "endpoint" to "POST /budgets/bulk",
                 "budgetCount" to requests.size
-            ).info("Bulk budget creation request received")
+            ).info{ "Bulk budget creation request received" }
 
             val saved = budgetService.createBudgets(userId, requests)
             call.respond(ApiResponse.Success(saved.map { it.toDto() }))
@@ -48,7 +48,7 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "endpoint" to "POST /budgets",
                 "budgetName" to request.name,
                 "limit" to request.limit
-            ).info("Budget creation request received")
+            ).info{ "Budget creation request received" }
 
             val budget = budgetService.createBudget(userId, request)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(budget.toDto()))
@@ -66,7 +66,7 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "userId" to userId,
                 "budgetId" to id,
                 "endpoint" to "PUT /budgets/{id}"
-            ).info("Budget update request received")
+            ).info{ "Budget update request received" }
 
             val updatedBudget = budgetService.updateBudget(userId, id, request)
             call.respond(ApiResponse.Success(updatedBudget.toDto()))
@@ -82,7 +82,7 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "userId" to userId,
                 "budgetId" to id,
                 "endpoint" to "DELETE /budgets/{id}"
-            ).info("Budget deletion request received")
+            ).info{ "Budget deletion request received" }
 
             val removed = budgetService.deleteBudget(userId, id)
             if (!removed) throw NoSuchElementException("Budget not found")
@@ -99,7 +99,7 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "userId" to userId,
                 "accountId" to accountId,
                 "endpoint" to "GET /budgets"
-            ).info("Fetch budgets request received")
+            ).info{ "Fetch budgets request received" }
 
             val budgets = budgetService.getAllBudgets(userId, accountId)
             call.respond(ApiResponse.Success(budgets.map { it.toDto() }))
@@ -115,7 +115,7 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "userId" to userId,
                 "budgetId" to id,
                 "endpoint" to "GET /budgets/{id}"
-            ).info("Fetch budget by ID request received")
+            ).info{ "Fetch budget by ID request received" }
 
             val budget = budgetService.getBudgetById(userId, id)
             call.respond(ApiResponse.Success(budget.toDto()))

@@ -32,7 +32,7 @@ class AccountServiceImpl(
     }
 
     override suspend fun getAllAccounts(userId: Int): List<AccountDto> {
-        log.withContext("userId" to userId).info("Fetching all accounts")
+        log.withContext("userId" to userId).info{ "Fetching all accounts" }
 
         val accounts = accountsRepository.getAllAccounts(userId)
         val result = accounts.map { account ->
@@ -45,13 +45,13 @@ class AccountServiceImpl(
         }
 
         log.withContext("userId" to userId, "accountCount" to result.size)
-            .debug("Accounts retrieved successfully")
+            .debug{ "Accounts retrieved successfully" }
         return result
     }
 
     override suspend fun getAccount(userId: Int, accountId: Int): AccountDto? {
         log.withContext("userId" to userId, "accountId" to accountId)
-            .debug("Fetching account")
+            .debug{ "Fetching account" }
 
         val account = accountsRepository.getAccountById(accountId) ?: return null
         if (account.userId != userId) return null
@@ -67,18 +67,18 @@ class AccountServiceImpl(
 
     override suspend fun createAccount(userId: Int, request: CreateAccountRequest): AccountDto {
         log.withContext("userId" to userId, "accountName" to request.name)
-            .info("Creating account")
+            .info{ "Creating account" }
 
         val account = accountsRepository.addAccount(request.toDomain(userId))
 
         log.withContext("userId" to userId, "accountId" to account.id)
-            .info("Account created successfully")
+            .info{ "Account created successfully" }
         return account.toDto()
     }
 
     override suspend fun updateAccount(userId: Int, accountId: Int, request: UpdateAccountRequest): AccountDto {
         log.withContext("userId" to userId, "accountId" to accountId, "accountName" to request.name)
-            .info("Updating account")
+            .info{ "Updating account" }
 
         val existingAccount = accountsRepository.getAccountById(accountId)
             ?: throw NoSuchElementException("Account not found")
@@ -88,7 +88,7 @@ class AccountServiceImpl(
                 "attemptedUserId" to userId,
                 "actualUserId" to existingAccount.userId,
                 "accountId" to accountId
-            ).warn("Unauthorized account update attempt")
+            ).warn{ "Unauthorized account update attempt" }
             throw UnauthorizedAccessException("Account does not belong to user")
         }
 
@@ -106,7 +106,7 @@ class AccountServiceImpl(
 
     override suspend fun deleteAccount(userId: Int, accountId: Int): Boolean {
         log.withContext("userId" to userId, "accountId" to accountId)
-            .info("Deleting account")
+            .info{ "Deleting account" }
 
         val account = accountsRepository.getAccountById(accountId) ?: return false
         if (account.userId != userId) {
@@ -114,7 +114,7 @@ class AccountServiceImpl(
                 "attemptedUserId" to userId,
                 "actualUserId" to account.userId,
                 "accountId" to accountId
-            ).warn("Unauthorized account deletion attempt")
+            ).warn{ "Unauthorized account deletion attempt" }
             return false
         }
 

@@ -25,7 +25,7 @@ import kotlinx.datetime.atTime
 import org.jetbrains.exposed.sql.SortOrder
 
 fun Route.transactionRoutes(service: TransactionService) {
-    val log = logger()
+    val log = logger("TransactionRoutes")
 
     route("/transactions") {
         delete("/clear") {
@@ -36,7 +36,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "userId" to userId,
                 "accountId" to accountId,
                 "endpoint" to "DELETE /transactions/clear"
-            ).warn("Clear all transactions request received")
+            ).warn { "Clear all transactions request received" }
 
             service.clearAll(userId, accountId)
 
@@ -59,7 +59,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "userId" to userId,
                 "endpoint" to "POST /transactions/bulk",
                 "transactionCount" to requests.size
-            ).info("Bulk transaction creation request received")
+            ).info { "Bulk transaction creation request received" }
 
             val saved = service.addBulk(userId, requests).map { it.toDto() }
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
@@ -91,7 +91,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "limit" to limit,
                 "afterDateTime" to afterDateTime,
                 "afterId" to afterId
-            ).info("Transaction list request received")
+            ).info { "Transaction list request received" }
 
             val transactions = service.getAllCursor(
                 userId = userId,
@@ -118,7 +118,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "userId" to userId,
                 "transactionCount" to transactions.size,
                 "hasNextCursor" to (nextCursor != null)
-            ).debug("Transaction list retrieved successfully")
+            ).debug { "Transaction list retrieved successfully" }
 
             call.respond(ApiResponse.Success(PaginatedTransactionDto(transactions, nextCursor)))
         }
@@ -132,7 +132,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "userId" to userId,
                 "transactionId" to id,
                 "endpoint" to "GET /transactions/{id}"
-            ).info("Get transaction by ID request received")
+            ).info { "Get transaction by ID request received" }
 
             val transaction = service.getById(userId, id)
             call.respond(ApiResponse.Success(transaction.toDto()))
@@ -149,7 +149,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "amount" to request.amount,
                 "isIncome" to request.isIncome,
                 "category" to request.category
-            ).info("Create transaction request received")
+            ).info { "Create transaction request received" }
 
             val saved = service.add(userId, request)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved.toDto()))
@@ -167,7 +167,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "endpoint" to "PUT /transactions/{id}",
                 "accountId" to request.accountId,
                 "amount" to request.amount
-            ).info("Update transaction request received")
+            ).info { "Update transaction request received" }
 
             val updated = service.update(userId, id, request)
             call.respond(ApiResponse.Success(updated.toDto()))
@@ -182,7 +182,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "userId" to userId,
                 "transactionId" to id,
                 "endpoint" to "DELETE /transactions/{id}"
-            ).info("Delete transaction request received")
+            ).info { "Delete transaction request received" }
 
             service.delete(userId, id)
             call.respond(ApiResponse.Success(mapOf("message" to "Transaction deleted successfully")))

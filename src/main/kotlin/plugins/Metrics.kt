@@ -38,5 +38,5 @@ fun Application.configureMetrics() {
     log.withContext(
         "endpoint" to "/metrics",
         "registryType" to (appMicrometerRegistry::class.simpleName ?: "Unknown")
-    ).info("Micrometer metrics configured successfully")
+    ).info{ "Micrometer metrics configured successfully" }
 }

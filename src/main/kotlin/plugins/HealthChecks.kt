@@ -17,7 +17,7 @@ import org.koin.ktor.ext.inject
 fun Application.configureHealthChecks() {
     val log = logger<Application>()
 
-    log.withContext("step" to "health_checks_setup").info("Configuring Micrometer health checks")
+    log.withContext("step" to "health_checks_setup").info{ "Configuring Micrometer health checks" }
 
     // Get health indicators from DI
     val databaseHealthIndicator by inject<DatabaseHealthIndicator>()
@@ -35,5 +35,5 @@ fun Application.configureHealthChecks() {
     ProcessorMetrics().bindTo(appMicrometerRegistry)
     UptimeMetrics().bindTo(appMicrometerRegistry)
 
-    log.withContext("healthIndicators" to 2).info("Micrometer health indicators registered")
+    log.withContext("healthIndicators" to 2).info{ "Micrometer health indicators registered" }
 }

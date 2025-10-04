@@ -12,8 +12,9 @@ import feature.auth.domain.AuthService
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.mindrot.jbcrypt.BCrypt
+
 fun Route.authRoutes(authService: AuthService) {
-    val log = logger()
+    val log = logger("AuthRoutes")
 
     route("/auth") {
 
@@ -23,11 +24,11 @@ fun Route.authRoutes(authService: AuthService) {
             log.withContext(
                 "endpoint" to "POST /auth/register",
                 "email" to request.email
-            ).info("Registration request received")
+            ).info{ "Registration request received" }
 
             val response = authService.register(request.email, request.password)
 
-            log.withContext("email" to request.email).info("Registration completed successfully")
+            log.withContext("email" to request.email).info{ "Registration completed successfully" }
             call.respond(HttpStatusCode.Created, response)
         }
 
@@ -37,11 +38,11 @@ fun Route.authRoutes(authService: AuthService) {
             log.withContext(
                 "endpoint" to "POST /auth/login",
                 "email" to request.email
-            ).info("Login request received")
+            ).info{"Login request received"}
 
             val response = authService.login(request.email, request.password)
 
-            log.withContext("email" to request.email).info("Login completed successfully")
+            log.withContext("email" to request.email).info{ "Login completed successfully" }
             call.respond(HttpStatusCode.OK, response)
         }
     }

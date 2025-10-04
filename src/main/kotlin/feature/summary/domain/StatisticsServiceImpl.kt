@@ -48,14 +48,14 @@ class StatisticsServiceImpl(
             "isIncome" to isIncome,
             "start" to start?.toString(),
             "end" to end?.toString()
-        ).debug("Calculating statistics summary")
+        ).debug { "Calculating statistics summary" }
 
         val filtered = statisticsRepository.getTransactions(userId, accountId, isIncome, start, end)
 
         log.withContext(
             "userId" to userId,
             "transactionCount" to filtered.size
-        ).debug("Retrieved transactions for statistics")
+        ).debug { "Retrieved transactions for statistics" }
 
         val incomeTxns = filtered.filter { it.isIncome }
         val expenseTxns = filtered.filter { !it.isIncome }
@@ -112,7 +112,7 @@ class StatisticsServiceImpl(
             "expenseTransactionCount" to expenseTxns.size,
             "highestIncomeMonth" to incomeHighlights.highestMonth?.amount,
             "highestExpenseMonth" to expenseHighlights.highestMonth?.amount
-        ).debug("Statistics summary calculated successfully")
+        ).debug { "Statistics summary calculated successfully" }
 
         return summary
     }
@@ -132,7 +132,7 @@ class StatisticsServiceImpl(
             "isIncome" to isIncome,
             "start" to start?.toString(),
             "end" to end?.toString()
-        ).debug("Calculating distribution summary")
+        ).debug { "Calculating distribution summary" }
 
         val filtered = statisticsRepository.getTransactions(userId, accountId, isIncome, start, end)
         val incomeTxns = filtered.filter { it.isIncome }
@@ -181,47 +181,47 @@ class StatisticsServiceImpl(
             "period" to period,
             "incomeCategoryCount" to incomeCategoriesFinal.size,
             "expenseCategoryCount" to expenseCategoriesFinal.size
-        ).debug("Distribution summary calculated successfully")
+        ).debug { "Distribution summary calculated successfully" }
 
         return distribution
     }
 
     override suspend fun getAvailableWeeks(userId: Int, accountId: Int?): AvailableWeeks {
         log.withContext("userId" to userId, "accountId" to accountId)
-            .debug("Fetching available weeks")
+            .debug { "Fetching available weeks" }
 
         val weeks = statisticsRepository.getAvailablePeriods(userId, accountId, "weeks")
 
         log.withContext("userId" to userId, "weekCount" to weeks.size)
-            .debug("Available weeks retrieved")
+            .debug { "Available weeks retrieved" }
         return AvailableWeeks(weeks)
     }
 
     override suspend fun getAvailableMonths(userId: Int, accountId: Int?): AvailableMonths {
         log.withContext("userId" to userId, "accountId" to accountId)
-            .debug("Fetching available months")
+            .debug { "Fetching available months" }
 
         val months = statisticsRepository.getAvailablePeriods(userId, accountId, "months")
 
         log.withContext("userId" to userId, "monthCount" to months.size)
-            .debug("Available months retrieved")
+            .debug { "Available months retrieved" }
         return AvailableMonths(months)
     }
 
     override suspend fun getAvailableYears(userId: Int, accountId: Int?): AvailableYears {
         log.withContext("userId" to userId, "accountId" to accountId)
-            .debug("Fetching available years")
+            .debug { "Fetching available years" }
 
         val years = statisticsRepository.getAvailablePeriods(userId, accountId, "years")
 
         log.withContext("userId" to userId, "yearCount" to years.size)
-            .debug("Available years retrieved")
+            .debug { "Available years retrieved" }
         return AvailableYears(years)
     }
 
     override suspend fun getOverviewSummary(userId: Int, accountId: Int?): OverviewSummary {
         log.withContext("userId" to userId, "accountId" to accountId)
-            .debug("Calculating overview summary")
+            .debug { "Calculating overview summary" }
 
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         val weeklyStart = today.minus(DatePeriod(days = 6))
@@ -232,7 +232,7 @@ class StatisticsServiceImpl(
             "weeklyStart" to weeklyStart,
             "monthlyStart" to monthlyStart,
             "today" to today
-        ).debug("Date ranges calculated for overview")
+        ).debug { "Date ranges calculated for overview" }
 
         val weekly = getDaySummaries(userId, weeklyStart, today, accountId)
         val monthly = getDaySummaries(userId, monthlyStart, today, accountId)
@@ -243,7 +243,7 @@ class StatisticsServiceImpl(
             "userId" to userId,
             "weeklyDataPoints" to weekly.size,
             "monthlyDataPoints" to monthly.size
-        ).debug("Overview summary calculated successfully")
+        ).debug { "Overview summary calculated successfully" }
 
         return overview
     }
@@ -259,14 +259,14 @@ class StatisticsServiceImpl(
             "start" to start,
             "end" to end,
             "accountId" to accountId
-        ).debug("Calculating day summaries")
+        ).debug { "Calculating day summaries" }
 
         val transactions = statisticsRepository.getTransactionsByDateRange(userId, start, end, accountId)
 
         log.withContext(
             "userId" to userId,
             "transactionCount" to transactions.size
-        ).debug("Retrieved transactions for day summaries")
+        ).debug { "Retrieved transactions for day summaries" }
 
         val dates = generateSequence(start) { current ->
             if (current < end) current.plus(DatePeriod(days = 1)) else null
@@ -283,7 +283,7 @@ class StatisticsServiceImpl(
             "userId" to userId,
             "dayCount" to summaries.size,
             "dateRange" to "${start} to ${end}"
-        ).debug("Day summaries calculated successfully")
+        ).debug { "Day summaries calculated successfully" }
 
         return summaries
     }
@@ -293,7 +293,7 @@ class StatisticsServiceImpl(
         accountId: Int?
     ): List<CategoryComparison> {
         log.withContext("userId" to userId, "accountId" to accountId)
-            .debug("Calculating category comparisons")
+            .debug { "Calculating category comparisons" }
 
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
@@ -311,7 +311,7 @@ class StatisticsServiceImpl(
             "lastWeek" to "${lastWeekStart} to ${lastWeekEnd}",
             "thisMonth" to "${thisMonthStart} to ${now}",
             "lastMonth" to "${lastMonthStart} to ${lastMonthEnd}"
-        ).debug("Date ranges calculated for category comparisons")
+        ).debug { "Date ranges calculated for category comparisons" }
 
         val thisWeekTotals = statisticsRepository.getCategoryTotals(userId, thisWeekStart, now, accountId)
         val lastWeekTotals = statisticsRepository.getCategoryTotals(userId, lastWeekStart, lastWeekEnd, accountId)
@@ -352,7 +352,7 @@ class StatisticsServiceImpl(
             "comparisonCount" to comparisons.size,
             "weeklyCategory" to weeklyComparison?.category,
             "monthlyCategory" to monthlyComparison?.category
-        ).debug("Category comparisons calculated successfully")
+        ).debug { "Category comparisons calculated successfully" }
 
         return comparisons
     }
@@ -362,13 +362,13 @@ class StatisticsServiceImpl(
         accountId: Int
     ): TransactionCountSummaryDto? {
         log.withContext("userId" to userId, "accountId" to accountId)
-            .debug("Fetching transaction count summary")
+            .debug { "Fetching transaction count summary" }
 
         val counts = statisticsRepository.getTransactionCounts(userId, accountId)
 
         val result = if (counts.totalCount == 0) {
             log.withContext("userId" to userId, "accountId" to accountId)
-                .debug("No transactions found for account")
+                .debug { "No transactions found for account" }
             null
         } else {
             TransactionCountSummaryDto(
@@ -384,14 +384,14 @@ class StatisticsServiceImpl(
             "totalTransactions" to counts.totalCount,
             "incomeCount" to counts.incomeCount,
             "expenseCount" to counts.expenseCount
-        ).debug("Transaction count summary retrieved")
+        ).debug { "Transaction count summary retrieved" }
 
         return result
     }
 
     // ---- Helper methods for route parameter processing ----
     override fun parseTypeFilter(typeFilter: String?): Boolean? {
-        log.withContext("typeFilter" to typeFilter).debug("Parsing type filter")
+        log.withContext("typeFilter" to typeFilter).debug { "Parsing type filter" }
         return when (typeFilter?.lowercase()) {
             "income" -> true
             "expense" -> false
@@ -402,7 +402,7 @@ class StatisticsServiceImpl(
     }
 
     override fun parseDateRange(startDate: String?, endDate: String?): Pair<LocalDateTime?, LocalDateTime?> {
-        log.withContext("startDate" to startDate, "endDate" to endDate).debug("Parsing date range")
+        log.withContext("startDate" to startDate, "endDate" to endDate).debug { "Parsing date range" }
 
         val start = startDate?.let {
             LocalDate.parse(it).atTime(LocalTime(0, 0, 0))
@@ -413,11 +413,11 @@ class StatisticsServiceImpl(
 
         // Validate date range logic
         if (start != null && end != null && start > end) {
-            log.withContext("start" to start, "end" to end).warn("Invalid date range - start after end")
+            log.withContext("start" to start, "end" to end).warn { "Invalid date range - start after end" }
             throw ValidationException("Start date cannot be after end date")
         }
 
-        log.withContext("parsedStart" to start, "parsedEnd" to end).debug("Date range parsed successfully")
+        log.withContext("parsedStart" to start, "parsedEnd" to end).debug { "Date range parsed successfully" }
         return start to end
     }
 }

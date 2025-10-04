@@ -16,7 +16,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Route.userRoutes(userService: UserService) {
-    val log = logger()
+    val log = logger("UserRoutes")
 
     route("/users") {
         get("/me") {
@@ -25,7 +25,7 @@ fun Route.userRoutes(userService: UserService) {
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "GET /users/me"
-            ).info("Get user profile request received")
+            ).info{ "Get user profile request received" }
 
             val user = userService.getUserProfile(userId)
                 ?: throw NoSuchElementException("User not found")
@@ -43,7 +43,7 @@ fun Route.userRoutes(userService: UserService) {
                 "endpoint" to "PUT /users/me",
                 "usernameUpdate" to (updateRequest.username != null),
                 "passwordUpdate" to (updateRequest.password != null)
-            ).info("Update user profile request received")
+            ).info{ "Update user profile request received" }
 
             val success = userService.updateUser(userId, updateRequest)
 
@@ -61,12 +61,12 @@ fun Route.userRoutes(userService: UserService) {
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "DELETE /users/me"
-            ).warn("Delete user account request received") // Warn level for destructive operation
+            ).warn{ "Delete user account request received" } // Warn level for destructive operation
 
             val success = userService.deleteUser(userId)
 
             if (success) {
-                log.withContext("userId" to userId).warn("User account deletion completed")
+                log.withContext("userId" to userId).warn{ "User account deletion completed" }
                 call.respond(HttpStatusCode.OK, ApiResponse.Success("User account deleted successfully"))
             } else {
                 throw NoSuchElementException("User not found")

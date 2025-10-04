@@ -15,35 +15,35 @@ class AuthServiceImpl(
     private val log = logger<AuthServiceImpl>()
 
     override suspend fun register(email: String, password: String): AuthResponse {
-        log.withContext("email" to email).info("Registration attempt")
+        log.withContext("email" to email).info { "Registration attempt" }
 
         if (userRepository.userExists(email)) {
-            log.withContext("email" to email).warn("Registration failed - user already exists")
+            log.withContext("email" to email).warn { "Registration failed - user already exists" }
             throw IllegalArgumentException("User with email '$email' already exists")
         }
 
         val userId = userRepository.createUser(email, password)
         val token = JwtConfig.generateToken(userId)
 
-        log.withContext("userId" to userId, "email" to email).info("User registered successfully")
+        log.withContext("userId" to userId, "email" to email).info { "User registered successfully" }
         return AuthResponse(token = token)
     }
 
     override suspend fun login(email: String, password: String): AuthResponse {
-        log.withContext("email" to email).info("Login attempt")
+        log.withContext("email" to email).info { "Login attempt" }
 
         val user = userRepository.findByUsername(email) ?: run {
-            log.withContext("email" to email).warn("Login failed - user not found")
+            log.withContext("email" to email).warn { "Login failed - user not found" }
             throw AuthenticationException("Invalid credentials")
         }
 
         if (!BCrypt.checkpw(password, user.passwordHash)) {
-            log.withContext("userId" to user.id, "email" to email).warn("Login failed - invalid password")
+            log.withContext("userId" to user.id, "email" to email).warn { "Login failed - invalid password" }
             throw AuthenticationException("Invalid credentials")
         }
 
         val token = JwtConfig.generateToken(user.id)
-        log.withContext("userId" to user.id, "email" to email).info("Login successful")
+        log.withContext("userId" to user.id, "email" to email).info { "Login successful" }
         return AuthResponse(token = token)
     }
 }

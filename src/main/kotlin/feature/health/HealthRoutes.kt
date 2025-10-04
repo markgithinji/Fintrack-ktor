@@ -9,14 +9,14 @@ import io.ktor.server.routing.Routing
 import io.ktor.server.routing.get
 
 fun Routing.healthRoutes(healthService: HealthService) {
-    val log = logger()
+    val log = logger("HealthRoutes")
 
     // Simple health check
     get("/health") {
         log.withContext(
             "endpoint" to "/health",
             "clientIp" to call.request.origin.remoteHost
-        ).debug("Health check request")
+        ).debug { "Health check request" }
 
         call.respond(mapOf(
             "status" to "UP",
@@ -30,14 +30,14 @@ fun Routing.healthRoutes(healthService: HealthService) {
         log.withContext(
             "endpoint" to "/health/detailed",
             "clientIp" to call.request.origin.remoteHost
-        ).info("Detailed health check request")
+        ).info { "Detailed health check request" }
 
         val healthStatus = healthService.getDetailedHealthStatus()
 
         log.withContext(
             "endpoint" to "/health/detailed",
             "overallStatus" to healthStatus["status"]
-        ).debug("Detailed health status generated")
+        ).debug { "Detailed health status generated" }
 
         call.respond(healthStatus)
     }
@@ -47,7 +47,7 @@ fun Routing.healthRoutes(healthService: HealthService) {
         log.withContext(
             "endpoint" to "/health/ready",
             "clientIp" to call.request.origin.remoteHost
-        ).info("Readiness check request")
+        ).info { "Readiness check request" }
 
         val isReady = healthService.checkReadiness()
         val status = if (isReady) "READY" else "NOT_READY"
@@ -55,7 +55,7 @@ fun Routing.healthRoutes(healthService: HealthService) {
         log.withContext(
             "endpoint" to "/health/ready",
             "status" to status
-        ).debug("Readiness check completed")
+        ).debug { "Readiness check completed" }
 
         call.respond(mapOf("status" to status))
     }
@@ -65,7 +65,7 @@ fun Routing.healthRoutes(healthService: HealthService) {
         log.withContext(
             "endpoint" to "/health/live",
             "clientIp" to call.request.origin.remoteHost
-        ).debug("Liveness check request")
+        ).debug { "Liveness check request" }
 
         call.respond(mapOf("status" to "ALIVE"))
     }
@@ -75,7 +75,7 @@ fun Routing.healthRoutes(healthService: HealthService) {
         log.withContext(
             "endpoint" to "/health/metrics",
             "clientIp" to call.request.origin.remoteHost
-        ).info("Health metrics request")
+        ).info { "Health metrics request" }
 
         val metrics = healthService.getHealthMetrics()
         call.respond(metrics)

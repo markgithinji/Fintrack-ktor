@@ -54,7 +54,7 @@ object DatabaseFactory {
                 "url" to config.jdbcUrl.replace(Regex(":[^:]*@"), ":****@"),
                 "poolSize" to config.maximumPoolSize,
                 "minIdle" to config.minimumIdle
-            ).info("Database connection pool initialized")
+            ).info{ "Database connection pool initialized" }
 
             // Test connection - let exceptions propagate for startup failure
             testConnection()

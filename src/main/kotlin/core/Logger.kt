@@ -1,40 +1,66 @@
 package com.fintrack.core
 
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-inline fun <reified T> T.logger() = LoggerFactory.getLogger(T::class.java)!!
+// Primary logger function
+inline fun <reified T> logger(): Logger = LoggerFactory.getLogger(T::class.java)
 
 // Extension functions for convenient logging with lazy evaluation
-fun org.slf4j.Logger.debug(lazyMessage: () -> String) {
+inline fun Logger.debug(lazyMessage: () -> String) {
     if (isDebugEnabled) debug(lazyMessage())
 }
 
-fun org.slf4j.Logger.info(lazyMessage: () -> String) {
+inline fun Logger.info(lazyMessage: () -> String) {
     if (isInfoEnabled) info(lazyMessage())
 }
 
-fun org.slf4j.Logger.warn(lazyMessage: () -> String) {
+inline fun Logger.warn(lazyMessage: () -> String) {
     if (isWarnEnabled) warn(lazyMessage())
 }
 
-fun org.slf4j.Logger.error(lazyMessage: () -> String, exception: Throwable? = null) {
+inline fun Logger.error(lazyMessage: () -> String, exception: Throwable? = null) {
     if (isErrorEnabled) {
         if (exception != null) error(lazyMessage(), exception) else error(lazyMessage())
     }
 }
 
+inline fun Logger.trace(lazyMessage: () -> String) {
+    if (isTraceEnabled) trace(lazyMessage())
+}
+
 // Structured logging helpers
-fun org.slf4j.Logger.withContext(vararg context: Pair<String, Any?>): StructuredLogger {
+fun Logger.withContext(vararg context: Pair<String, Any?>): StructuredLogger {
     return StructuredLogger(this, context.toMap())
 }
 
-class StructuredLogger(private val logger: org.slf4j.Logger, private val context: Map<String, Any?>) {
-    fun debug(message: String) = logger.debug { "$message ${formatContext()}" }
-    fun info(message: String) = logger.info { "$message ${formatContext()}" }
-    fun warn(message: String) = logger.warn { "$message ${formatContext()}" }
-    fun error(message: String, exception: Throwable? = null) = logger.error({ "$message ${formatContext()}" }, exception)
-
-    private fun formatContext(): String = context.entries
-        .filter { it.value != null }
-        .joinToString(" ") { "${it.key}=${it.value}" }
+fun Logger.withContext(context: Map<String, Any?>): StructuredLogger {
+    return StructuredLogger(this, context)
 }
+
+class StructuredLogger internal constructor(
+    private val logger: Logger,
+    private val context: Map<String, Any?>
+) {
+    fun debug(lazyMessage: () -> String) =
+        logger.debug { "${lazyMessage()} ${context.formatContext()}" }
+
+    fun info(lazyMessage: () -> String) =
+        logger.info { "${lazyMessage()} ${context.formatContext()}" }
+
+    fun warn(lazyMessage: () -> String) =
+        logger.warn { "${lazyMessage()} ${context.formatContext()}" }
+
+    fun error(lazyMessage: () -> String, exception: Throwable? = null) =
+        logger.error({ "${lazyMessage()} ${context.formatContext()}" }, exception)
+
+    fun trace(lazyMessage: () -> String) =
+        logger.trace { "${lazyMessage()} ${context.formatContext()}" }
+}
+
+private fun Map<String, Any?>.formatContext(): String = entries
+    .filter { it.value != null }
+    .joinToString(" ") { "${it.key}=[${it.value}]" }
+
+// Convenience function for creating loggers with custom names
+fun logger(name: String): Logger = LoggerFactory.getLogger(name)

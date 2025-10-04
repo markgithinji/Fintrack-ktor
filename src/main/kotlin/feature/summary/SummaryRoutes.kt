@@ -16,7 +16,7 @@ import io.ktor.server.routing.route
 import kotlinx.datetime.LocalDate
 
 fun Route.summaryRoutes(service: StatisticsService) {
-    val log = logger()
+    val log = logger("SummaryRoutes")
 
     route("/transactions/summary") {
         get("/highlights") {
@@ -33,7 +33,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "typeFilter" to typeFilter,
                 "startDate" to startDate,
                 "endDate" to endDate
-            ).info("Highlights request received")
+            ).info { "Highlights request received" }
 
             val (start, end) = service.parseDateRange(startDate, endDate)
             val isIncomeFilter = service.parseTypeFilter(typeFilter)
@@ -72,7 +72,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "typeFilter" to typeFilter,
                 "startDate" to startDate,
                 "endDate" to endDate
-            ).info("Distribution request received")
+            ).info { "Distribution request received" }
 
             val (start, end) = service.parseDateRange(startDate, endDate)
             val isIncomeFilter = service.parseTypeFilter(typeFilter)
@@ -97,7 +97,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/available-weeks",
                 "accountId" to accountId
-            ).info("Available weeks request received")
+            ).info { "Available weeks request received" }
 
             val result = service.getAvailableWeeks(userId, accountId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
@@ -111,7 +111,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/available-months",
                 "accountId" to accountId
-            ).info("Available months request received")
+            ).info { "Available months request received" }
 
             val result = service.getAvailableMonths(userId, accountId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
@@ -125,7 +125,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/available-years",
                 "accountId" to accountId
-            ).info("Available years request received")
+            ).info { "Available years request received" }
 
             val result = service.getAvailableYears(userId, accountId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
@@ -139,7 +139,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/overview",
                 "accountId" to accountId
-            ).info("Overview request received")
+            ).info { "Overview request received" }
 
             val overview = service.getOverviewSummary(userId, accountId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(overview.toDto()))
@@ -157,7 +157,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "accountId" to accountId,
                 "startParam" to startParam,
                 "endParam" to endParam
-            ).info("Overview range request received")
+            ).info { "Overview range request received" }
 
             if (startParam == null || endParam == null) {
                 throw ValidationException("start and end query params required (yyyy-MM-dd)")
@@ -181,7 +181,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/category-comparison",
                 "accountId" to accountId
-            ).info("Category comparison request received")
+            ).info { "Category comparison request received" }
 
             val comparisons = service.getCategoryComparisons(userId, accountId)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(comparisons.map { it.toDto() }))
@@ -196,7 +196,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/counts",
                 "accountId" to accountId
-            ).info("Transaction counts request received")
+            ).info { "Transaction counts request received" }
 
             val summary = service.getTransactionCountSummary(userId, accountId)
                 ?: throw NoSuchElementException("No transactions found for accountId=$accountId")

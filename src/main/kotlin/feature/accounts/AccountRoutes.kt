@@ -13,15 +13,16 @@ import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+
 fun Route.accountsRoutes(accountService: AccountService) {
-    val log = logger()
+    val log = logger("AccountRoutes")
 
     route("/accounts") {
 
         get {
             val userId = call.userIdOrThrow()
             log.withContext("userId" to userId, "endpoint" to "GET /accounts")
-                .info("Request received")
+                .info { "Request received" }
 
             val accounts = accountService.getAllAccounts(userId)
             call.respond(ApiResponse.Success(accounts))
@@ -33,7 +34,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
 
             val userId = call.userIdOrThrow()
             log.withContext("userId" to userId, "accountId" to accountId, "endpoint" to "GET /accounts/{id}")
-                .info("Request received")
+                .info { "Request received" }
 
             val account = accountService.getAccount(userId, accountId)
                 ?: throw NoSuchElementException("Account not found")
@@ -49,7 +50,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 "userId" to userId,
                 "endpoint" to "POST /accounts",
                 "accountName" to request.name
-            ).info("Request received")
+            ).info { "Request received" }
 
             val account = accountService.createAccount(userId, request)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(account))
@@ -67,7 +68,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 "accountId" to accountId,
                 "endpoint" to "PUT /accounts/{id}",
                 "accountName" to request.name
-            ).info("Request received")
+            ).info { "Request received" }
 
             val updatedAccount = accountService.updateAccount(userId, accountId, request)
             call.respond(ApiResponse.Success(updatedAccount))
@@ -79,7 +80,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
 
             val userId = call.userIdOrThrow()
             log.withContext("userId" to userId, "accountId" to accountId, "endpoint" to "DELETE /accounts/{id}")
-                .info("Request received")
+                .info { "Request received" }
 
             val deleted = accountService.deleteAccount(userId, accountId)
             if (!deleted) throw NoSuchElementException("Account not found")
