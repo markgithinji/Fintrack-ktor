@@ -1,15 +1,14 @@
 package core
 
 import com.fintrack.core.DatabaseConfig
+import com.fintrack.core.logger
+import com.fintrack.core.withContext
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import feature.transaction.data.TransactionsTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
-import com.fintrack.core.logger
-import com.fintrack.core.withContext
-import java.util.concurrent.TimeUnit
 
 object DatabaseFactory {
     private var dataSource: HikariDataSource? = null
@@ -25,7 +24,6 @@ object DatabaseFactory {
                 log.warn("DatabaseFactory already initialized")
                 return
             }
-
             val config = HikariConfig().apply {
                 driverClassName = databaseConfig.driver
                 jdbcUrl = databaseConfig.url
@@ -54,11 +52,9 @@ object DatabaseFactory {
                 "url" to config.jdbcUrl.replace(Regex(":[^:]*@"), ":****@"),
                 "poolSize" to config.maximumPoolSize,
                 "minIdle" to config.minimumIdle
-            ).info{ "Database connection pool initialized" }
-
+            ).info { "Database connection pool initialized" }
             // Test connection - let exceptions propagate for startup failure
             testConnection()
-
             // Run schema migrations - let exceptions propagate
             runMigrations()
 
@@ -106,7 +102,6 @@ object DatabaseFactory {
             if (!ds.isRunning) {
                 return emptyMap()
             }
-
             val pool = ds.hikariPoolMXBean
             mapOf(
                 "activeConnections" to pool.activeConnections,

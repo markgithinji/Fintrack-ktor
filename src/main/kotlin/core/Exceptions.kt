@@ -1,6 +1,5 @@
 package core
 
-
 // Thrown when validation fails
 class ValidationException(message: String) : RuntimeException(message)
 
@@ -12,4 +11,3 @@ class UnauthorizedAccessException(message: String) : RuntimeException(message)
 
 // Global exceptions
 class ResourceNotFoundException(message: String) : RuntimeException(message)
-class DatabaseException(message: String) : RuntimeException(message)
