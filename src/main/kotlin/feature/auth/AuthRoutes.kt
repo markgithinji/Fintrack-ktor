@@ -1,17 +1,14 @@
 package com.fintrack.feature.auth
 
-import com.fintrack.core.ApiResponse
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
-import feature.auth.data.model.AuthResponse
 import feature.auth.domain.AuthService
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.mindrot.jbcrypt.BCrypt
 
 fun Route.authRoutes(authService: AuthService) {
     val log = logger("AuthRoutes")

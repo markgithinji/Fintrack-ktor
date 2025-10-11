@@ -1,4 +1,4 @@
-package com.fintrack.core
+package com.fintrack.core.domain
 
 import kotlinx.serialization.Serializable
 

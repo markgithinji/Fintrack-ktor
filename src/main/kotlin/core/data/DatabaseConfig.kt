@@ -1,4 +1,4 @@
-package com.fintrack.core
+package com.fintrack.core.data
 
 import io.ktor.server.config.*
 import java.util.concurrent.TimeUnit

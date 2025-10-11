@@ -1,6 +1,6 @@
 package com.fintrack.feature.user
 
-import com.fintrack.core.TableNames
+import com.fintrack.core.data.TableNames
 import com.fintrack.feature.user.data.UsersColumns
 import org.jetbrains.exposed.dao.id.UUIDTable
 

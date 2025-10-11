@@ -1,6 +1,6 @@
 package feature.transaction
 
-import com.fintrack.core.ApiResponse
+import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.logger
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext

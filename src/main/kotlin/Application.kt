@@ -1,14 +1,13 @@
 package com.fintrack
 
-import com.fintrack.core.DatabaseConfig
+import com.fintrack.core.data.DatabaseConfig
 import com.fintrack.feature.auth.JwtConfig
 import com.fintrack.plugins.*
-import core.DatabaseFactory
+import com.fintrack.core.data.DatabaseFactory
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import plugins.configureStatusPages
 import plugins.configureValidation
-import io.ktor.server.engine.*
 
 fun main(args: Array<String>) {
     EngineMain.main(args)

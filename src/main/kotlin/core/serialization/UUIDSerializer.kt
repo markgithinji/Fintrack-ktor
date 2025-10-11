@@ -1,4 +1,4 @@
-package com.fintrack.core
+package com.fintrack.core.serialization
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind

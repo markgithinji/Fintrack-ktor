@@ -1,6 +1,5 @@
-package core
+package com.fintrack.core.data
 
-import com.fintrack.core.DatabaseConfig
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.zaxxer.hikari.HikariConfig
@@ -46,7 +45,7 @@ object DatabaseFactory {
             }
 
             dataSource = HikariDataSource(config)
-            Database.connect(dataSource!!)
+            Database.Companion.connect(dataSource!!)
 
             log.withContext(
                 "url" to config.jdbcUrl.replace(Regex(":[^:]*@"), ":****@"),

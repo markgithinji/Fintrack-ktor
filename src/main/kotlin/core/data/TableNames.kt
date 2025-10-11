@@ -1,4 +1,4 @@
-package com.fintrack.core
+package com.fintrack.core.data
 
 object TableNames {
     const val USERS = "users"

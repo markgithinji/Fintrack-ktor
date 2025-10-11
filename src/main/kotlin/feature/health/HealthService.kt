@@ -1,7 +1,7 @@
 package com.fintrack.feature.health
 
 import com.fintrack.core.logger
-import core.DatabaseFactory
+import com.fintrack.core.data.DatabaseFactory
 import java.lang.management.ManagementFactory
 import java.lang.Runtime
 

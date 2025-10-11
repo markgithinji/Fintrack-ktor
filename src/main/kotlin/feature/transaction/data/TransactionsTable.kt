@@ -1,6 +1,6 @@
 package feature.transaction.data
 
-import com.fintrack.core.TableNames
+import com.fintrack.core.data.TableNames
 import com.fintrack.feature.transaction.data.TransactionsColumns
 import com.fintrack.feature.user.UsersTable
 import feature.accounts.data.AccountsTable

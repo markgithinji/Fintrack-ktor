@@ -1,9 +1,6 @@
 package feature.transaction.data.model
 
-import com.fintrack.core.UUIDSerializer
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import java.util.UUID
 
 @Serializable
 data class TransactionDto(
