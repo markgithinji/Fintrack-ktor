@@ -9,7 +9,7 @@ import java.util.UUID
 
 fun Budget.toDto(): BudgetDto =
     BudgetDto(
-        id = requireNotNull(id) { "Budget must have an ID to convert to DTO" }.toString(),
+        id = id.toString(),
         accountId = accountId.toString(),
         name = name,
         categories = categories,

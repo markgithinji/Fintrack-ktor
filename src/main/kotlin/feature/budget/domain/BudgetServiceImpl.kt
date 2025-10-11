@@ -9,6 +9,7 @@ import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import com.fintrack.feature.budget.data.toDomain
 import com.fintrack.feature.budget.data.toDto
 import com.fintrack.feature.budget.domain.BudgetStatus
+import com.fintrack.feature.budget.domain.BudgetWithStatus
 import core.ResourceNotFoundException
 import feature.transaction.Budget
 import kotlinx.datetime.DateTimeUnit
@@ -33,7 +34,10 @@ class BudgetServiceImpl(
 
         val budgets = budgetRepository.getAllByUser(userId, accountId)
         val result = budgets.map { budget ->
-            BudgetWithStatusDto(budget.toDto(), calculateBudgetStatus(budget).toDto())
+            BudgetWithStatus(
+                budget = budget,
+                status = calculateBudgetStatus(budget)
+            ).toDto()
         }
 
         log.withContext("userId" to userId, "budgetCount" to result.size)
@@ -48,8 +52,10 @@ class BudgetServiceImpl(
         val budget = budgetRepository.getById(userId, id)
             ?: throw ResourceNotFoundException("Budget $id not found")
 
-        val budgetWithStatus =
-            BudgetWithStatusDto(budget.toDto(), calculateBudgetStatus(budget).toDto())
+        val budgetWithStatus = BudgetWithStatus(
+            budget = budget,
+            status = calculateBudgetStatus(budget)
+        ).toDto()
 
         log.withContext("userId" to userId, "budgetId" to id)
             .debug { "Budget retrieved successfully" }
@@ -68,8 +74,10 @@ class BudgetServiceImpl(
         ).info { "Creating budget" }
 
         val budget = budgetRepository.add(request.toDomain())
-        val budgetWithStatus =
-            BudgetWithStatusDto(budget.toDto(), calculateBudgetStatus(budget).toDto())
+        val budgetWithStatus = BudgetWithStatus(
+            budget = budget,
+            status = calculateBudgetStatus(budget)
+        ).toDto()
 
         log.withContext("userId" to userId, "budgetId" to budget.id)
             .info { "Budget created successfully" }
@@ -85,7 +93,10 @@ class BudgetServiceImpl(
 
         val budgets = budgetRepository.addAll(requests.map { it.toDomain() })
         val result = budgets.map { budget ->
-            BudgetWithStatusDto(budget.toDto(), calculateBudgetStatus(budget).toDto())
+            BudgetWithStatus(
+                budget = budget,
+                status = calculateBudgetStatus(budget)
+            ).toDto()
         }
 
         log.withContext("userId" to userId, "createdCount" to result.size)
@@ -107,8 +118,10 @@ class BudgetServiceImpl(
         val updatedBudget = budgetRepository.update(userId, id, request.toDomain(id))
             ?: throw IllegalStateException("Failed to update budget $id")
 
-        val budgetWithStatus =
-            BudgetWithStatusDto(updatedBudget.toDto(), calculateBudgetStatus(updatedBudget).toDto())
+        val budgetWithStatus = BudgetWithStatus(
+            budget = updatedBudget,
+            status = calculateBudgetStatus(updatedBudget)
+        ).toDto()
 
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Budget updated successfully" }

@@ -8,7 +8,5 @@ import org.koin.dsl.module
 
 val accountsModule = module {
     single<AccountsRepository> { AccountsRepositoryImpl() }
-
     single<AccountService> { AccountServiceImpl(get()) }
-
 }
