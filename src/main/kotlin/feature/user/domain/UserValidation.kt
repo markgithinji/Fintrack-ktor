@@ -3,18 +3,21 @@ package feature.user.domain
 
 import feature.user.data.model.CreateUserRequest
 import feature.user.data.model.UpdateUserRequest
-import io.ktor.server.plugins.requestvalidation.*
+import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
+import io.ktor.server.plugins.requestvalidation.ValidationResult
 
 fun RequestValidationConfig.configureUserValidation() {
     validate<CreateUserRequest> { request ->
         val violations = mutableListOf<String>()
 
-        // Username validation
+        // Email validation
         when {
-            request.username.isBlank() -> violations.add("Username cannot be blank")
-            request.username.length > 100 -> violations.add("Username cannot exceed 100 characters")
-            !request.username.matches(Regex("^[a-zA-Z0-9@.+_-]+$")) ->
-                violations.add("Username can only contain letters, numbers, and @ . + - _ characters")
+            request.email.isBlank() -> violations.add("Email cannot be blank")
+            request.email.length > 100 -> violations.add("Email cannot exceed 100 characters")
+            !request.email.matches(Regex("^[a-zA-Z0-9@.+_-]+$")) ->
+                violations.add("Email can only contain letters, numbers, and @ . + - _ characters")
+
+            !request.email.contains("@") -> violations.add("Email must contain @ symbol")
         }
 
         // Password validation
@@ -34,13 +37,15 @@ fun RequestValidationConfig.configureUserValidation() {
     validate<UpdateUserRequest> { request ->
         val violations = mutableListOf<String>()
 
-        // Username validation (if provided)
-        if (request.username != null) {
+        // Email validation (if provided)
+        if (request.email != null) {
             when {
-                request.username.isBlank() -> violations.add("Username cannot be blank")
-                request.username.length > 100 -> violations.add("Username cannot exceed 100 characters")
-                !request.username.matches(Regex("^[a-zA-Z0-9@.+_-]+$")) ->
-                    violations.add("Username can only contain letters, numbers, and @ . + - _ characters")
+                request.email.isBlank() -> violations.add("Email cannot be blank")
+                request.email.length > 100 -> violations.add("Email cannot exceed 100 characters")
+                !request.email.matches(Regex("^[a-zA-Z0-9@.+_-]+$")) ->
+                    violations.add("Email can only contain letters, numbers, and @ . + - _ characters")
+
+                !request.email.contains("@") -> violations.add("Email must contain @ symbol")
             }
         }
 
@@ -54,8 +59,8 @@ fun RequestValidationConfig.configureUserValidation() {
         }
 
         // At least one field should be provided
-        if (request.username == null && request.password == null) {
-            violations.add("At least one field (username or password) must be provided")
+        if (request.email == null && request.password == null) {
+            violations.add("At least one field (email or password) must be provided")
         }
 
         if (violations.isNotEmpty()) {

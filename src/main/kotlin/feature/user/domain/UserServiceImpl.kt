@@ -2,18 +2,20 @@ package feature.user.domain
 
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
-import feature.user.data.model.UserDto
 import com.fintrack.feature.user.domain.User
 import feature.user.data.model.CreateUserRequest
 import feature.user.data.model.UpdateUserRequest
+import feature.user.data.model.UserDto
 import org.mindrot.jbcrypt.BCrypt
+import java.util.UUID
+
 class UserServiceImpl(
     private val userRepository: UserRepository
 ) : UserService {
 
     private val log = logger<UserServiceImpl>()
 
-    override suspend fun getUserProfile(userId: Int): UserDto? {
+    override suspend fun getUserProfile(userId: UUID): UserDto? {
         log.withContext("userId" to userId).debug { "Fetching user profile" }
 
         val user = userRepository.findById(userId) ?: run {
@@ -22,36 +24,36 @@ class UserServiceImpl(
         }
 
         val userDto = UserDto(
-            name = user.username,
-            email = user.username
+            name = user.email, // Use email as name for now
+            email = user.email
         )
 
-        log.withContext("userId" to userId, "username" to user.username)
+        log.withContext("userId" to userId, "email" to user.email)
             .debug { "User profile retrieved successfully" }
         return userDto
     }
 
-    override suspend fun createUser(request: CreateUserRequest): Int {
-        log.withContext("username" to request.username)
+    override suspend fun createUser(request: CreateUserRequest): UUID {
+        log.withContext("email" to request.email)
             .info { "Creating user" }
 
-        if (userRepository.userExists(request.username)) {
-            log.withContext("username" to request.username)
-                .warn { "User creation failed - username already exists" }
-            throw IllegalArgumentException("User with username '${request.username}' already exists")
+        if (userRepository.userExists(request.email)) {
+            log.withContext("email" to request.email)
+                .warn { "User creation failed - email already exists" }
+            throw IllegalArgumentException("User with email '${request.email}' already exists")
         }
 
-        val userId = userRepository.createUser(request.username, request.password)
+        val userId = userRepository.createUser(request.email, request.password)
 
-        log.withContext("userId" to userId, "username" to request.username)
+        log.withContext("userId" to userId, "email" to request.email)
             .info { "User created successfully" }
         return userId
     }
 
-    override suspend fun updateUser(userId: Int, request: UpdateUserRequest): Boolean {
+    override suspend fun updateUser(userId: UUID, request: UpdateUserRequest): Boolean {
         log.withContext(
             "userId" to userId,
-            "usernameUpdate" to (request.username != null),
+            "emailUpdate" to (request.email != null),
             "passwordUpdate" to (request.password != null)
         ).info { "Updating user" }
 
@@ -61,19 +63,19 @@ class UserServiceImpl(
             return false
         }
 
-        // Check if username is taken
-        if (request.username != null && request.username != existingUser.username) {
-            if (userRepository.userExists(request.username)) {
+        // Check if email is taken
+        if (request.email != null && request.email != existingUser.email) {
+            if (userRepository.userExists(request.email)) {
                 log.withContext(
                     "userId" to userId,
-                    "requestedUsername" to request.username,
-                    "currentUsername" to existingUser.username
-                ).warn { "User update failed - username already taken" }
-                throw IllegalArgumentException("Username '${request.username}' is already taken")
+                    "requestedEmail" to request.email,
+                    "currentEmail" to existingUser.email
+                ).warn { "User update failed - email already taken" }
+                throw IllegalArgumentException("Email '${request.email}' is already taken")
             }
         }
 
-        val updated = userRepository.updateUser(userId, request.username, request.password)
+        val updated = userRepository.updateUser(userId, request.email, request.password)
 
         if (updated) {
             log.withContext("userId" to userId).info { "User updated successfully" }
@@ -84,8 +86,8 @@ class UserServiceImpl(
         return updated
     }
 
-    override suspend fun deleteUser(userId: Int): Boolean {
-        log.withContext("userId" to userId).warn { "Deleting user" } // Warn level for destructive operation
+    override suspend fun deleteUser(userId: UUID): Boolean {
+        log.withContext("userId" to userId).warn { "Deleting user" }
 
         val deleted = userRepository.deleteUser(userId)
 
@@ -98,33 +100,34 @@ class UserServiceImpl(
         return deleted
     }
 
-    override suspend fun validateUserCredentials(username: String, password: String): User? {
-        log.withContext("username" to username).debug { "Validating user credentials" }
+    override suspend fun validateUserCredentials(email: String, password: String): User? {
+        log.withContext("email" to email).debug { "Validating user credentials" }
 
-        val user = userRepository.findByUsername(username) ?: run {
-            log.withContext("username" to username).debug { "User not found during credential validation" }
+        val user = userRepository.findByEmail(email) ?: run {
+            log.withContext("email" to email)
+                .debug { "User not found during credential validation" }
             return null
         }
 
         val isValid = BCrypt.checkpw(password, user.passwordHash)
 
         if (isValid) {
-            log.withContext("userId" to user.id, "username" to username)
+            log.withContext("userId" to user.id, "email" to email)
                 .debug { "User credentials validated successfully" }
         } else {
-            log.withContext("userId" to user.id, "username" to username)
+            log.withContext("userId" to user.id, "email" to email)
                 .warn { "Invalid password provided" }
         }
 
         return if (isValid) user else null
     }
 
-    override suspend fun userExists(username: String): Boolean {
-        log.withContext("username" to username).debug { "Checking if user exists" }
+    override suspend fun userExists(email: String): Boolean {
+        log.withContext("email" to email).debug { "Checking if user exists" }
 
-        val exists = userRepository.userExists(username)
+        val exists = userRepository.userExists(email)
 
-        log.withContext("username" to username, "exists" to exists)
+        log.withContext("email" to email, "exists" to exists)
             .debug { "User existence check completed" }
         return exists
     }
