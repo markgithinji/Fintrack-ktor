@@ -8,6 +8,8 @@ import feature.auth.data.model.AuthResponse
 import feature.user.domain.UserRepository
 import org.mindrot.jbcrypt.BCrypt
 
+import java.util.UUID
+
 class AuthServiceImpl(
     private val userRepository: UserRepository
 ) : AuthService {
@@ -32,7 +34,7 @@ class AuthServiceImpl(
     override suspend fun login(email: String, password: String): AuthResponse {
         log.withContext("email" to email).info { "Login attempt" }
 
-        val user = userRepository.findByUsername(email) ?: run {
+        val user = userRepository.findByEmail(email) ?: run {
             log.withContext("email" to email).warn { "Login failed - user not found" }
             throw AuthenticationException("Invalid credentials")
         }

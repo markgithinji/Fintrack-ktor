@@ -6,6 +6,8 @@ import com.auth0.jwt.algorithms.Algorithm
 import io.ktor.server.config.ApplicationConfig
 import java.util.Date
 
+import java.util.UUID
+
 object JwtConfig {
     private lateinit var config: Config
 
@@ -36,11 +38,11 @@ object JwtConfig {
             .withIssuer(config.issuer)
             .build()
 
-    fun generateToken(userId: Int): String =
+    fun generateToken(userId: UUID): String =
         JWT.create()
             .withAudience(config.audience)
             .withIssuer(config.issuer)
-            .withClaim("userId", userId)
+            .withClaim("userId", userId.toString())
             .withExpiresAt(Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)) // 24h
             .sign(Algorithm.HMAC256(config.secret))
 
