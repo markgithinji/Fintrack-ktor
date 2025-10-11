@@ -4,34 +4,23 @@ import com.fintrack.feature.accounts.data.model.AccountDto
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.accounts.domain.Account
+import java.util.UUID
 
-
-fun Account.toDto(
-    income: Double? = null,
-    expense: Double? = null,
-    balance: Double? = null
-): AccountDto = AccountDto(
-    id = this.id,
-    name = this.name,
+fun Account.toDto(income: Double, expense: Double, balance: Double): AccountDto = AccountDto(
+    id = requireNotNull(id) { "Account must have an ID to convert to DTO" }.toString(),
+    name = name,
     income = income,
     expense = expense,
     balance = balance
 )
 
-fun AccountDto.toDomain(userId: Int): Account = Account(
-    id = this.id ?: 0,   // use 0 or ignore; DB will generate if inserting
+fun CreateAccountRequest.toDomain(userId: UUID): Account = Account(
     userId = userId,
-    name = this.name
+    name = name
 )
 
-fun CreateAccountRequest.toDomain(userId: Int) = Account(
-    id = 0, // Use 0 as temporary ID, repository will generate real ID
-    userId = userId,
-    name = name.trim()
-)
-
-fun UpdateAccountRequest.toDomain(userId: Int, accountId: Int) = Account(
+fun UpdateAccountRequest.toDomain(userId: UUID, accountId: UUID): Account = Account(
     id = accountId,
     userId = userId,
-    name = name.trim()
+    name = name
 )
