@@ -4,8 +4,10 @@ import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
+import feature.transaction.data.model.PaginatedTransactionDto
+import feature.transaction.data.model.TransactionDto
 import feature.transaction.data.model.toDomain
-import feature.transaction.domain.model.Transaction
+import feature.transaction.data.model.toDto
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.exposed.sql.SortOrder
 import java.util.UUID
@@ -28,7 +30,7 @@ class TransactionServiceImpl(
         limit: Int,
         afterDateTime: LocalDateTime?,
         afterId: UUID?
-    ): List<Transaction> {
+    ): PaginatedTransactionDto {
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
@@ -48,15 +50,20 @@ class TransactionServiceImpl(
             start, end, sortBy, order, limit, afterDateTime, afterId
         )
 
+        val transactionDtos = transactions.map { it.toDto() }
+        val last = transactionDtos.lastOrNull()
+        val nextCursor = last?.let { "${it.dateTime}|${it.id}" }
+
         log.withContext(
             "userId" to userId,
-            "transactionCount" to transactions.size
+            "transactionCount" to transactionDtos.size,
+            "hasNextCursor" to (nextCursor != null)
         ).debug { "Transactions retrieved with cursor pagination" }
 
-        return transactions
+        return PaginatedTransactionDto(transactionDtos, nextCursor)
     }
 
-    override suspend fun getById(userId: UUID, id: UUID): Transaction {
+    override suspend fun getById(userId: UUID, id: UUID): TransactionDto {
         log.withContext("userId" to userId, "transactionId" to id)
             .debug { "Fetching transaction by ID" }
 
@@ -64,10 +71,10 @@ class TransactionServiceImpl(
 
         log.withContext("userId" to userId, "transactionId" to id)
             .debug { "Transaction retrieved successfully" }
-        return transaction
+        return transaction.toDto()
     }
 
-    override suspend fun add(userId: UUID, request: CreateTransactionRequest): Transaction {
+    override suspend fun add(userId: UUID, request: CreateTransactionRequest): TransactionDto {
         log.withContext(
             "userId" to userId,
             "accountId" to request.accountId,
@@ -85,14 +92,14 @@ class TransactionServiceImpl(
             "accountId" to result.accountId
         ).info { "Transaction created successfully" }
 
-        return result
+        return result.toDto()
     }
 
     override suspend fun update(
         userId: UUID,
         id: UUID,
         request: UpdateTransactionRequest
-    ): Transaction {
+    ): TransactionDto {
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Updating transaction" }
 
@@ -101,7 +108,7 @@ class TransactionServiceImpl(
 
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Transaction updated successfully" }
-        return result
+        return result.toDto()
     }
 
     override suspend fun delete(userId: UUID, id: UUID): Boolean {
@@ -135,7 +142,7 @@ class TransactionServiceImpl(
     override suspend fun addBulk(
         userId: UUID,
         requests: List<CreateTransactionRequest>
-    ): List<Transaction> {
+    ): List<TransactionDto> {
         log.withContext("userId" to userId, "bulkCount" to requests.size)
             .info { "Creating bulk transactions" }
 
@@ -150,6 +157,6 @@ class TransactionServiceImpl(
             "createdCount" to transactions.size
         ).info { "Bulk transactions created successfully" }
 
-        return transactions
+        return transactions.map { it.toDto() }
     }
 }

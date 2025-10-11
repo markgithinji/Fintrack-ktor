@@ -7,8 +7,6 @@ import com.fintrack.core.withContext
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import core.ValidationException
-import feature.transaction.data.model.PaginatedTransactionDto
-import feature.transaction.data.model.toDto
 import feature.transaction.domain.TransactionService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
@@ -63,7 +61,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "transactionCount" to requests.size
             ).info { "Bulk transaction creation request received" }
 
-            val saved = service.addBulk(userId, requests).map { it.toDto() }
+            val saved = service.addBulk(userId, requests)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
         }
 
@@ -95,7 +93,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "afterId" to afterId
             ).info { "Transaction list request received" }
 
-            val transactions = service.getAllCursor(
+            val result = service.getAllCursor(
                 userId = userId,
                 accountId = accountId,
                 isIncome = when (typeFilter?.lowercase()) {
@@ -111,18 +109,15 @@ fun Route.transactionRoutes(service: TransactionService) {
                 limit = limit,
                 afterDateTime = afterDateTime?.let { LocalDateTime.parse(it) },
                 afterId = afterId
-            ).map { it.toDto() }
-
-            val last = transactions.lastOrNull()
-            val nextCursor = last?.let { "${it.dateTime}|${it.id}" }
+            )
 
             log.withContext(
                 "userId" to userId,
-                "transactionCount" to transactions.size,
-                "hasNextCursor" to (nextCursor != null)
+                "transactionCount" to result.data.size,
+                "hasNextCursor" to (result.nextCursor != null)
             ).debug { "Transaction list retrieved successfully" }
 
-            call.respond(ApiResponse.Success(PaginatedTransactionDto(transactions, nextCursor)))
+            call.respond(ApiResponse.Success(result))
         }
 
         get("{id}") {
@@ -137,7 +132,7 @@ fun Route.transactionRoutes(service: TransactionService) {
             ).info { "Get transaction by ID request received" }
 
             val transaction = service.getById(userId, id)
-            call.respond(ApiResponse.Success(transaction.toDto()))
+            call.respond(ApiResponse.Success(transaction))
         }
 
         post {
@@ -154,7 +149,7 @@ fun Route.transactionRoutes(service: TransactionService) {
             ).info { "Create transaction request received" }
 
             val saved = service.add(userId, request)
-            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved.toDto()))
+            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
         }
 
         put("{id}") {
@@ -172,7 +167,7 @@ fun Route.transactionRoutes(service: TransactionService) {
             ).info { "Update transaction request received" }
 
             val updated = service.update(userId, id, request)
-            call.respond(ApiResponse.Success(updated.toDto()))
+            call.respond(ApiResponse.Success(updated))
         }
 
         delete("{id}") {
