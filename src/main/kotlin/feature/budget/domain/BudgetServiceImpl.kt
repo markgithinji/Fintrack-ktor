@@ -3,14 +3,23 @@ package feature.budget.domain
 
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
+import com.fintrack.feature.budget.data.BudgetWithStatusDto
 import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import com.fintrack.feature.budget.data.toDomain
+import com.fintrack.feature.budget.data.toDto
 import com.fintrack.feature.budget.domain.BudgetStatus
-import com.fintrack.feature.budget.domain.BudgetWithStatus
 import core.ResourceNotFoundException
 import feature.transaction.Budget
-import kotlinx.datetime.*
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atTime
+import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
+import java.util.UUID
 
 class BudgetServiceImpl(
     private val budgetRepository: BudgetRepository
@@ -18,13 +27,13 @@ class BudgetServiceImpl(
 
     private val log = logger<BudgetServiceImpl>()
 
-    override suspend fun getAllBudgets(userId: Int, accountId: Int?): List<BudgetWithStatus> {
+    override suspend fun getAllBudgets(userId: UUID, accountId: UUID?): List<BudgetWithStatusDto> {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching all budgets" }
 
         val budgets = budgetRepository.getAllByUser(userId, accountId)
         val result = budgets.map { budget ->
-            BudgetWithStatus(budget, calculateBudgetStatus(budget))
+            BudgetWithStatusDto(budget.toDto(), calculateBudgetStatus(budget).toDto())
         }
 
         log.withContext("userId" to userId, "budgetCount" to result.size)
@@ -32,21 +41,25 @@ class BudgetServiceImpl(
         return result
     }
 
-    override suspend fun getBudgetById(userId: Int, id: Int): BudgetWithStatus {
+    override suspend fun getBudgetById(userId: UUID, id: UUID): BudgetWithStatusDto {
         log.withContext("userId" to userId, "budgetId" to id)
             .debug { "Fetching budget by ID" }
 
         val budget = budgetRepository.getById(userId, id)
             ?: throw ResourceNotFoundException("Budget $id not found")
 
-        val budgetWithStatus = BudgetWithStatus(budget, calculateBudgetStatus(budget))
+        val budgetWithStatus =
+            BudgetWithStatusDto(budget.toDto(), calculateBudgetStatus(budget).toDto())
 
         log.withContext("userId" to userId, "budgetId" to id)
             .debug { "Budget retrieved successfully" }
         return budgetWithStatus
     }
 
-    override suspend fun createBudget(userId: Int, request: CreateBudgetRequest): BudgetWithStatus {
+    override suspend fun createBudget(
+        userId: UUID,
+        request: CreateBudgetRequest
+    ): BudgetWithStatusDto {
         log.withContext(
             "userId" to userId,
             "budgetName" to request.name,
@@ -54,21 +67,25 @@ class BudgetServiceImpl(
             "accountId" to request.accountId
         ).info { "Creating budget" }
 
-        val budget = budgetRepository.add(request.toDomain(userId))
-        val budgetWithStatus = BudgetWithStatus(budget, calculateBudgetStatus(budget))
+        val budget = budgetRepository.add(request.toDomain())
+        val budgetWithStatus =
+            BudgetWithStatusDto(budget.toDto(), calculateBudgetStatus(budget).toDto())
 
         log.withContext("userId" to userId, "budgetId" to budget.id)
             .info { "Budget created successfully" }
         return budgetWithStatus
     }
 
-    override suspend fun createBudgets(userId: Int, requests: List<CreateBudgetRequest>): List<BudgetWithStatus> {
+    override suspend fun createBudgets(
+        userId: UUID,
+        requests: List<CreateBudgetRequest>
+    ): List<BudgetWithStatusDto> {
         log.withContext("userId" to userId, "budgetCount" to requests.size)
             .info { "Creating multiple budgets" }
 
-        val budgets = budgetRepository.addAll(requests.map { it.toDomain(userId) })
+        val budgets = budgetRepository.addAll(requests.map { it.toDomain() })
         val result = budgets.map { budget ->
-            BudgetWithStatus(budget, calculateBudgetStatus(budget))
+            BudgetWithStatusDto(budget.toDto(), calculateBudgetStatus(budget).toDto())
         }
 
         log.withContext("userId" to userId, "createdCount" to result.size)
@@ -76,24 +93,29 @@ class BudgetServiceImpl(
         return result
     }
 
-    override suspend fun updateBudget(userId: Int, id: Int, request: UpdateBudgetRequest): BudgetWithStatus {
+    override suspend fun updateBudget(
+        userId: UUID,
+        id: UUID,
+        request: UpdateBudgetRequest
+    ): BudgetWithStatusDto {
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Updating budget" }
 
         val existingBudget = budgetRepository.getById(userId, id)
             ?: throw ResourceNotFoundException("Budget $id not found")
 
-        val updatedBudget = budgetRepository.update(userId, id, request.toDomain(userId, id))
+        val updatedBudget = budgetRepository.update(userId, id, request.toDomain(id))
             ?: throw IllegalStateException("Failed to update budget $id")
 
-        val budgetWithStatus = BudgetWithStatus(updatedBudget, calculateBudgetStatus(updatedBudget))
+        val budgetWithStatus =
+            BudgetWithStatusDto(updatedBudget.toDto(), calculateBudgetStatus(updatedBudget).toDto())
 
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Budget updated successfully" }
         return budgetWithStatus
     }
 
-    override suspend fun deleteBudget(userId: Int, id: Int): Boolean {
+    override suspend fun deleteBudget(userId: UUID, id: UUID): Boolean {
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Deleting budget" }
 
