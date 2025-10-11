@@ -1,11 +1,11 @@
 package feature.transaction
 
 import kotlinx.datetime.LocalDate
+import java.util.*
 
 data class Budget(
-    val id: Int? = null,
-    val userId: Int,
-    val accountId: Int,
+    val id: UUID? = null,
+    val accountId: UUID,
     val name: String,
     val categories: List<String>,
     val limit: Double,
