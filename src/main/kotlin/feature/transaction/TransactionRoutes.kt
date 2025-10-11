@@ -23,6 +23,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.atTime
 import org.jetbrains.exposed.sql.SortOrder
+import java.util.UUID
 
 fun Route.transactionRoutes(service: TransactionService) {
     val log = logger("TransactionRoutes")
@@ -30,7 +31,8 @@ fun Route.transactionRoutes(service: TransactionService) {
     route("/transactions") {
         delete("/clear") {
             val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId: UUID? =
+                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -67,7 +69,7 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         get {
             val userId = call.userIdOrThrow()
-            val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val typeFilter = call.request.queryParameters["type"]
             val categories = call.request.queryParameters["category"]?.split(",")
             val startDate = call.request.queryParameters["start"]
@@ -76,7 +78,7 @@ fun Route.transactionRoutes(service: TransactionService) {
             val order = call.request.queryParameters["order"]?.uppercase()
             val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceAtMost(50) ?: 20
             val afterDateTime = call.request.queryParameters["afterDateTime"]
-            val afterId = call.request.queryParameters["afterId"]?.toIntOrNull()
+            val afterId = call.request.queryParameters["afterId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -125,7 +127,7 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         get("{id}") {
             val userId = call.userIdOrThrow()
-            val id = call.parameters["id"]?.toIntOrNull()
+            val id = call.parameters["id"]?.let { UUID.fromString(it) }
                 ?: throw ValidationException("Invalid ID")
 
             log.withContext(
@@ -157,7 +159,7 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         put("{id}") {
             val userId = call.userIdOrThrow()
-            val id = call.parameters["id"]?.toIntOrNull()
+            val id = call.parameters["id"]?.let { UUID.fromString(it) }
                 ?: throw ValidationException("Invalid ID")
             val request = call.receive<UpdateTransactionRequest>()
 
@@ -175,7 +177,7 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         delete("{id}") {
             val userId = call.userIdOrThrow()
-            val id = call.parameters["id"]?.toIntOrNull()
+            val id = call.parameters["id"]?.let { UUID.fromString(it) }
                 ?: throw ValidationException("Invalid ID")
 
             log.withContext(
