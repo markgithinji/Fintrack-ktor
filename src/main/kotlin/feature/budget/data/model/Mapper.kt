@@ -5,24 +5,12 @@ import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import com.fintrack.feature.budget.domain.BudgetStatus
 import com.fintrack.feature.budget.domain.BudgetWithStatus
 import feature.transaction.Budget
-
-fun BudgetDto.toDomain(userId: Int): Budget =
-    Budget(
-        id = id,
-        userId = userId,
-        accountId = accountId,
-        name = name,
-        categories = categories,
-        limit = limit,
-        isExpense = isExpense,
-        startDate = startDate,
-        endDate = endDate
-    )
+import java.util.UUID
 
 fun Budget.toDto(): BudgetDto =
     BudgetDto(
-        id = id,
-        accountId = accountId,
+        id = requireNotNull(id) { "Budget must have an ID to convert to DTO" }.toString(),
+        accountId = accountId.toString(),
         name = name,
         categories = categories,
         limit = limit,
@@ -44,9 +32,7 @@ fun BudgetWithStatus.toDto(): BudgetWithStatusDto =
         status = status.toDto()
     )
 
-fun CreateBudgetRequest.toDomain(userId: Int) = Budget(
-    id = 0,
-    userId = userId,
+fun CreateBudgetRequest.toDomain(): Budget = Budget(
     accountId = accountId,
     name = name,
     categories = categories,
@@ -56,9 +42,8 @@ fun CreateBudgetRequest.toDomain(userId: Int) = Budget(
     endDate = endDate
 )
 
-fun UpdateBudgetRequest.toDomain(userId: Int, budgetId: Int) = Budget(
+fun UpdateBudgetRequest.toDomain(budgetId: UUID): Budget = Budget(
     id = budgetId,
-    userId = userId,
     accountId = accountId,
     name = name,
     categories = categories,

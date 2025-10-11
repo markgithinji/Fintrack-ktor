@@ -1,9 +1,10 @@
 package com.fintrack.feature.budget.data.model
 
 import kotlinx.datetime.LocalDate
+import java.util.UUID
 
 data class UpdateBudgetRequest(
-    val accountId: Int,
+    val accountId: UUID,
     val name: String,
     val categories: List<String>,
     val limit: Double,
