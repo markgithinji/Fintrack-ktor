@@ -6,10 +6,12 @@ import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.exposed.sql.SortOrder
 
+import java.util.UUID
+
 interface TransactionService {
     suspend fun getAllCursor(
-        userId: Int,
-        accountId: Int?,
+        userId: UUID,
+        accountId: UUID?,
         isIncome: Boolean?,
         categories: List<String>?,
         start: LocalDateTime?,
@@ -18,13 +20,13 @@ interface TransactionService {
         order: SortOrder,
         limit: Int,
         afterDateTime: LocalDateTime?,
-        afterId: Int?
+        afterId: UUID?
     ): List<Transaction>
 
-    suspend fun getById(userId: Int, id: Int): Transaction
-    suspend fun add(userId: Int, request: CreateTransactionRequest): Transaction
-    suspend fun update(userId: Int, id: Int, request: UpdateTransactionRequest): Transaction
-    suspend fun delete(userId: Int, id: Int): Boolean
-    suspend fun clearAll(userId: Int, accountId: Int?): Boolean
-    suspend fun addBulk(userId: Int, requests: List<CreateTransactionRequest>): List<Transaction>
+    suspend fun getById(userId: UUID, id: UUID): Transaction
+    suspend fun add(userId: UUID, request: CreateTransactionRequest): Transaction
+    suspend fun update(userId: UUID, id: UUID, request: UpdateTransactionRequest): Transaction
+    suspend fun delete(userId: UUID, id: UUID): Boolean
+    suspend fun clearAll(userId: UUID, accountId: UUID?): Boolean
+    suspend fun addBulk(userId: UUID, requests: List<CreateTransactionRequest>): List<Transaction>
 }
