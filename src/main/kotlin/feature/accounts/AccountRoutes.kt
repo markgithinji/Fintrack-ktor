@@ -10,10 +10,16 @@ import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.accounts.domain.AccountService
 import core.ValidationException
-import io.ktor.http.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
+import io.ktor.server.routing.put
+import io.ktor.server.routing.route
+import java.util.UUID
 
 fun Route.accountsRoutes(accountService: AccountService) {
     val log = logger("AccountRoutes")
@@ -30,7 +36,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
         }
 
         get("/{id}") {
-            val accountId = call.parameters["id"]?.toIntOrNull()
+            val accountId = call.parameters["id"]?.let { UUID.fromString(it) }
                 ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()
@@ -61,7 +67,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
         }
 
         put("/{id}") {
-            val accountId = call.parameters["id"]?.toIntOrNull()
+            val accountId = call.parameters["id"]?.let { UUID.fromString(it) }
                 ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()
@@ -74,12 +80,13 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 "accountName" to request.name
             ).info { "Update account request received" }
 
-            val updatedAccount: AccountDto = accountService.updateAccount(userId, accountId, request)
+            val updatedAccount: AccountDto =
+                accountService.updateAccount(userId, accountId, request)
             call.respond(ApiResponse.Success(updatedAccount))
         }
 
         delete("/{id}") {
-            val accountId = call.parameters["id"]?.toIntOrNull()
+            val accountId = call.parameters["id"]?.let { UUID.fromString(it) }
                 ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()

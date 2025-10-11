@@ -1,9 +1,6 @@
 package com.fintrack.feature.accounts.domain
 
-import com.fintrack.core.debug
-import com.fintrack.core.info
 import com.fintrack.core.logger
-import com.fintrack.core.warn
 import com.fintrack.core.withContext
 import com.fintrack.feature.accounts.data.model.AccountDto
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
@@ -12,6 +9,7 @@ import com.fintrack.feature.summary.data.model.AccountAggregates
 import core.UnauthorizedAccessException
 import feature.accounts.data.toDomain
 import feature.accounts.data.toDto
+import java.util.UUID
 
 class AccountServiceImpl(
     private val accountsRepository: AccountsRepository
@@ -19,7 +17,7 @@ class AccountServiceImpl(
 
     private val log = logger<AccountServiceImpl>()
 
-    override suspend fun getAccountAggregates(userId: Int, accountId: Int?): AccountAggregates {
+    override suspend fun getAccountAggregates(userId: UUID, accountId: UUID?): AccountAggregates {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Calculating account aggregates" }
 
@@ -39,7 +37,7 @@ class AccountServiceImpl(
         return AccountAggregates(income, expense, balance)
     }
 
-    override suspend fun getAllAccounts(userId: Int): List<AccountDto> {
+    override suspend fun getAllAccounts(userId: UUID): List<AccountDto> {
         log.withContext("userId" to userId).info { "Fetching all accounts" }
 
         val accounts = accountsRepository.getAllAccounts(userId)
@@ -57,7 +55,7 @@ class AccountServiceImpl(
         return result
     }
 
-    override suspend fun getAccount(userId: Int, accountId: Int): AccountDto? {
+    override suspend fun getAccount(userId: UUID, accountId: UUID): AccountDto? {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching account" }
 
@@ -76,7 +74,7 @@ class AccountServiceImpl(
         return accountDto
     }
 
-    override suspend fun createAccount(userId: Int, request: CreateAccountRequest): AccountDto {
+    override suspend fun createAccount(userId: UUID, request: CreateAccountRequest): AccountDto {
         log.withContext("userId" to userId, "accountName" to request.name)
             .info { "Creating account" }
 
@@ -95,7 +93,11 @@ class AccountServiceImpl(
         return accountDto
     }
 
-    override suspend fun updateAccount(userId: Int, accountId: Int, request: UpdateAccountRequest): AccountDto {
+    override suspend fun updateAccount(
+        userId: UUID,
+        accountId: UUID,
+        request: UpdateAccountRequest
+    ): AccountDto {
         log.withContext("userId" to userId, "accountId" to accountId)
             .info { "Updating account" }
 
@@ -125,7 +127,7 @@ class AccountServiceImpl(
         return accountDto
     }
 
-    override suspend fun deleteAccount(userId: Int, accountId: Int): Boolean {
+    override suspend fun deleteAccount(userId: UUID, accountId: UUID): Boolean {
         log.withContext("userId" to userId, "accountId" to accountId)
             .info { "Deleting account" }
 
