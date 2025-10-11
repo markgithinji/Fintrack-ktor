@@ -1,17 +1,16 @@
 package feature.summary.domain
 
+import com.fintrack.feature.summary.data.model.AvailableMonthsDto
+import com.fintrack.feature.summary.data.model.AvailableWeeksDto
+import com.fintrack.feature.summary.data.model.AvailableYearsDto
+import com.fintrack.feature.summary.data.model.CategoryComparisonDto
+import com.fintrack.feature.summary.data.model.DistributionSummaryDto
 import com.fintrack.feature.summary.data.model.TransactionCountSummaryDto
-import com.fintrack.feature.summary.domain.CategoryComparison
-import com.fintrack.feature.summary.domain.DaySummary
-import com.fintrack.feature.summary.domain.DistributionSummary
-import com.fintrack.feature.summary.domain.OverviewSummary
-import core.AvailableMonths
-import core.AvailableWeeks
-import core.AvailableYears
-import feature.transaction.StatisticsSummary
+import core.DaySummaryDto
+import core.OverviewSummaryDto
+import core.StatisticsSummaryDto
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
-
 import java.util.UUID
 
 interface StatisticsService {
@@ -21,7 +20,7 @@ interface StatisticsService {
         isIncome: Boolean?,
         start: LocalDateTime?,
         end: LocalDateTime?
-    ): StatisticsSummary
+    ): StatisticsSummaryDto
 
     suspend fun getDistributionSummary(
         userId: UUID,
@@ -30,16 +29,31 @@ interface StatisticsService {
         isIncome: Boolean?,
         start: LocalDateTime?,
         end: LocalDateTime?
-    ): DistributionSummary
+    ): DistributionSummaryDto
 
-    suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeks
-    suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonths
-    suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYears
-    suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummary
-    suspend fun getDaySummaries(userId: UUID, start: LocalDate, end: LocalDate, accountId: UUID?): List<DaySummary>
-    suspend fun getCategoryComparisons(userId: UUID, accountId: UUID?): List<CategoryComparison>
-    suspend fun getTransactionCountSummary(userId: UUID, accountId: UUID?): TransactionCountSummaryDto?
+    suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeksDto
+    suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonthsDto
+    suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYearsDto
+    suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummaryDto
 
+    suspend fun getDaySummaries(
+        userId: UUID,
+        start: LocalDate,
+        end: LocalDate,
+        accountId: UUID?
+    ): List<DaySummaryDto>
+
+    suspend fun getCategoryComparisons(
+        userId: UUID,
+        accountId: UUID?
+    ): List<CategoryComparisonDto>
+
+    suspend fun getTransactionCountSummary(
+        userId: UUID,
+        accountId: UUID?
+    ): TransactionCountSummaryDto?
+
+    // Helper methods for route parameter processing
     fun parseTypeFilter(typeFilter: String?): Boolean?
     fun parseDateRange(startDate: String?, endDate: String?): Pair<LocalDateTime?, LocalDateTime?>
 }

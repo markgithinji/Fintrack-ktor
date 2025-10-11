@@ -4,7 +4,6 @@ import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.logger
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
-import com.fintrack.feature.summary.data.toDto
 import core.ValidationException
 import feature.summary.domain.StatisticsService
 import io.ktor.http.HttpStatusCode
@@ -12,7 +11,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
-
 import java.util.UUID
 
 fun Route.summaryRoutes(service: StatisticsService) {
@@ -21,7 +19,8 @@ fun Route.summaryRoutes(service: StatisticsService) {
     route("/transactions/summary") {
         get("/highlights") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? =
+                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val typeFilter = call.request.queryParameters["type"]
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
@@ -46,7 +45,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 end = end
             )
 
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(summary.toDto()))
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
         }
 
         get("/distribution") {
@@ -59,7 +58,8 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 throw ValidationException("Period must be in format: YYYY-Www, YYYY-MM, or YYYY")
             }
 
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? =
+                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val typeFilter = call.request.queryParameters["type"]
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
@@ -86,12 +86,13 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 end = end
             )
 
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(distribution.toDto()))
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(distribution))
         }
 
         get("/available-weeks") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? =
+                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -100,12 +101,13 @@ fun Route.summaryRoutes(service: StatisticsService) {
             ).info { "Available weeks request received" }
 
             val result = service.getAvailableWeeks(userId, accountId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(result))
         }
 
         get("/available-months") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? =
+                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -114,12 +116,13 @@ fun Route.summaryRoutes(service: StatisticsService) {
             ).info { "Available months request received" }
 
             val result = service.getAvailableMonths(userId, accountId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(result))
         }
 
         get("/available-years") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? =
+                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -128,12 +131,13 @@ fun Route.summaryRoutes(service: StatisticsService) {
             ).info { "Available years request received" }
 
             val result = service.getAvailableYears(userId, accountId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(result.toDto()))
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(result))
         }
 
         get("/overview") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? =
+                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -142,12 +146,13 @@ fun Route.summaryRoutes(service: StatisticsService) {
             ).info { "Overview request received" }
 
             val overview = service.getOverviewSummary(userId, accountId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(overview.toDto()))
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(overview))
         }
 
         get("/overview/range") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? =
+                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val startParam = call.request.queryParameters["start"]
             val endParam = call.request.queryParameters["end"]
 
@@ -170,12 +175,13 @@ fun Route.summaryRoutes(service: StatisticsService) {
             val endDate = end?.date ?: throw ValidationException("Invalid end date")
 
             val days = service.getDaySummaries(userId, startDate, endDate, accountId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(days.map { it.toDto() }))
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(days))
         }
 
         get("/category-comparison") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? =
+                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -184,7 +190,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
             ).info { "Category comparison request received" }
 
             val comparisons = service.getCategoryComparisons(userId, accountId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(comparisons.map { it.toDto() }))
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(comparisons))
         }
 
         get("/counts") {

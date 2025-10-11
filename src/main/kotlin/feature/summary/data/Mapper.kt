@@ -3,22 +3,22 @@ package com.fintrack.feature.summary.data
 import com.fintrack.feature.summary.data.model.AvailableMonthsDto
 import com.fintrack.feature.summary.data.model.AvailableWeeksDto
 import com.fintrack.feature.summary.data.model.AvailableYearsDto
+import com.fintrack.feature.summary.data.model.CategoryComparisonDto
+import com.fintrack.feature.summary.data.model.CategorySummaryDto
+import com.fintrack.feature.summary.data.model.DistributionSummaryDto
 import com.fintrack.feature.summary.domain.CategoryComparison
 import com.fintrack.feature.summary.domain.CategorySummary
 import com.fintrack.feature.summary.domain.DaySummary
 import com.fintrack.feature.summary.domain.DistributionSummary
 import com.fintrack.feature.summary.domain.OverviewSummary
-import com.fintrack.feature.summary.data.model.CategoryComparisonDto
-import com.fintrack.feature.summary.data.model.CategorySummaryDto
-import com.fintrack.feature.summary.data.model.DistributionSummaryDto
 import core.AvailableMonths
 import core.AvailableWeeks
 import core.AvailableYears
 import core.DaySummaryDto
 import core.HighlightDto
 import core.HighlightsDto
-import core.StatisticsSummaryDto
 import core.OverviewSummaryDto
+import core.StatisticsSummaryDto
 import feature.transaction.Highlight
 import feature.transaction.Highlights
 import feature.transaction.StatisticsSummary
@@ -57,7 +57,7 @@ fun OverviewSummary.toDto() = OverviewSummaryDto(
 )
 
 fun DaySummary.toDto() = DaySummaryDto(
-    date = date.toString(),
+    date = date,
     income = income,
     expense = expense
 )

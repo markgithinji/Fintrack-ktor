@@ -2,19 +2,19 @@ package feature.summary.domain
 
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
+import com.fintrack.feature.summary.data.model.AvailableMonthsDto
+import com.fintrack.feature.summary.data.model.AvailableWeeksDto
+import com.fintrack.feature.summary.data.model.AvailableYearsDto
+import com.fintrack.feature.summary.data.model.CategoryComparisonDto
+import com.fintrack.feature.summary.data.model.CategorySummaryDto
+import com.fintrack.feature.summary.data.model.DistributionSummaryDto
 import com.fintrack.feature.summary.data.model.TransactionCountSummaryDto
-import com.fintrack.feature.summary.domain.CategoryComparison
-import com.fintrack.feature.summary.domain.CategorySummary
-import com.fintrack.feature.summary.domain.DaySummary
-import com.fintrack.feature.summary.domain.DistributionSummary
-import com.fintrack.feature.summary.domain.OverviewSummary
-import core.AvailableMonths
-import core.AvailableWeeks
-import core.AvailableYears
+import core.DaySummaryDto
+import core.HighlightDto
+import core.HighlightsDto
+import core.OverviewSummaryDto
+import core.StatisticsSummaryDto
 import core.ValidationException
-import feature.transaction.Highlight
-import feature.transaction.Highlights
-import feature.transaction.StatisticsSummary
 import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
@@ -42,7 +42,7 @@ class StatisticsServiceImpl(
         isIncome: Boolean?,
         start: LocalDateTime?,
         end: LocalDateTime?
-    ): StatisticsSummary {
+    ): StatisticsSummaryDto {
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
@@ -62,10 +62,14 @@ class StatisticsServiceImpl(
         val expenseTxns = filtered.filter { !it.isIncome }
 
         fun highestMonth(txns: List<Transaction>) =
-            txns.groupBy { "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}" }
+            txns.groupBy {
+                "${it.dateTime.year}-${
+                    it.dateTime.monthNumber.toString().padStart(2, '0')
+                }"
+            }
                 .mapValues { it.value.sumOf { t -> t.amount } }
                 .maxByOrNull { it.value }
-                ?.let { Highlight(label = it.key, value = it.key, amount = it.value) }
+                ?.let { HighlightDto(label = it.key, value = it.key, amount = it.value) }
 
         fun highestCategory(txns: List<Transaction>) =
             txns.groupBy { it.category.trim().lowercase() }
@@ -73,15 +77,22 @@ class StatisticsServiceImpl(
                 .maxByOrNull { it.value }
                 ?.let { entry ->
                     val displayName =
-                        txns.firstOrNull { it.category.trim().lowercase() == entry.key }?.category ?: entry.key
-                    Highlight(label = displayName, value = displayName, amount = entry.value)
+                        txns.firstOrNull { it.category.trim().lowercase() == entry.key }?.category
+                            ?: entry.key
+                    HighlightDto(label = displayName, value = displayName, amount = entry.value)
                 }
 
         fun highestDay(txns: List<Transaction>) =
             txns.groupBy { it.dateTime.date }
                 .mapValues { it.value.sumOf { t -> t.amount } }
                 .maxByOrNull { it.value }
-                ?.let { Highlight(label = it.key.toString(), value = it.key.toString(), amount = it.value) }
+                ?.let {
+                    HighlightDto(
+                        label = it.key.toString(),
+                        value = it.key.toString(),
+                        amount = it.value
+                    )
+                }
 
         fun averagePerDay(txns: List<Transaction>): Double {
             val days = txns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
@@ -89,20 +100,20 @@ class StatisticsServiceImpl(
             return total / days
         }
 
-        val incomeHighlights = Highlights(
+        val incomeHighlights = HighlightsDto(
             highestMonth = highestMonth(incomeTxns),
             highestCategory = highestCategory(incomeTxns),
             highestDay = highestDay(incomeTxns),
             averagePerDay = averagePerDay(incomeTxns)
         )
-        val expenseHighlights = Highlights(
+        val expenseHighlights = HighlightsDto(
             highestMonth = highestMonth(expenseTxns),
             highestCategory = highestCategory(expenseTxns),
             highestDay = highestDay(expenseTxns),
             averagePerDay = averagePerDay(expenseTxns)
         )
 
-        val summary = StatisticsSummary(
+        val summary = StatisticsSummaryDto(
             incomeHighlights = incomeHighlights,
             expenseHighlights = expenseHighlights
         )
@@ -125,7 +136,7 @@ class StatisticsServiceImpl(
         isIncome: Boolean?,
         start: LocalDateTime?,
         end: LocalDateTime?
-    ): DistributionSummary {
+    ): DistributionSummaryDto {
         log.withContext(
             "userId" to userId,
             "period" to period,
@@ -143,16 +154,18 @@ class StatisticsServiceImpl(
         val yearMode = !weekMode && period.length == 4
         val monthMode = !weekMode && !yearMode
 
-        fun categorySummary(txns: List<Transaction>): List<CategorySummary> {
+        fun categorySummary(txns: List<Transaction>): List<CategorySummaryDto> {
             val grouped = when {
                 weekMode -> txns.groupBy {
                     val javaDateTime = it.dateTime.toJavaLocalDateTime()
                     val week = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
                     "${javaDateTime.year}-W${week.toString().padStart(2, '0')}"
                 }
+
                 monthMode -> txns.groupBy {
                     "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}"
                 }
+
                 yearMode -> txns.groupBy { it.dateTime.year.toString() }
                 else -> emptyMap()
             }
@@ -160,7 +173,7 @@ class StatisticsServiceImpl(
             val deduped = txnsInPeriod.groupBy { it.category.trim().lowercase() }.map { (_, list) ->
                 val sum = list.sumOf { it.amount }
                 val displayName = list.first().category
-                CategorySummary(category = displayName, total = sum, percentage = 0.0)
+                CategorySummaryDto(category = displayName, total = sum, percentage = 0.0)
             }
             val totalAmount = deduped.sumOf { it.total }
             return deduped.map {
@@ -168,10 +181,12 @@ class StatisticsServiceImpl(
             }
         }
 
-        val incomeCategoriesFinal = if (isIncome != false) categorySummary(incomeTxns) else emptyList()
-        val expenseCategoriesFinal = if (isIncome != true) categorySummary(expenseTxns) else emptyList()
+        val incomeCategoriesFinal =
+            if (isIncome != false) categorySummary(incomeTxns) else emptyList()
+        val expenseCategoriesFinal =
+            if (isIncome != true) categorySummary(expenseTxns) else emptyList()
 
-        val distribution = DistributionSummary(
+        val distribution = DistributionSummaryDto(
             period = period,
             incomeCategories = incomeCategoriesFinal,
             expenseCategories = expenseCategoriesFinal
@@ -187,7 +202,7 @@ class StatisticsServiceImpl(
         return distribution
     }
 
-    override suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeks {
+    override suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeksDto {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching available weeks" }
 
@@ -195,10 +210,10 @@ class StatisticsServiceImpl(
 
         log.withContext("userId" to userId, "weekCount" to weeks.size)
             .debug { "Available weeks retrieved" }
-        return AvailableWeeks(weeks)
+        return AvailableWeeksDto(weeks)
     }
 
-    override suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonths {
+    override suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonthsDto {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching available months" }
 
@@ -206,10 +221,10 @@ class StatisticsServiceImpl(
 
         log.withContext("userId" to userId, "monthCount" to months.size)
             .debug { "Available months retrieved" }
-        return AvailableMonths(months)
+        return AvailableMonthsDto(months)
     }
 
-    override suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYears {
+    override suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYearsDto {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching available years" }
 
@@ -217,10 +232,10 @@ class StatisticsServiceImpl(
 
         log.withContext("userId" to userId, "yearCount" to years.size)
             .debug { "Available years retrieved" }
-        return AvailableYears(years)
+        return AvailableYearsDto(years)
     }
 
-    override suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummary {
+    override suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummaryDto {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Calculating overview summary" }
 
@@ -238,7 +253,7 @@ class StatisticsServiceImpl(
         val weekly = getDaySummaries(userId, weeklyStart, today, accountId)
         val monthly = getDaySummaries(userId, monthlyStart, today, accountId)
 
-        val overview = OverviewSummary(weeklyOverview = weekly, monthlyOverview = monthly)
+        val overview = OverviewSummaryDto(weeklyOverview = weekly, monthlyOverview = monthly)
 
         log.withContext(
             "userId" to userId,
@@ -254,7 +269,7 @@ class StatisticsServiceImpl(
         start: LocalDate,
         end: LocalDate,
         accountId: UUID?
-    ): List<DaySummary> {
+    ): List<DaySummaryDto> {
         log.withContext(
             "userId" to userId,
             "start" to start,
@@ -262,7 +277,8 @@ class StatisticsServiceImpl(
             "accountId" to accountId
         ).debug { "Calculating day summaries" }
 
-        val transactions = statisticsRepository.getTransactionsByDateRange(userId, start, end, accountId)
+        val transactions =
+            statisticsRepository.getTransactionsByDateRange(userId, start, end, accountId)
 
         log.withContext(
             "userId" to userId,
@@ -277,7 +293,7 @@ class StatisticsServiceImpl(
             val dayTxs = transactions.filter { it.dateTime.date == date }
             val income = dayTxs.filter { it.isIncome }.sumOf { it.amount }
             val expense = dayTxs.filter { !it.isIncome }.sumOf { it.amount }
-            DaySummary(date = date, income = income, expense = expense)
+            DaySummaryDto(date = date, income = income, expense = expense)
         }
 
         log.withContext(
@@ -292,7 +308,7 @@ class StatisticsServiceImpl(
     override suspend fun getCategoryComparisons(
         userId: UUID,
         accountId: UUID?
-    ): List<CategoryComparison> {
+    ): List<CategoryComparisonDto> {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Calculating category comparisons" }
 
@@ -314,17 +330,21 @@ class StatisticsServiceImpl(
             "lastMonth" to "${lastMonthStart} to ${lastMonthEnd}"
         ).debug { "Date ranges calculated for category comparisons" }
 
-        val thisWeekTotals = statisticsRepository.getCategoryTotals(userId, thisWeekStart, now, accountId)
-        val lastWeekTotals = statisticsRepository.getCategoryTotals(userId, lastWeekStart, lastWeekEnd, accountId)
+        val thisWeekTotals =
+            statisticsRepository.getCategoryTotals(userId, thisWeekStart, now, accountId)
+        val lastWeekTotals =
+            statisticsRepository.getCategoryTotals(userId, lastWeekStart, lastWeekEnd, accountId)
 
-        val thisMonthTotals = statisticsRepository.getCategoryTotals(userId, thisMonthStart, now, accountId)
-        val lastMonthTotals = statisticsRepository.getCategoryTotals(userId, lastMonthStart, lastMonthEnd, accountId)
+        val thisMonthTotals =
+            statisticsRepository.getCategoryTotals(userId, thisMonthStart, now, accountId)
+        val lastMonthTotals =
+            statisticsRepository.getCategoryTotals(userId, lastMonthStart, lastMonthEnd, accountId)
 
         val topWeekCategory = thisWeekTotals.maxByOrNull { it.value }?.key
         val weeklyComparison = topWeekCategory?.let { category ->
             val current = thisWeekTotals[category] ?: 0.0
             val previous = lastWeekTotals[category] ?: 0.0
-            CategoryComparison(
+            CategoryComparisonDto(
                 period = "weekly",
                 category = category,
                 currentTotal = current,
@@ -337,7 +357,7 @@ class StatisticsServiceImpl(
         val monthlyComparison = topMonthCategory?.let { category ->
             val current = thisMonthTotals[category] ?: 0.0
             val previous = lastMonthTotals[category] ?: 0.0
-            CategoryComparison(
+            CategoryComparisonDto(
                 period = "monthly",
                 category = category,
                 currentTotal = current,
@@ -402,8 +422,12 @@ class StatisticsServiceImpl(
         }
     }
 
-    override fun parseDateRange(startDate: String?, endDate: String?): Pair<LocalDateTime?, LocalDateTime?> {
-        log.withContext("startDate" to startDate, "endDate" to endDate).debug { "Parsing date range" }
+    override fun parseDateRange(
+        startDate: String?,
+        endDate: String?
+    ): Pair<LocalDateTime?, LocalDateTime?> {
+        log.withContext("startDate" to startDate, "endDate" to endDate)
+            .debug { "Parsing date range" }
 
         val start = startDate?.let {
             LocalDate.parse(it).atTime(LocalTime(0, 0, 0))
@@ -414,11 +438,13 @@ class StatisticsServiceImpl(
 
         // Validate date range logic
         if (start != null && end != null && start > end) {
-            log.withContext("start" to start, "end" to end).warn { "Invalid date range - start after end" }
+            log.withContext("start" to start, "end" to end)
+                .warn { "Invalid date range - start after end" }
             throw ValidationException("Start date cannot be after end date")
         }
 
-        log.withContext("parsedStart" to start, "parsedEnd" to end).debug { "Date range parsed successfully" }
+        log.withContext("parsedStart" to start, "parsedEnd" to end)
+            .debug { "Date range parsed successfully" }
         return start to end
     }
 }
