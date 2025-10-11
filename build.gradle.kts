@@ -41,4 +41,5 @@ dependencies {
     implementation("io.ktor:ktor-server-metrics-micrometer:3.3.0")
     implementation("io.micrometer:micrometer-registry-prometheus:1.11.5")
     implementation("io.ktor:ktor-server-rate-limit:3.3.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }
