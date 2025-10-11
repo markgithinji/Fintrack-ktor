@@ -5,37 +5,39 @@ import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 
+import java.util.UUID
+
 interface StatisticsRepository {
     suspend fun getTransactions(
-        userId: Int,
-        accountId: Int? = null,
-        isIncome: Boolean? = null,
-        start: LocalDateTime? = null,
-        end: LocalDateTime? = null
+        userId: UUID,
+        accountId: UUID?,
+        isIncome: Boolean?,
+        start: LocalDateTime?,
+        end: LocalDateTime?
     ): List<Transaction>
 
     suspend fun getAvailablePeriods(
-        userId: Int,
-        accountId: Int? = null,
+        userId: UUID,
+        accountId: UUID?,
         periodType: String
     ): List<String>
 
     suspend fun getTransactionsByDateRange(
-        userId: Int,
+        userId: UUID,
         start: LocalDate,
         end: LocalDate,
-        accountId: Int? = null
+        accountId: UUID?
     ): List<Transaction>
 
     suspend fun getCategoryTotals(
-        userId: Int,
-        start: LocalDate? = null,
-        end: LocalDate? = null,
-        accountId: Int? = null
+        userId: UUID,
+        start: LocalDate?,
+        end: LocalDate?,
+        accountId: UUID?
     ): Map<String, Double>
 
     suspend fun getTransactionCounts(
-        userId: Int,
-        accountId: Int? = null
+        userId: UUID,
+        accountId: UUID?
     ): TransactionCounts
 }

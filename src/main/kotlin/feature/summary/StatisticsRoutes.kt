@@ -8,12 +8,12 @@ import com.fintrack.feature.summary.data.toDto
 import core.ValidationException
 import feature.summary.domain.StatisticsService
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
-import kotlinx.datetime.LocalDate
+
+import java.util.UUID
 
 fun Route.summaryRoutes(service: StatisticsService) {
     val log = logger("SummaryRoutes")
@@ -21,7 +21,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
     route("/transactions/summary") {
         get("/highlights") {
             val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val typeFilter = call.request.queryParameters["type"]
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
@@ -59,7 +59,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 throw ValidationException("Period must be in format: YYYY-Www, YYYY-MM, or YYYY")
             }
 
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val typeFilter = call.request.queryParameters["type"]
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
@@ -91,7 +91,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/available-weeks") {
             val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -105,7 +105,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/available-months") {
             val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -119,7 +119,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/available-years") {
             val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -133,7 +133,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/overview") {
             val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -147,7 +147,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/overview/range") {
             val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val startParam = call.request.queryParameters["start"]
             val endParam = call.request.queryParameters["end"]
 
@@ -175,7 +175,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/category-comparison") {
             val userId = call.userIdOrThrow()
-            val accountId: Int? = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -189,7 +189,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/counts") {
             val userId = call.userIdOrThrow()
-            val accountId = call.request.queryParameters["accountId"]?.toIntOrNull()
+            val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
                 ?: throw ValidationException("Missing or invalid accountId")
 
             log.withContext(

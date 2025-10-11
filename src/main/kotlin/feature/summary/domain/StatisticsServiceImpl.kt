@@ -28,6 +28,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
 import java.time.temporal.WeekFields
+import java.util.UUID
 
 class StatisticsServiceImpl(
     private val statisticsRepository: StatisticsRepository
@@ -36,8 +37,8 @@ class StatisticsServiceImpl(
     private val log = logger<StatisticsServiceImpl>()
 
     override suspend fun getStatisticsSummary(
-        userId: Int,
-        accountId: Int?,
+        userId: UUID,
+        accountId: UUID?,
         isIncome: Boolean?,
         start: LocalDateTime?,
         end: LocalDateTime?
@@ -118,9 +119,9 @@ class StatisticsServiceImpl(
     }
 
     override suspend fun getDistributionSummary(
-        userId: Int,
+        userId: UUID,
         period: String,
-        accountId: Int?,
+        accountId: UUID?,
         isIncome: Boolean?,
         start: LocalDateTime?,
         end: LocalDateTime?
@@ -186,7 +187,7 @@ class StatisticsServiceImpl(
         return distribution
     }
 
-    override suspend fun getAvailableWeeks(userId: Int, accountId: Int?): AvailableWeeks {
+    override suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeks {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching available weeks" }
 
@@ -197,7 +198,7 @@ class StatisticsServiceImpl(
         return AvailableWeeks(weeks)
     }
 
-    override suspend fun getAvailableMonths(userId: Int, accountId: Int?): AvailableMonths {
+    override suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonths {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching available months" }
 
@@ -208,7 +209,7 @@ class StatisticsServiceImpl(
         return AvailableMonths(months)
     }
 
-    override suspend fun getAvailableYears(userId: Int, accountId: Int?): AvailableYears {
+    override suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYears {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching available years" }
 
@@ -219,7 +220,7 @@ class StatisticsServiceImpl(
         return AvailableYears(years)
     }
 
-    override suspend fun getOverviewSummary(userId: Int, accountId: Int?): OverviewSummary {
+    override suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummary {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Calculating overview summary" }
 
@@ -249,10 +250,10 @@ class StatisticsServiceImpl(
     }
 
     override suspend fun getDaySummaries(
-        userId: Int,
+        userId: UUID,
         start: LocalDate,
         end: LocalDate,
-        accountId: Int?
+        accountId: UUID?
     ): List<DaySummary> {
         log.withContext(
             "userId" to userId,
@@ -289,8 +290,8 @@ class StatisticsServiceImpl(
     }
 
     override suspend fun getCategoryComparisons(
-        userId: Int,
-        accountId: Int?
+        userId: UUID,
+        accountId: UUID?
     ): List<CategoryComparison> {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Calculating category comparisons" }
@@ -358,8 +359,8 @@ class StatisticsServiceImpl(
     }
 
     override suspend fun getTransactionCountSummary(
-        userId: Int,
-        accountId: Int
+        userId: UUID,
+        accountId: UUID?
     ): TransactionCountSummaryDto? {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching transaction count summary" }

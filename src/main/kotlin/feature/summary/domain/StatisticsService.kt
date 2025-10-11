@@ -12,45 +12,33 @@ import feature.transaction.StatisticsSummary
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 
+import java.util.UUID
+
 interface StatisticsService {
     suspend fun getStatisticsSummary(
-        userId: Int,
-        accountId: Int? = null,
-        isIncome: Boolean? = null,
-        start: LocalDateTime? = null,
-        end: LocalDateTime? = null
+        userId: UUID,
+        accountId: UUID?,
+        isIncome: Boolean?,
+        start: LocalDateTime?,
+        end: LocalDateTime?
     ): StatisticsSummary
 
     suspend fun getDistributionSummary(
-        userId: Int,
+        userId: UUID,
         period: String,
-        accountId: Int? = null,
-        isIncome: Boolean? = null,
-        start: LocalDateTime? = null,
-        end: LocalDateTime? = null
+        accountId: UUID?,
+        isIncome: Boolean?,
+        start: LocalDateTime?,
+        end: LocalDateTime?
     ): DistributionSummary
 
-    suspend fun getAvailableWeeks(userId: Int, accountId: Int? = null): AvailableWeeks
-    suspend fun getAvailableMonths(userId: Int, accountId: Int? = null): AvailableMonths
-    suspend fun getAvailableYears(userId: Int, accountId: Int? = null): AvailableYears
-    suspend fun getOverviewSummary(userId: Int, accountId: Int? = null): OverviewSummary
-
-    suspend fun getDaySummaries(
-        userId: Int,
-        start: LocalDate,
-        end: LocalDate,
-        accountId: Int? = null
-    ): List<DaySummary>
-
-    suspend fun getCategoryComparisons(
-        userId: Int,
-        accountId: Int? = null
-    ): List<CategoryComparison>
-
-    suspend fun getTransactionCountSummary(
-        userId: Int,
-        accountId: Int
-    ): TransactionCountSummaryDto?
+    suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeks
+    suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonths
+    suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYears
+    suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummary
+    suspend fun getDaySummaries(userId: UUID, start: LocalDate, end: LocalDate, accountId: UUID?): List<DaySummary>
+    suspend fun getCategoryComparisons(userId: UUID, accountId: UUID?): List<CategoryComparison>
+    suspend fun getTransactionCountSummary(userId: UUID, accountId: UUID?): TransactionCountSummaryDto?
 
     fun parseTypeFilter(typeFilter: String?): Boolean?
     fun parseDateRange(startDate: String?, endDate: String?): Pair<LocalDateTime?, LocalDateTime?>
