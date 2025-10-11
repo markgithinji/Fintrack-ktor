@@ -3,12 +3,11 @@ package feature.transaction.data.model
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import feature.transaction.domain.model.Transaction
-import kotlinx.datetime.LocalDateTime
+import java.util.UUID
 
-// --- Domain -> DTO ---
 fun Transaction.toDto() = TransactionDto(
-    id = this.id,
-    accountId = this.accountId,
+    id = this.id?.toString(),
+    accountId = this.accountId.toString(),
     isIncome = this.isIncome,
     amount = this.amount,
     category = this.category,
@@ -16,22 +15,10 @@ fun Transaction.toDto() = TransactionDto(
     description = this.description
 )
 
-// --- DTO -> Domain ---
-fun TransactionDto.toTransaction(userId: Int) = Transaction(
-    id = this.id,
+fun CreateTransactionRequest.toDomain(userId: UUID): Transaction = Transaction(
+    id = null,
     userId = userId,
-    accountId = this.accountId,
-    isIncome = this.isIncome,
-    amount = this.amount,
-    category = this.category,
-    dateTime = LocalDateTime.parse(this.dateTime),
-    description = this.description
-)
-
-fun CreateTransactionRequest.toDomain(userId: Int) = Transaction(
-    id = 0,
-    userId = userId,
-    accountId = accountId,
+    accountId = UUID.fromString(this.accountId),
     isIncome = isIncome,
     amount = amount,
     category = category,
@@ -39,10 +26,10 @@ fun CreateTransactionRequest.toDomain(userId: Int) = Transaction(
     description = description
 )
 
-fun UpdateTransactionRequest.toDomain(userId: Int, transactionId: Int) = Transaction(
+fun UpdateTransactionRequest.toDomain(userId: UUID, transactionId: UUID): Transaction = Transaction(
     id = transactionId,
     userId = userId,
-    accountId = accountId,
+    accountId = UUID.fromString(this.accountId),
     isIncome = isIncome,
     amount = amount,
     category = category,

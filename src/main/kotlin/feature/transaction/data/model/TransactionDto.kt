@@ -1,11 +1,14 @@
 package feature.transaction.data.model
 
+import com.fintrack.core.UUIDSerializer
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import java.util.UUID
 
 @Serializable
 data class TransactionDto(
-    val id: Int? = null,
-    val accountId: Int,
+    val id: String?,
+    val accountId: String,
     val isIncome: Boolean,
     val amount: Double,
     val category: String,
