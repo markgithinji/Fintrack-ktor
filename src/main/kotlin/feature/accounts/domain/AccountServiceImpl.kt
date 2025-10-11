@@ -44,6 +44,7 @@ class AccountServiceImpl(
         val result = accounts.map { account ->
             val aggregates = getAccountAggregates(userId, account.id)
             account.toDto(
+                id = account.id.toString(),
                 income = aggregates.income,
                 expense = aggregates.expense,
                 balance = aggregates.balance
@@ -64,6 +65,7 @@ class AccountServiceImpl(
 
         val aggregates = getAccountAggregates(userId, account.id)
         val accountDto = account.toDto(
+            id = account.id.toString(),
             income = aggregates.income,
             expense = aggregates.expense,
             balance = aggregates.balance
@@ -83,6 +85,7 @@ class AccountServiceImpl(
 
         // New account has zero aggregates
         val accountDto = createdAccount.toDto(
+            id = createdAccount.id.toString(),
             income = 0.0,
             expense = 0.0,
             balance = 0.0
@@ -117,6 +120,7 @@ class AccountServiceImpl(
         val updatedAccount = accountsRepository.updateAccount(account)
         val aggregates = getAccountAggregates(userId, updatedAccount.id)
         val accountDto = updatedAccount.toDto(
+            id = updatedAccount.id.toString(),
             income = aggregates.income,
             expense = aggregates.expense,
             balance = aggregates.balance

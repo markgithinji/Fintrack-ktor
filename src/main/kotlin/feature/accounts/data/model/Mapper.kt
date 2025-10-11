@@ -6,8 +6,8 @@ import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.accounts.domain.Account
 import java.util.UUID
 
-fun Account.toDto(income: Double, expense: Double, balance: Double): AccountDto = AccountDto(
-    id = requireNotNull(id) { "Account must have an ID to convert to DTO" }.toString(),
+fun Account.toDto(id: String, income: Double, expense: Double, balance: Double): AccountDto = AccountDto(
+    id = id,
     name = name,
     income = income,
     expense = expense,
