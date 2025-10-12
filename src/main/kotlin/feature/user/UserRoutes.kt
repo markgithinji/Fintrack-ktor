@@ -29,12 +29,9 @@ fun Route.userRoutes(userService: UserService) {
             ).info { "Get user profile request received" }
 
             val user = userService.getUserProfile(userId)
-                ?: throw NoSuchElementException("User not found")
-
             call.respond(HttpStatusCode.OK, ApiResponse.Success(user))
         }
 
-        // PUT /users/me - Update user profile
         put("/me") {
             val userId = call.userIdOrThrow()
             val updateRequest = call.receive<UpdateUserRequest>()
@@ -46,16 +43,10 @@ fun Route.userRoutes(userService: UserService) {
                 "passwordUpdate" to (updateRequest.password != null)
             ).info { "Update user profile request received" }
 
-            val success = userService.updateUser(userId, updateRequest)
-
-            if (success) {
-                call.respond(HttpStatusCode.OK, ApiResponse.Success("User updated successfully"))
-            } else {
-                throw NoSuchElementException("User not found")
-            }
+            userService.updateUser(userId, updateRequest)
+            call.respond(HttpStatusCode.OK, ApiResponse.Success("User updated successfully"))
         }
 
-        // DELETE /users/me - Delete user account
         delete("/me") {
             val userId = call.userIdOrThrow()
 
@@ -64,17 +55,12 @@ fun Route.userRoutes(userService: UserService) {
                 "endpoint" to "DELETE /users/me"
             ).warn { "Delete user account request received" }
 
-            val success = userService.deleteUser(userId)
-
-            if (success) {
-                log.withContext("userId" to userId).warn { "User account deletion completed" }
-                call.respond(
-                    HttpStatusCode.OK,
-                    ApiResponse.Success("User account deleted successfully")
-                )
-            } else {
-                throw NoSuchElementException("User not found")
-            }
+            userService.deleteUser(userId)
+            log.withContext("userId" to userId).warn { "User account deletion completed" }
+            call.respond(
+                HttpStatusCode.OK,
+                ApiResponse.Success("User account deleted successfully")
+            )
         }
     }
 }

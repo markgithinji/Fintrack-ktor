@@ -3,7 +3,6 @@ package com.fintrack.feature.user.data
 import com.fintrack.feature.user.UsersTable
 import com.fintrack.feature.user.domain.User
 import core.dbQuery
-import feature.accounts.data.AccountsTable
 import feature.user.domain.UserRepository
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -25,17 +24,6 @@ class UserRepositoryImpl : UserRepository {
                 it[UsersTable.email] = email
                 it[UsersTable.passwordHash] = hashed
             }
-
-            // Create default accounts
-            val defaultAccounts = listOf("Bank", "Wallet", "Cash", "Savings")
-            defaultAccounts.forEach { accountName ->
-                AccountsTable.insert {
-                    it[id] = EntityID(UUID.randomUUID(), AccountsTable)
-                    it[AccountsTable.userId] = EntityID(userId, UsersTable)
-                    it[AccountsTable.name] = accountName
-                }
-            }
-
             userId
         }
 

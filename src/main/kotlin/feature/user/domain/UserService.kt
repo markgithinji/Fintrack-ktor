@@ -8,10 +8,10 @@ import feature.user.data.model.UpdateUserRequest
 import java.util.UUID
 
 interface UserService {
-    suspend fun getUserProfile(userId: UUID): UserDto?
+    suspend fun getUserProfile(userId: UUID): UserDto
     suspend fun createUser(request: CreateUserRequest): UUID
-    suspend fun updateUser(userId: UUID, request: UpdateUserRequest): Boolean
-    suspend fun deleteUser(userId: UUID): Boolean
+    suspend fun updateUser(userId: UUID, request: UpdateUserRequest)
+    suspend fun deleteUser(userId: UUID)
     suspend fun validateUserCredentials(email: String, password: String): User?
     suspend fun userExists(email: String): Boolean
 }

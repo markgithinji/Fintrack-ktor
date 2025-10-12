@@ -2,6 +2,8 @@ package feature.user.domain
 
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
+import com.fintrack.feature.accounts.domain.Account
+import com.fintrack.feature.accounts.domain.AccountsRepository
 import com.fintrack.feature.user.domain.User
 import feature.user.data.model.CreateUserRequest
 import feature.user.data.model.UpdateUserRequest
@@ -10,17 +12,18 @@ import org.mindrot.jbcrypt.BCrypt
 import java.util.UUID
 
 class UserServiceImpl(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val accountsRepository: AccountsRepository
 ) : UserService {
 
     private val log = logger<UserServiceImpl>()
 
-    override suspend fun getUserProfile(userId: UUID): UserDto? {
+    override suspend fun getUserProfile(userId: UUID): UserDto {
         log.withContext("userId" to userId).debug { "Fetching user profile" }
 
         val user = userRepository.findById(userId) ?: run {
-            log.withContext("userId" to userId).debug { "User not found" }
-            return null
+            log.withContext("userId" to userId).warn { "User not found" }
+            throw NoSuchElementException("User not found")
         }
 
         val userDto = UserDto(
@@ -45,12 +48,14 @@ class UserServiceImpl(
 
         val userId = userRepository.createUser(request.email, request.password)
 
+        createDefaultAccounts(userId)
+
         log.withContext("userId" to userId, "email" to request.email)
             .info { "User created successfully" }
         return userId
     }
 
-    override suspend fun updateUser(userId: UUID, request: UpdateUserRequest): Boolean {
+    override suspend fun updateUser(userId: UUID, request: UpdateUserRequest) {
         log.withContext(
             "userId" to userId,
             "emailUpdate" to (request.email != null),
@@ -60,7 +65,7 @@ class UserServiceImpl(
         // Validate user exists
         val existingUser = userRepository.findById(userId) ?: run {
             log.withContext("userId" to userId).warn { "User update failed - user not found" }
-            return false
+            throw NoSuchElementException("User not found")
         }
 
         // Check if email is taken
@@ -77,27 +82,25 @@ class UserServiceImpl(
 
         val updated = userRepository.updateUser(userId, request.email, request.password)
 
-        if (updated) {
-            log.withContext("userId" to userId).info { "User updated successfully" }
-        } else {
+        if (!updated) {
             log.withContext("userId" to userId).warn { "User update failed" }
+            throw IllegalStateException("Failed to update user")
         }
 
-        return updated
+        log.withContext("userId" to userId).info { "User updated successfully" }
     }
 
-    override suspend fun deleteUser(userId: UUID): Boolean {
+    override suspend fun deleteUser(userId: UUID) {
         log.withContext("userId" to userId).warn { "Deleting user" }
 
         val deleted = userRepository.deleteUser(userId)
 
-        if (deleted) {
-            log.withContext("userId" to userId).warn { "User deleted successfully" }
-        } else {
+        if (!deleted) {
             log.withContext("userId" to userId).warn { "User deletion failed - not found" }
+            throw NoSuchElementException("User not found")
         }
 
-        return deleted
+        log.withContext("userId" to userId).warn { "User deleted successfully" }
     }
 
     override suspend fun validateUserCredentials(email: String, password: String): User? {
@@ -130,5 +133,22 @@ class UserServiceImpl(
         log.withContext("email" to email, "exists" to exists)
             .debug { "User existence check completed" }
         return exists
+    }
+
+    private suspend fun createDefaultAccounts(userId: UUID) {
+        log.withContext("userId" to userId).debug { "Creating default accounts" }
+
+        val defaultAccounts = listOf("Bank", "Wallet", "Cash", "Savings")
+        defaultAccounts.forEach { accountName ->
+            accountsRepository.addAccount(
+                Account(
+                    userId = userId,
+                    name = accountName
+                )
+            )
+        }
+
+        log.withContext("userId" to userId, "accountCount" to defaultAccounts.size)
+            .debug { "Default accounts created successfully" }
     }
 }
