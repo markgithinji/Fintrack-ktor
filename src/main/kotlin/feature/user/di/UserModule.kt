@@ -8,5 +8,5 @@ import org.koin.dsl.module
 
 fun userModule() = module {
     single<UserRepository> { UserRepositoryImpl() }
-    single<UserService> { UserServiceImpl(get()) }
+    single<UserService> { UserServiceImpl(get(),get()) }
 }

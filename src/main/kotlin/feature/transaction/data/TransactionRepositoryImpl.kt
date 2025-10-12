@@ -1,12 +1,10 @@
 package feature.transaction.data
 
 import com.fintrack.feature.user.UsersTable
-import core.ValidationException
 import core.dbQuery
 import feature.accounts.data.AccountsTable
 import feature.transaction.domain.TransactionRepository
 import feature.transaction.domain.model.Transaction
-import feature.transaction.validate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -32,7 +30,8 @@ class TransactionRepositoryImpl : TransactionRepository {
         var query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq EntityID(userId, UsersTable) }
 
-        if (accountId != null) query = query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
+        if (accountId != null) query =
+            query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
         if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
         if (!categories.isNullOrEmpty()) query = query.andWhere { TransactionsTable.category inList categories }
         if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
@@ -46,7 +45,6 @@ class TransactionRepositoryImpl : TransactionRepository {
                                 (TransactionsTable.id greater afterId))
             }
         }
-
         val orderColumn = when (sortBy) {
             "amount" -> TransactionsTable.amount
             else -> TransactionsTable.dateTime
