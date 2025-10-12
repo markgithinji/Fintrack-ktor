@@ -23,7 +23,7 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
     val log = logger("BudgetRoutes")
 
     route("/budgets") {
-        // POST bulk budgets
+
         post("/bulk") {
             val userId = call.userIdOrThrow()
             val requests = call.receive<List<CreateBudgetRequest>>()
@@ -38,7 +38,6 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
             call.respond(ApiResponse.Success(saved))
         }
 
-        // POST a new budget
         post {
             val userId = call.userIdOrThrow()
             val request = call.receive<CreateBudgetRequest>()
@@ -54,7 +53,6 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
             call.respond(HttpStatusCode.Created, ApiResponse.Success(budget))
         }
 
-        // PUT update by id
         put("{id}") {
             val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.let { UUID.fromString(it) }
@@ -72,7 +70,6 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
             call.respond(ApiResponse.Success(updatedBudget))
         }
 
-        // DELETE a budget by id
         delete("{id}") {
             val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.let { UUID.fromString(it) }
@@ -84,13 +81,10 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "endpoint" to "DELETE /budgets/{id}"
             ).info { "Budget deletion request received" }
 
-            val removed = budgetService.deleteBudget(userId, id)
-            if (!removed) throw NoSuchElementException("Budget not found")
-
+            budgetService.deleteBudget(userId, id)
             call.respond(ApiResponse.Success("Deleted budget with id: $id"))
         }
 
-        // GET all budgets (with status)
         get {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
@@ -105,7 +99,6 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
             call.respond(ApiResponse.Success(budgets))
         }
 
-        // GET budget by id (with status)
         get("{id}") {
             val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.let { UUID.fromString(it) }

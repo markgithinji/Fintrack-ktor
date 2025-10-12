@@ -21,5 +21,5 @@ interface BudgetService {
         request: UpdateBudgetRequest
     ): BudgetWithStatusDto
 
-    suspend fun deleteBudget(userId: UUID, id: UUID): Boolean
+    suspend fun deleteBudget(userId: UUID, id: UUID)
 }

@@ -128,21 +128,20 @@ class BudgetServiceImpl(
         return budgetWithStatus
     }
 
-    override suspend fun deleteBudget(userId: UUID, id: UUID): Boolean {
+    override suspend fun deleteBudget(userId: UUID, id: UUID) {
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Deleting budget" }
 
         val deleted = budgetRepository.delete(userId, id)
 
-        if (deleted) {
-            log.withContext("userId" to userId, "budgetId" to id)
-                .info { "Budget deleted successfully" }
-        } else {
+        if (!deleted) {
             log.withContext("userId" to userId, "budgetId" to id)
                 .warn { "Budget deletion failed - not found" }
+            throw ResourceNotFoundException("Budget $id not found")
         }
 
-        return deleted
+        log.withContext("userId" to userId, "budgetId" to id)
+            .info { "Budget deleted successfully" }
     }
 
     private suspend fun calculateBudgetStatus(budget: Budget): BudgetStatus {
