@@ -70,11 +70,6 @@ class TransactionRepositoryImpl : TransactionRepository {
     }
 
     override suspend fun add(entity: Transaction): Transaction = dbQuery {
-        try {
-            entity.validate()
-        } catch (e: IllegalArgumentException) {
-            throw ValidationException(e.message ?: "Invalid transaction")
-        }
         val inserted = TransactionsTable.insert { row ->
             row[id] = EntityID(entity.id ?: UUID.randomUUID(), TransactionsTable)
             row[userId] = EntityID(entity.userId, UsersTable)
@@ -91,11 +86,6 @@ class TransactionRepositoryImpl : TransactionRepository {
     }
 
     override suspend fun update(id: UUID, userId: UUID, entity: Transaction): Transaction = dbQuery {
-        try {
-            entity.validate()
-        } catch (e: IllegalArgumentException) {
-            throw ValidationException(e.message ?: "Invalid transaction")
-        }
         val updated = TransactionsTable.update(
             where = {
                 (TransactionsTable.id eq EntityID(id, TransactionsTable)) and
