@@ -19,8 +19,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
     route("/transactions/summary") {
         get("/highlights") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? =
-                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val typeFilter = call.request.queryParameters["type"]
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
@@ -53,13 +52,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
             val period = call.request.queryParameters["period"]
                 ?: throw ValidationException("Missing period parameter")
 
-            // Validate period format
-            if (!period.matches(Regex("^(\\d{4}-W\\d{2}|\\d{4}-\\d{2}|\\d{4})$"))) {
-                throw ValidationException("Period must be in format: YYYY-Www, YYYY-MM, or YYYY")
-            }
-
-            val accountId: UUID? =
-                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val typeFilter = call.request.queryParameters["type"]
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
@@ -91,8 +84,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/available-weeks") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? =
-                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -106,8 +98,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/available-months") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? =
-                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -121,8 +112,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/available-years") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? =
-                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -136,8 +126,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/overview") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? =
-                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -151,8 +140,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/overview/range") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? =
-                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val startParam = call.request.queryParameters["start"]
             val endParam = call.request.queryParameters["end"]
 
@@ -164,24 +152,13 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "endParam" to endParam
             ).info { "Overview range request received" }
 
-            if (startParam == null || endParam == null) {
-                throw ValidationException("start and end query params required (yyyy-MM-dd)")
-            }
-
-            val (start, end) = service.parseDateRange(startParam, endParam)
-
-            // Convert LocalDateTime? to LocalDate with null safety
-            val startDate = start?.date ?: throw ValidationException("Invalid start date")
-            val endDate = end?.date ?: throw ValidationException("Invalid end date")
-
-            val days = service.getDaySummaries(userId, startDate, endDate, accountId)
+            val days = service.getDaySummariesByDateRange(userId, accountId, startParam, endParam)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(days))
         }
 
         get("/category-comparison") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? =
-                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
 
             log.withContext(
                 "userId" to userId,
@@ -196,7 +173,6 @@ fun Route.summaryRoutes(service: StatisticsService) {
         get("/counts") {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
-                ?: throw ValidationException("Missing or invalid accountId")
 
             log.withContext(
                 "userId" to userId,
@@ -205,8 +181,6 @@ fun Route.summaryRoutes(service: StatisticsService) {
             ).info { "Transaction counts request received" }
 
             val summary = service.getTransactionCountSummary(userId, accountId)
-                ?: throw NoSuchElementException("No transactions found for accountId=$accountId")
-
             call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
         }
     }

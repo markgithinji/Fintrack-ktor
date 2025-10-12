@@ -137,6 +137,10 @@ class StatisticsServiceImpl(
         start: LocalDateTime?,
         end: LocalDateTime?
     ): DistributionSummaryDto {
+        if (!period.matches(Regex("^(\\d{4}-W\\d{2}|\\d{4}-\\d{2}|\\d{4})$"))) {
+            throw ValidationException("Period must be in format: YYYY-Www, YYYY-MM, or YYYY")
+        }
+
         log.withContext(
             "userId" to userId,
             "period" to period,
@@ -381,23 +385,23 @@ class StatisticsServiceImpl(
     override suspend fun getTransactionCountSummary(
         userId: UUID,
         accountId: UUID?
-    ): TransactionCountSummaryDto? {
+    ): TransactionCountSummaryDto {
+        requireNotNull(accountId) { "Account ID is required" }
+
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching transaction count summary" }
 
         val counts = statisticsRepository.getTransactionCounts(userId, accountId)
 
-        val result = if (counts.totalCount == 0) {
-            log.withContext("userId" to userId, "accountId" to accountId)
-                .debug { "No transactions found for account" }
-            null
-        } else {
-            TransactionCountSummaryDto(
-                totalIncomeTransactions = counts.incomeCount,
-                totalExpenseTransactions = counts.expenseCount,
-                totalTransactions = counts.totalCount
-            )
+        if (counts.totalCount == 0) {
+            throw NoSuchElementException("No transactions found for accountId=$accountId")
         }
+
+        val result = TransactionCountSummaryDto(
+            totalIncomeTransactions = counts.incomeCount,
+            totalExpenseTransactions = counts.expenseCount,
+            totalTransactions = counts.totalCount
+        )
 
         log.withContext(
             "userId" to userId,
@@ -408,6 +412,22 @@ class StatisticsServiceImpl(
         ).debug { "Transaction count summary retrieved" }
 
         return result
+    }
+
+    override suspend fun getDaySummariesByDateRange(
+        userId: UUID,
+        accountId: UUID?,
+        startParam: String?,
+        endParam: String?
+    ): List<DaySummaryDto> {
+        requireNotNull(startParam) { "start parameter is required" }
+        requireNotNull(endParam) { "end parameter is required" }
+
+        val (start, end) = parseDateRange(startParam, endParam)
+        val startDate = start?.date ?: throw ValidationException("Invalid start date")
+        val endDate = end?.date ?: throw ValidationException("Invalid end date")
+
+        return getDaySummaries(userId, startDate, endDate, accountId)
     }
 
     // ---- Helper methods for route parameter processing ----

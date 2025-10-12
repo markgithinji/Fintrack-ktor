@@ -32,8 +32,11 @@ interface StatisticsService {
     ): DistributionSummaryDto
 
     suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeksDto
+
     suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonthsDto
+
     suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYearsDto
+
     suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummaryDto
 
     suspend fun getDaySummaries(
@@ -41,6 +44,13 @@ interface StatisticsService {
         start: LocalDate,
         end: LocalDate,
         accountId: UUID?
+    ): List<DaySummaryDto>
+
+    suspend fun getDaySummariesByDateRange(
+        userId: UUID,
+        accountId: UUID?,
+        startParam: String?,
+        endParam: String?
     ): List<DaySummaryDto>
 
     suspend fun getCategoryComparisons(
@@ -51,7 +61,7 @@ interface StatisticsService {
     suspend fun getTransactionCountSummary(
         userId: UUID,
         accountId: UUID?
-    ): TransactionCountSummaryDto?
+    ): TransactionCountSummaryDto
 
     // Helper methods for route parameter processing
     fun parseTypeFilter(typeFilter: String?): Boolean?
