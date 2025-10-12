@@ -31,7 +31,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
             log.withContext("userId" to userId, "endpoint" to "GET /accounts")
                 .info { "Fetching all accounts request received" }
 
-            val accounts: List<AccountDto> = accountService.getAllAccounts(userId)
+            val accounts = accountService.getAllAccounts(userId)
             call.respond(ApiResponse.Success(accounts))
         }
 
@@ -46,9 +46,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 "endpoint" to "GET /accounts/{id}"
             ).info { "Fetching account request received" }
 
-            val account: AccountDto = accountService.getAccount(userId, accountId)
-                ?: throw NoSuchElementException("Account not found")
-
+            val account = accountService.getAccount(userId, accountId)
             call.respond(ApiResponse.Success(account))
         }
 
@@ -62,7 +60,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 "accountName" to request.name
             ).info { "Create account request received" }
 
-            val account: AccountDto = accountService.createAccount(userId, request)
+            val account = accountService.createAccount(userId, request)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(account))
         }
 
@@ -80,8 +78,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 "accountName" to request.name
             ).info { "Update account request received" }
 
-            val updatedAccount: AccountDto =
-                accountService.updateAccount(userId, accountId, request)
+            val updatedAccount = accountService.updateAccount(userId, accountId, request)
             call.respond(ApiResponse.Success(updatedAccount))
         }
 
@@ -96,9 +93,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 "endpoint" to "DELETE /accounts/{id}"
             ).info { "Delete account request received" }
 
-            val deleted: Boolean = accountService.deleteAccount(userId, accountId)
-            if (!deleted) throw NoSuchElementException("Account not found")
-
+            accountService.deleteAccount(userId, accountId)
             call.respond(ApiResponse.Success("Account deleted successfully"))
         }
     }

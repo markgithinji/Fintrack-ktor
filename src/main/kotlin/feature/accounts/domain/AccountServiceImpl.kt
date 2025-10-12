@@ -22,19 +22,21 @@ class AccountServiceImpl(
             .debug { "Calculating account aggregates" }
 
         val transactions = accountsRepository.getTransactionAmounts(userId, accountId)
-        val income = transactions.filter { it.second }.sumOf { it.first }
-        val expense = transactions.filter { !it.second }.sumOf { it.first }
-        val balance = income - expense
+        val (income, expense) = transactions.partition { it.second }
+
+        val incomeSum = income.sumOf { it.first }
+        val expenseSum = expense.sumOf { it.first }
+        val balance = incomeSum - expenseSum
 
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
-            "income" to income,
-            "expense" to expense,
+            "income" to incomeSum,
+            "expense" to expenseSum,
             "balance" to balance
         ).debug { "Account aggregates calculated" }
 
-        return AccountAggregates(income, expense, balance)
+        return AccountAggregates(incomeSum, expenseSum, balance)
     }
 
     override suspend fun getAllAccounts(userId: UUID): List<AccountDto> {
@@ -56,12 +58,16 @@ class AccountServiceImpl(
         return result
     }
 
-    override suspend fun getAccount(userId: UUID, accountId: UUID): AccountDto? {
+    override suspend fun getAccount(userId: UUID, accountId: UUID): AccountDto {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching account" }
 
-        val account = accountsRepository.getAccountById(accountId) ?: return null
-        if (account.userId != userId) return null
+        val account = accountsRepository.getAccountById(accountId)
+            ?: throw NoSuchElementException("Account not found")
+
+        if (account.userId != userId) {
+            throw UnauthorizedAccessException("Account does not belong to user")
+        }
 
         val aggregates = getAccountAggregates(userId, account.id)
         val accountDto = account.toDto(
@@ -135,14 +141,16 @@ class AccountServiceImpl(
         log.withContext("userId" to userId, "accountId" to accountId)
             .info { "Deleting account" }
 
-        val account = accountsRepository.getAccountById(accountId) ?: return false
+        val account = accountsRepository.getAccountById(accountId)
+            ?: throw NoSuchElementException("Account not found")
+
         if (account.userId != userId) {
             log.withContext(
                 "attemptedUserId" to userId,
                 "actualUserId" to account.userId,
                 "accountId" to accountId
             ).warn { "Unauthorized account deletion attempt" }
-            return false
+            throw UnauthorizedAccessException("Account does not belong to user")
         }
 
         accountsRepository.deleteAccount(accountId)
