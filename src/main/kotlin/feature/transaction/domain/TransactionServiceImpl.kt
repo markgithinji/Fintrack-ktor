@@ -8,7 +8,9 @@ import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.TransactionDto
 import feature.transaction.data.model.toDomain
 import feature.transaction.data.model.toDto
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.atTime
 import org.jetbrains.exposed.sql.SortOrder
 import java.util.UUID
 
@@ -21,33 +23,44 @@ class TransactionServiceImpl(
     override suspend fun getAllCursor(
         userId: UUID,
         accountId: UUID?,
-        isIncome: Boolean?,
+        typeFilter: String?,
         categories: List<String>?,
-        start: LocalDateTime?,
-        end: LocalDateTime?,
+        startDate: String?,
+        endDate: String?,
         sortBy: String,
-        order: SortOrder,
+        order: String?,
         limit: Int,
-        afterDateTime: LocalDateTime?,
+        afterDateTime: String?,
         afterId: UUID?
     ): PaginatedTransactionDto {
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
-            "isIncome" to isIncome,
+            "typeFilter" to typeFilter,
             "categories" to categories?.size,
-            "start" to start?.toString(),
-            "end" to end?.toString(),
+            "startDate" to startDate,
+            "endDate" to endDate,
             "sortBy" to sortBy,
             "order" to order,
             "limit" to limit,
-            "afterDateTime" to afterDateTime?.toString(),
+            "afterDateTime" to afterDateTime,
             "afterId" to afterId
         ).debug { "Fetching transactions with cursor pagination" }
 
+        val isIncome = when (typeFilter?.lowercase()) {
+            "income" -> true
+            "expense" -> false
+            else -> null
+        }
+
+        val start = startDate?.let { LocalDate.parse(it).atTime(0, 0, 0) }
+        val end = endDate?.let { LocalDate.parse(it).atTime(23, 59, 59) }
+        val sortOrder = if (order == "DESC") SortOrder.DESC else SortOrder.ASC
+        val parsedAfterDateTime = afterDateTime?.let { LocalDateTime.parse(it) }
+
         val transactions = repo.getAllCursor(
             userId, accountId, isIncome, categories,
-            start, end, sortBy, order, limit, afterDateTime, afterId
+            start, end, sortBy, sortOrder, limit, parsedAfterDateTime, afterId
         )
 
         val transactionDtos = transactions.map { it.toDto() }
@@ -111,32 +124,36 @@ class TransactionServiceImpl(
         return result.toDto()
     }
 
-    override suspend fun delete(userId: UUID, id: UUID): Boolean {
+    override suspend fun delete(userId: UUID, id: UUID) {
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Deleting transaction" }
 
         val deleted = repo.delete(id, userId)
 
-        if (deleted) {
-            log.withContext("userId" to userId, "transactionId" to id)
-                .info { "Transaction deleted successfully" }
-        } else {
+        if (!deleted) {
             log.withContext("userId" to userId, "transactionId" to id)
                 .warn { "Transaction deletion failed - not found" }
+            throw NoSuchElementException("Transaction not found")
         }
 
-        return deleted
+        log.withContext("userId" to userId, "transactionId" to id)
+            .info { "Transaction deleted successfully" }
     }
 
-    override suspend fun clearAll(userId: UUID, accountId: UUID?): Boolean {
+    override suspend fun clearAll(userId: UUID, accountId: UUID?): ClearTransactionsResponse {
         log.withContext("userId" to userId, "accountId" to accountId)
             .warn { "Clearing all transactions" }
 
         val cleared = repo.clearAll(userId, accountId)
 
+        val message = if (accountId != null)
+            "All transactions cleared for account $accountId"
+        else "All transactions cleared for user $userId"
+
         log.withContext("userId" to userId, "accountId" to accountId)
             .info { "All transactions cleared successfully" }
-        return cleared
+
+        return ClearTransactionsResponse(message, cleared)
     }
 
     override suspend fun addBulk(
@@ -160,3 +177,9 @@ class TransactionServiceImpl(
         return transactions.map { it.toDto() }
     }
 }
+
+// DTO for clear response
+data class ClearTransactionsResponse(
+    val message: String,
+    val cleared: Boolean
+)

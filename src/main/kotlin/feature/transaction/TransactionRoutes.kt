@@ -17,10 +17,6 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.atTime
-import org.jetbrains.exposed.sql.SortOrder
 import java.util.UUID
 
 fun Route.transactionRoutes(service: TransactionService) {
@@ -38,17 +34,8 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "endpoint" to "DELETE /transactions/clear"
             ).warn { "Clear all transactions request received" }
 
-            service.clearAll(userId, accountId)
-
-            call.respond(
-                ApiResponse.Success(
-                    mapOf(
-                        "message" to if (accountId != null)
-                            "All transactions cleared for account $accountId"
-                        else "All transactions cleared for user $userId"
-                    )
-                )
-            )
+            val result = service.clearAll(userId, accountId)
+            call.respond(ApiResponse.Success(result))
         }
 
         post("/bulk") {
@@ -96,18 +83,14 @@ fun Route.transactionRoutes(service: TransactionService) {
             val result = service.getAllCursor(
                 userId = userId,
                 accountId = accountId,
-                isIncome = when (typeFilter?.lowercase()) {
-                    "income" -> true
-                    "expense" -> false
-                    else -> null
-                },
+                typeFilter = typeFilter,
                 categories = categories,
-                start = startDate?.let { LocalDate.parse(it).atTime(0, 0, 0) },
-                end = endDate?.let { LocalDate.parse(it).atTime(23, 59, 59) },
+                startDate = startDate,
+                endDate = endDate,
                 sortBy = sortBy,
-                order = if (order == "DESC") SortOrder.DESC else SortOrder.ASC,
+                order = order,
                 limit = limit,
-                afterDateTime = afterDateTime?.let { LocalDateTime.parse(it) },
+                afterDateTime = afterDateTime,
                 afterId = afterId
             )
 

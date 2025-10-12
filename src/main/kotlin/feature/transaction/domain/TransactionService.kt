@@ -4,22 +4,20 @@ import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.TransactionDto
-import kotlinx.datetime.LocalDateTime
-import org.jetbrains.exposed.sql.SortOrder
 import java.util.UUID
 
 interface TransactionService {
     suspend fun getAllCursor(
         userId: UUID,
         accountId: UUID?,
-        isIncome: Boolean?,
+        typeFilter: String?,
         categories: List<String>?,
-        start: LocalDateTime?,
-        end: LocalDateTime?,
+        startDate: String?,
+        endDate: String?,
         sortBy: String,
-        order: SortOrder,
+        order: String?,
         limit: Int,
-        afterDateTime: LocalDateTime?,
+        afterDateTime: String?,
         afterId: UUID?
     ): PaginatedTransactionDto
 
@@ -33,9 +31,9 @@ interface TransactionService {
         request: UpdateTransactionRequest
     ): TransactionDto
 
-    suspend fun delete(userId: UUID, id: UUID): Boolean
+    suspend fun delete(userId: UUID, id: UUID)
 
-    suspend fun clearAll(userId: UUID, accountId: UUID?): Boolean
+    suspend fun clearAll(userId: UUID, accountId: UUID?): ClearTransactionsResponse
 
     suspend fun addBulk(
         userId: UUID,
