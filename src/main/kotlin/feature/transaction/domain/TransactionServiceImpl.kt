@@ -2,6 +2,7 @@ package feature.transaction.domain
 
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
+import com.fintrack.feature.transaction.data.model.DeleteTransactionsResponse
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import feature.transaction.data.model.PaginatedTransactionDto
@@ -140,7 +141,7 @@ class TransactionServiceImpl(
             .info { "Transaction deleted successfully" }
     }
 
-    override suspend fun clearAll(userId: UUID, accountId: UUID?): ClearTransactionsResponse {
+    override suspend fun clearAll(userId: UUID, accountId: UUID?): DeleteTransactionsResponse {
         log.withContext("userId" to userId, "accountId" to accountId)
             .warn { "Clearing all transactions" }
 
@@ -153,7 +154,7 @@ class TransactionServiceImpl(
         log.withContext("userId" to userId, "accountId" to accountId)
             .info { "All transactions cleared successfully" }
 
-        return ClearTransactionsResponse(message, cleared)
+        return DeleteTransactionsResponse(message, cleared)
     }
 
     override suspend fun addBulk(
@@ -177,9 +178,3 @@ class TransactionServiceImpl(
         return transactions.map { it.toDto() }
     }
 }
-
-// DTO for clear response
-data class ClearTransactionsResponse(
-    val message: String,
-    val cleared: Boolean
-)

@@ -1,5 +1,6 @@
 package feature.transaction.domain
 
+import com.fintrack.feature.transaction.data.model.DeleteTransactionsResponse
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import feature.transaction.data.model.PaginatedTransactionDto
@@ -33,7 +34,7 @@ interface TransactionService {
 
     suspend fun delete(userId: UUID, id: UUID)
 
-    suspend fun clearAll(userId: UUID, accountId: UUID?): ClearTransactionsResponse
+    suspend fun clearAll(userId: UUID, accountId: UUID?): DeleteTransactionsResponse
 
     suspend fun addBulk(
         userId: UUID,
