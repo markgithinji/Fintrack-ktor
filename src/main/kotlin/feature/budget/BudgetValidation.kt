@@ -35,6 +35,10 @@ fun RequestValidationConfig.configureBudgetValidation() {
     validate<UpdateBudgetRequest> { request ->
         val violations = mutableListOf<String>()
 
+        if (request.accountId.isBlank()) {
+            violations.add("Account ID cannot be blank")
+        }
+
         when {
             request.name.isBlank() -> violations.add("Budget name cannot be blank")
             request.name.length > 100 -> violations.add("Budget name cannot exceed 100 characters")

@@ -33,7 +33,7 @@ fun BudgetWithStatus.toDto(): BudgetWithStatusDto =
     )
 
 fun CreateBudgetRequest.toDomain(): Budget = Budget(
-    accountId = accountId,
+    accountId = UUID.fromString(accountId),
     name = name,
     categories = categories,
     limit = limit,
@@ -44,7 +44,7 @@ fun CreateBudgetRequest.toDomain(): Budget = Budget(
 
 fun UpdateBudgetRequest.toDomain(budgetId: UUID): Budget = Budget(
     id = budgetId,
-    accountId = accountId,
+    accountId = UUID.fromString(accountId),
     name = name,
     categories = categories,
     limit = limit,

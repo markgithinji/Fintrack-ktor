@@ -4,7 +4,7 @@ import kotlinx.datetime.LocalDate
 import java.util.UUID
 
 data class UpdateBudgetRequest(
-    val accountId: UUID,
+    val accountId: String,
     val name: String,
     val categories: List<String>,
     val limit: Double,
