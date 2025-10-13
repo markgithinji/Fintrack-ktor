@@ -4,6 +4,7 @@ import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.logger
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
+import com.fintrack.feature.budget.data.model.BulkCreateBudgetRequest
 import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import core.ValidationException
@@ -26,15 +27,15 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
 
         post("/bulk") {
             val userId = call.userIdOrThrow()
-            val requests = call.receive<List<CreateBudgetRequest>>()
+            val bulkRequest = call.receive<BulkCreateBudgetRequest>()
 
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "POST /budgets/bulk",
-                "budgetCount" to requests.size
+                "budgetCount" to bulkRequest.budgets.size
             ).info { "Bulk budget creation request received" }
 
-            val saved = budgetService.createBudgets(userId, requests)
+            val saved = budgetService.createBudgets(userId, bulkRequest.budgets)
             call.respond(ApiResponse.Success(saved))
         }
 

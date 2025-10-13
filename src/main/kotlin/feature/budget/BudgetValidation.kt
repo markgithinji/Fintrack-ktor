@@ -1,8 +1,10 @@
 package feature.budget.domain
 
+import com.fintrack.feature.budget.data.model.BulkCreateBudgetRequest
 import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
-import io.ktor.server.plugins.requestvalidation.*
+import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
+import io.ktor.server.plugins.requestvalidation.ValidationResult
 
 fun RequestValidationConfig.configureBudgetValidation() {
     validate<CreateBudgetRequest> { request ->
@@ -63,8 +65,8 @@ fun RequestValidationConfig.configureBudgetValidation() {
         }
     }
 
-    validate<List<CreateBudgetRequest>> { requests ->
-        val allViolations = requests.flatMapIndexed { index, request ->
+    validate<BulkCreateBudgetRequest> { bulkRequest ->
+        val allViolations = bulkRequest.budgets.flatMapIndexed { index, request ->
             val violations = mutableListOf<String>()
 
             when {
