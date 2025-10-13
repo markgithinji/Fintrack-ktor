@@ -1,11 +1,14 @@
 package feature.transaction.domain
 
 
+import com.fintrack.feature.transaction.data.model.BulkCreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
-import io.ktor.server.plugins.requestvalidation.*
-import kotlinx.datetime.*
+import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
+import io.ktor.server.plugins.requestvalidation.ValidationResult
+import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 fun RequestValidationConfig.configureTransactionValidation() {
     validate<CreateTransactionRequest> { request ->
@@ -28,11 +31,11 @@ fun RequestValidationConfig.configureTransactionValidation() {
             violations.add("Description cannot exceed 255 characters")
         }
 
-        // Date validation - prevent future dates (simplified)
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        if (request.dateTime > now) {
-            violations.add("Transaction date cannot be in the future")
-        }
+        // Date validation - prevent future dates
+//        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+//        if (request.dateTime > now) {
+//            violations.add("Transaction date cannot be in the future")
+//        }
 
         if (violations.isNotEmpty()) {
             ValidationResult.Invalid(violations.joinToString(", "))
@@ -66,7 +69,7 @@ fun RequestValidationConfig.configureTransactionValidation() {
             violations.add("Description cannot exceed 255 characters")
         }
 
-        // Date validation - prevent future dates (simplified)
+        // Date validation - prevent future dates
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         if (request.dateTime > now) {
             violations.add("Transaction date cannot be in the future")
@@ -79,8 +82,8 @@ fun RequestValidationConfig.configureTransactionValidation() {
         }
     }
 
-    validate<List<CreateTransactionRequest>> { requests ->
-        val allViolations = requests.flatMapIndexed { index, request ->
+    validate<BulkCreateTransactionRequest> { bulkRequest ->
+        val allViolations = bulkRequest.transactions.flatMapIndexed { index, request ->
             val violations = mutableListOf<String>()
 
             // Amount validation
@@ -99,6 +102,12 @@ fun RequestValidationConfig.configureTransactionValidation() {
             if (request.description.length > 255) {
                 violations.add("Transaction #${index + 1}: description cannot exceed 255 characters")
             }
+
+            // Date validation - prevent future dates
+//            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+//            if (request.dateTime > now) {
+//                violations.add("Transaction #${index + 1}: date cannot be in the future")
+//            }
 
             violations
         }

@@ -4,6 +4,7 @@ import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.logger
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
+import com.fintrack.feature.transaction.data.model.BulkCreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import core.ValidationException
@@ -40,15 +41,15 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         post("/bulk") {
             val userId = call.userIdOrThrow()
-            val requests = call.receive<List<CreateTransactionRequest>>()
+            val bulkRequest = call.receive<BulkCreateTransactionRequest>()
 
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "POST /transactions/bulk",
-                "transactionCount" to requests.size
+                "transactionCount" to bulkRequest.transactions.size
             ).info { "Bulk transaction creation request received" }
 
-            val saved = service.addBulk(userId, requests)
+            val saved = service.addBulk(userId, bulkRequest.transactions)
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
         }
 
