@@ -43,8 +43,8 @@ fun Route.userRoutes(userService: UserService) {
                 "passwordUpdate" to (updateRequest.password != null)
             ).info { "Update user profile request received" }
 
-            userService.updateUser(userId, updateRequest)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success("User updated successfully"))
+            val updatedUser = userService.updateUser(userId, updateRequest)
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(updatedUser))
         }
 
         delete("/me") {

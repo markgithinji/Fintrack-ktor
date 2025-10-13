@@ -4,6 +4,7 @@ import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.feature.accounts.domain.Account
 import com.fintrack.feature.accounts.domain.AccountsRepository
+import com.fintrack.feature.user.data.model.toDto
 import com.fintrack.feature.user.domain.User
 import feature.user.data.model.CreateUserRequest
 import feature.user.data.model.UpdateUserRequest
@@ -26,17 +27,14 @@ class UserServiceImpl(
             throw NoSuchElementException("User not found")
         }
 
-        val userDto = UserDto(
-            name = user.email, // Use email as name for now
-            email = user.email
-        )
+        val userDto = user.toDto()
 
         log.withContext("userId" to userId, "email" to user.email)
             .debug { "User profile retrieved successfully" }
         return userDto
     }
 
-    override suspend fun createUser(request: CreateUserRequest): UUID {
+    override suspend fun createUser(request: CreateUserRequest): UserDto {
         log.withContext("email" to request.email)
             .info { "Creating user" }
 
@@ -47,15 +45,20 @@ class UserServiceImpl(
         }
 
         val userId = userRepository.createUser(request.email, request.password)
-
         createDefaultAccounts(userId)
+
+        val user = userRepository.findById(userId) ?: run {
+            log.withContext("userId" to userId).warn { "Failed to fetch created user" }
+            throw IllegalStateException("Failed to fetch created user")
+        }
 
         log.withContext("userId" to userId, "email" to request.email)
             .info { "User created successfully" }
-        return userId
+
+        return user.toDto()
     }
 
-    override suspend fun updateUser(userId: UUID, request: UpdateUserRequest) {
+    override suspend fun updateUser(userId: UUID, request: UpdateUserRequest): UserDto {
         log.withContext(
             "userId" to userId,
             "emailUpdate" to (request.email != null),
@@ -87,7 +90,13 @@ class UserServiceImpl(
             throw IllegalStateException("Failed to update user")
         }
 
+        val updatedUser = userRepository.findById(userId) ?: run {
+            log.withContext("userId" to userId).warn { "Failed to fetch updated user" }
+            throw IllegalStateException("Failed to fetch updated user")
+        }
+
         log.withContext("userId" to userId).info { "User updated successfully" }
+        return updatedUser.toDto()
     }
 
     override suspend fun deleteUser(userId: UUID) {
