@@ -44,6 +44,11 @@ fun RequestValidationConfig.configureTransactionValidation() {
     validate<UpdateTransactionRequest> { request ->
         val violations = mutableListOf<String>()
 
+        // Account ID validation
+        if (request.accountId.isBlank()) {
+            violations.add("Account ID cannot be blank")
+        }
+
         // Amount validation
         when {
             request.amount <= 0 -> violations.add("Amount must be greater than 0")
