@@ -17,14 +17,14 @@ class UserRepositoryImpl : UserRepository {
     override suspend fun createUser(email: String, password: String): UUID =
         dbQuery {
             val hashed = BCrypt.hashpw(password, BCrypt.gensalt())
-            val userId = UUID.randomUUID()
 
-            UsersTable.insert {
-                it[id] = EntityID(userId, UsersTable)
+            val inserted = UsersTable.insert {
                 it[UsersTable.email] = email
                 it[UsersTable.passwordHash] = hashed
             }
-            userId
+
+            inserted.resultedValues?.singleOrNull()?.get(UsersTable.id)?.value
+                ?: throw IllegalStateException("Failed to create user")
         }
 
     override suspend fun findByEmail(email: String): User? =

@@ -18,7 +18,8 @@ import java.util.*
 class BudgetRepositoryImpl : BudgetRepository {
     override suspend fun getAllByUser(userId: UUID, accountId: UUID?): List<Budget> =
         dbQuery {
-            var query = BudgetsTable.selectAll().where { BudgetsTable.userId eq EntityID(userId, UsersTable) }
+            var query = BudgetsTable.selectAll()
+                .where { BudgetsTable.userId eq EntityID(userId, UsersTable) }
             if (accountId != null) query =
                 query.andWhere { BudgetsTable.accountId eq EntityID(accountId, AccountsTable) }
             query.map { it.toBudget() }
@@ -29,7 +30,10 @@ class BudgetRepositoryImpl : BudgetRepository {
             BudgetsTable
                 .selectAll()
                 .where {
-                    (BudgetsTable.id eq EntityID(id, BudgetsTable)) and (BudgetsTable.userId eq EntityID(
+                    (BudgetsTable.id eq EntityID(
+                        id,
+                        BudgetsTable
+                    )) and (BudgetsTable.userId eq EntityID(
                         userId,
                         UsersTable
                     ))
@@ -65,7 +69,6 @@ class BudgetRepositoryImpl : BudgetRepository {
     override suspend fun addAll(budgets: List<Budget>): List<Budget> =
         dbQuery {
             budgets.map { budget ->
-                // For each budget, get the account's userId
                 val account = AccountsTable
                     .selectAll()
                     .where { AccountsTable.id eq EntityID(budget.accountId, AccountsTable) }
@@ -73,7 +76,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                     ?: throw IllegalArgumentException("Account ${budget.accountId} not found")
                 val accountUserId = account[AccountsTable.userId].value
 
-                BudgetsTable.insert {
+                val inserted = BudgetsTable.insert {
                     it[id] = EntityID(budget.id ?: UUID.randomUUID(), BudgetsTable)
                     it[userId] = EntityID(accountUserId, UsersTable)
                     it[accountId] = EntityID(budget.accountId, AccountsTable)
@@ -84,10 +87,12 @@ class BudgetRepositoryImpl : BudgetRepository {
                     it[startDate] = budget.startDate.toJavaLocalDate()
                     it[endDate] = budget.endDate.toJavaLocalDate()
                 }
-            }
-            // Return the budgets with their generated IDs
-            budgets.mapIndexed { index, budget ->
-                budget.copy(id = UUID.randomUUID()) // TODO: We might want to fetch the actual generated IDs
+
+                val generatedId =
+                    inserted.resultedValues?.singleOrNull()?.get(BudgetsTable.id)?.value
+                        ?: throw IllegalStateException("Failed to get generated ID for budget")
+
+                budget.copy(id = generatedId)
             }
         }
 
@@ -141,8 +146,10 @@ class BudgetRepositoryImpl : BudgetRepository {
                 .where {
                     (TransactionsTable.accountId eq EntityID(accountId, AccountsTable)) and
                             (TransactionsTable.dateTime.between(
-                                start.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime(),
-                                end.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime()
+                                start.toLocalDateTime(TimeZone.currentSystemDefault())
+                                    .toJavaLocalDateTime(),
+                                end.toLocalDateTime(TimeZone.currentSystemDefault())
+                                    .toJavaLocalDateTime()
                             )) and
                             (TransactionsTable.category inList categories) and
                             (TransactionsTable.isIncome eq !isExpense)
