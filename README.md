@@ -1,41 +1,112 @@
-# backend
+# 🚀 Fintrack Ktor API — Personal Finance Backend Service
 
-This project was created using the [Ktor Project Generator](https://start.ktor.io).
+**Fintrack Ktor API** is a robust, high-performance backend service built with **Ktor** and **Kotlin**, designed to power the [Fintrack KMP mobile application](https://github.com/markgithinji/fintrack-kmp). It follows **clean architecture** principles to deliver a scalable, maintainable, and secure financial data API.
 
-Here are some useful links to get you started:
+> 🔒 **Production Ready**: Features enterprise-grade security, monitoring, and reliability measures.
 
-- [Ktor Documentation](https://ktor.io/docs/home.html)
-- [Ktor GitHub page](https://github.com/ktorio/ktor)
-- The [Ktor Slack chat](https://app.slack.com/client/T09229ZC6/C0A974TJ9). You'll need to [request an invite](https://surveys.jetbrains.com/s3/kotlin-slack-sign-up) to join.
+---
 
-## Features
+## 🏗️ Tech Stack
 
-Here's a list of features included in this project:
+**Server & Framework:**
+- **Ktor**: Asynchronous web framework for Kotlin
+- **Netty Engine**: High-performance web server
+- **Kotlin Serialization**: Type-safe JSON serialization/deserialization
+- **Content Negotiation**: Automatic content type handling
 
-| Name                                                               | Description                                                                        |
-| --------------------------------------------------------------------|------------------------------------------------------------------------------------ |
-| [Routing](https://start.ktor.io/p/routing)                         | Provides a structured routing DSL                                                  |
-| [Content Negotiation](https://start.ktor.io/p/content-negotiation) | Provides automatic content conversion according to Content-Type and Accept headers |
-| [Status Pages](https://start.ktor.io/p/status-pages)               | Provides exception handling for routes                                             |
+**Database & Persistence:**
+- **PostgreSQL**: Primary relational database
+- **Exposed**: Type-safe SQL DSL and DAO
+- **HikariCP**: High-performance connection pooling
+- **Kotlinx DateTime**: Modern date/time handling
 
-## Building & Running
+**Security & Authentication:**
+- **JWT Authentication**: Stateless token-based auth
+- **BCrypt**: Secure password hashing
+- **Rate Limiting**: API abuse protection
+- **Request Validation**: Input sanitization and validation
 
-To build or run the project, use one of the following tasks:
+**Monitoring & Operations:**
+- **Micrometer Metrics**: Application metrics collection
+- **Prometheus**: Metrics endpoint for monitoring
+- **Health Checks**: System and dependency health monitoring
+- **Structured Logging**: JSON logging with Logstash encoder
 
-| Task                          | Description                                                          |
-| -------------------------------|---------------------------------------------------------------------- |
-| `./gradlew test`              | Run the tests                                                        |
-| `./gradlew build`             | Build everything                                                     |
-| `buildFatJar`                 | Build an executable JAR of the server with all dependencies included |
-| `buildImage`                  | Build the docker image to use with the fat JAR                       |
-| `publishImageToLocalRegistry` | Publish the docker image locally                                     |
-| `run`                         | Run the server                                                       |
-| `runDocker`                   | Run using the local docker image                                     |
+**Dependency & Configuration:**
+- **Koin**: Dependency injection framework
+- **YAML Configuration**: Externalized configuration management
+- **Gradle Version Catalog**: Centralized dependency management
 
-If the server starts successfully, you'll see the following output:
+**Code Quality & Style:**
+- **Spotless**: Automated code formatting and license headers
+- **Detekt**: Static code analysis with customizable rulesets
+- **Ktlint**: Kotlin linter integrated with Spotless
 
-```
-2024-12-04 14:32:45.584 [main] INFO  Application - Application started in 0.303 seconds.
-2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
-```
+---
 
+## 💡 Core Features
+
+### 🔐 Security & Auth
+- **JWT-based Authentication** with configurable expiration
+- **Secure Password Hashing** using BCrypt
+- **Rate Limiting** per endpoint to prevent abuse
+- **Request Validation** with comprehensive error handling
+
+### 📊 Financial Operations
+- **User Management** with secure registration/login
+- **Account CRUD** for multiple account types (checking, savings, credit)
+- **Transaction Processing** with category tagging
+- **Budget Management** with category-wise limits
+- **Financial Analytics** for spending insights and trends
+
+### ⚡ Performance & Reliability
+- **Async Non-blocking** I/O operations
+- **Connection Pooling** for database efficiency
+- **Structured Logging** for easy debugging and monitoring
+- **Health Checks** for system reliability
+
+### 🔍 Monitoring & Metrics
+- **Prometheus Metrics** endpoint for monitoring
+- **Request Logging** with correlation IDs
+- **Error Tracking** with detailed status pages
+- **Performance Metrics** for API endpoints
+
+### 🎯 Code Quality
+- **Automated Code Formatting** with Spotless
+- **Static Analysis** with Detekt for bug detection
+- **Consistent Code Style** across the codebase
+- **License Header Management** automated by Spotless
+
+---
+
+## 🏗️ Architecture
+
+**Clean Architecture Layers:**
+- **Presentation**: Ktor routes, authentication, validation
+- **Application**: Use cases, business logic, DTOs
+- **Domain**: Business entities, interfaces, abstractions  
+- **Data**: Database entities, repositories, mappers
+
+---
+
+## 📊 API Endpoints
+
+> 📋 **Coming Soon**: Complete API documentation with endpoints for users, accounts, transactions, budgets, and analytics will be published shortly.
+
+---
+
+## 🚀 Getting Started
+
+> ⚙️ **Setup Guide Coming Soon**: Detailed installation, configuration, and deployment instructions will be available in the next update.
+
+---
+
+## 🛠️ Code Quality
+
+### Spotless (Code Formatting)
+```bash
+# Apply code formatting
+./gradlew spotlessApply
+
+# Check code formatting
+./gradlew spotlessCheck
