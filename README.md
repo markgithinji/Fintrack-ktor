@@ -19,6 +19,7 @@
 - **Exposed**: Type-safe SQL DSL and DAO
 - **HikariCP**: High-performance connection pooling
 - **Kotlinx DateTime**: Modern date/time handling
+- **Pagination**: Efficient server-side pagination for large datasets
 
 **Security & Authentication:**
 - **JWT Authentication**: Stateless token-based auth
@@ -58,12 +59,14 @@
 - **Transaction Processing** with category tagging
 - **Budget Management** with category-wise limits
 - **Financial Analytics** for spending insights and trends
+- **Server-side Pagination** for efficient data retrieval
 
 ### ⚡ Performance & Reliability
 - **Async Non-blocking** I/O operations
 - **Connection Pooling** for database efficiency
 - **Structured Logging** for easy debugging and monitoring
 - **Health Checks** for system reliability
+- **Optimized Queries** with pagination support
 
 ### 🔍 Monitoring & Metrics
 - **Prometheus Metrics** endpoint for monitoring
