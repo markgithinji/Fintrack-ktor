@@ -3,6 +3,8 @@ package feature.auth.domain
 import com.fintrack.core.logger
 import com.fintrack.core.warn
 import com.fintrack.core.withContext
+import com.fintrack.feature.accounts.domain.Account
+import com.fintrack.feature.accounts.domain.AccountsRepository
 import com.fintrack.feature.auth.JwtConfig
 import com.fintrack.feature.auth.domain.AuthValidationResponse
 import core.AuthenticationException
@@ -12,7 +14,8 @@ import org.mindrot.jbcrypt.BCrypt
 import java.util.UUID
 
 class AuthServiceImpl(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val accountsRepository: AccountsRepository
 ) : AuthService {
 
     private val log = logger<AuthServiceImpl>()
@@ -26,6 +29,10 @@ class AuthServiceImpl(
         }
 
         val userId = userRepository.createUser(email, password)
+
+        // Create default accounts for the new user
+        createDefaultAccounts(userId)
+
         val token = JwtConfig.generateToken(userId)
 
         log.withContext("userId" to userId, "email" to email)
@@ -89,5 +96,22 @@ class AuthServiceImpl(
                 message = "Invalid token: missing userId claim"
             )
         }
+    }
+
+    private suspend fun createDefaultAccounts(userId: UUID) {
+        log.withContext("userId" to userId).debug { "Creating default accounts for new user" }
+
+        val defaultAccounts = listOf("Bank", "Wallet", "Cash", "Savings")
+        defaultAccounts.forEach { accountName ->
+            accountsRepository.addAccount(
+                Account(
+                    userId = userId,
+                    name = accountName
+                )
+            )
+        }
+
+        log.withContext("userId" to userId, "accountCount" to defaultAccounts.size)
+            .debug { "Default accounts created successfully" }
     }
 }

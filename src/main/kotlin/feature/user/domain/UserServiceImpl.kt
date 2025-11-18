@@ -34,30 +34,6 @@ class UserServiceImpl(
         return userDto
     }
 
-    override suspend fun createUser(request: CreateUserRequest): UserDto {
-        log.withContext("email" to request.email)
-            .info { "Creating user" }
-
-        if (userRepository.userExists(request.email)) {
-            log.withContext("email" to request.email)
-                .warn { "User creation failed - email already exists" }
-            throw IllegalArgumentException("User with email '${request.email}' already exists")
-        }
-
-        val userId = userRepository.createUser(request.email, request.password)
-        createDefaultAccounts(userId)
-
-        val user = userRepository.findById(userId) ?: run {
-            log.withContext("userId" to userId).warn { "Failed to fetch created user" }
-            throw IllegalStateException("Failed to fetch created user")
-        }
-
-        log.withContext("userId" to userId, "email" to request.email)
-            .info { "User created successfully" }
-
-        return user.toDto()
-    }
-
     override suspend fun updateUser(userId: UUID, request: UpdateUserRequest): UserDto {
         log.withContext(
             "userId" to userId,
@@ -142,22 +118,5 @@ class UserServiceImpl(
         log.withContext("email" to email, "exists" to exists)
             .debug { "User existence check completed" }
         return exists
-    }
-
-    private suspend fun createDefaultAccounts(userId: UUID) {
-        log.withContext("userId" to userId).debug { "Creating default accounts" }
-
-        val defaultAccounts = listOf("Bank", "Wallet", "Cash", "Savings")
-        defaultAccounts.forEach { accountName ->
-            accountsRepository.addAccount(
-                Account(
-                    userId = userId,
-                    name = accountName
-                )
-            )
-        }
-
-        log.withContext("userId" to userId, "accountCount" to defaultAccounts.size)
-            .debug { "Default accounts created successfully" }
     }
 }

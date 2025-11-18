@@ -5,5 +5,5 @@ import feature.auth.domain.AuthServiceImpl
 import org.koin.dsl.module
 
 val authModule = module {
-    single<AuthService> { AuthServiceImpl(get()) }
+    single<AuthService> { AuthServiceImpl(get(), get()) }
 }
