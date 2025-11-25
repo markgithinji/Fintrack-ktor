@@ -6,6 +6,43 @@
 
 ---
 
+## 🚀 Quick Setup
+
+### Prerequisites
+- **Java 17** or higher
+- **Docker Desktop** (installed and running)
+- **Git**
+
+### 1. Clone & Setup
+```bash
+git clone https://github.com/markgithinji/Fintrack-ktor
+cd fintrack-ktor
+```
+
+### 2. Database Setup with Docker
+```bash
+# Pull PostgreSQL image
+docker pull postgres:15
+
+# Create and run container
+docker run -d --name fintrack-db -e POSTGRES_DB=fintrack_db -e POSTGRES_USER=fintrack -e POSTGRES_PASSWORD=secret -p 5432:5432 postgres:15
+```
+
+### 3. Verify Database
+```bash
+docker ps
+# Should show fintrack-db running
+```
+
+### 4 Build the application
+```bash
+./gradlew build
+
+# Run the application
+./gradlew run
+```
+---
+
 ## 🏗️ Tech Stack
 
 **Server & Framework:**
@@ -85,22 +122,10 @@
 ## 🏗️ Architecture
 
 **Clean Architecture Layers:**
-- **Presentation**: Ktor routes, authentication, validation
-- **Application**: Use cases, business logic, DTOs
-- **Domain**: Business entities, interfaces, abstractions  
+- **Presentation**: Ktor routes, authentication, validation, DTOs
+- **Application**: Use cases, business logic, services  
+- **Domain**: Domain objects, interfaces
 - **Data**: Database entities, repositories, mappers
-
----
-
-## 📊 API Endpoints
-
-> 📋 **Coming Soon**: Complete API documentation with endpoints for users, accounts, transactions, budgets, and analytics will be published shortly.
-
----
-
-## 🚀 Getting Started
-
-> ⚙️ **Setup Guide Coming Soon**: Detailed installation, configuration, and deployment instructions will be available in the next update.
 
 ---
 
@@ -113,3 +138,10 @@
 
 # Check code formatting
 ./gradlew spotlessCheck
+```
+
+## 📊 API Endpoints
+
+> 📋 **Coming Soon**: Complete API documentation with endpoints for users, accounts, transactions, budgets, and analytics will be published shortly.
+
+---
