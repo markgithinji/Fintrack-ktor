@@ -76,7 +76,7 @@ POST http://localhost:8080/transactions/bulk
 Headers: Authorization: Bearer <your-jwt-token>
 Body: [paste-your-updated-json-here]
 ```
-> 📝 **Important**: Make sure to replace the account IDs in the sample data with your real account IDs from step 3, and update the dates to be recent (within the last 7 days). This ensures the KMP mobile app charts display meaningful data since they work with recent transaction history.
+> 📝 **Important**: Make sure to replace the account IDs in the sample data with your real account IDs, and update the dates to be recent (within the last 7 days). This ensures the KMP mobile app charts display meaningful data since they work with recent transaction history.
 > 🔑 Note: You need to include the JWT token in the Authorization header for all protected endpoints.
 
 ---
