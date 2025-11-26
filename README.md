@@ -68,7 +68,7 @@ Headers: Authorization: Bearer <your-jwt-token>
 - Download sample data: [sample-transactions.json](https://gist.githubusercontent.com/markgithinji/a6f2b56c782b404e8e71ee9238b3e1e8/raw/sample-transactions.json)
 - Use this AI prompt to update the account IDs and dates:
 
-**AI Prompt:** *"First, replace all accountId values in this JSON: replace accountId 1 with [your-bank-account-id] and accountId 2 with [your-wallet-account-id]. Then update all dates to be within the last 7 days from today, ensuring each day has multiple transactions (both income and expenses) with realistic timestamps throughout each day. Keep the same structure and categories, but spread the transactions evenly across the past week with 2-4 transactions per day."*
+**AI Prompt:** *"First, replace ALL accountId values in this JSON with [your-main-account-id] (use the same account ID for every transaction). Then update all dates to be within the last 7 days from today, ensuring each day has multiple transactions (both income and expenses) with realistic timestamps throughout each day. Keep the same structure and categories, but spread the transactions evenly across the past week with 2-4 transactions per day."*
 
 ##### Add sample transactions:
 ```bash
@@ -76,6 +76,14 @@ POST http://localhost:8080/transactions/bulk
 Headers: Authorization: Bearer <your-jwt-token>
 Body: [paste-your-updated-json-here]
 ```
+
+#### Cleanup (Optional)
+To quickly delete all transactions and start fresh:
+```bash
+DELETE http://localhost:8080/transactions/clear
+Headers: Authorization: Bearer <your-jwt-token>
+```
+
 > 📝 **Important**: Make sure to replace the account IDs in the sample data with your real account IDs, and update the dates to be recent (within the last 7 days). This ensures the KMP mobile app charts display meaningful data since they work with recent transaction history.
 > 🔑 Note: You need to include the JWT token in the Authorization header for all protected endpoints.
 
