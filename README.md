@@ -12,6 +12,7 @@
 - **Java 17** or higher
 - **Docker Desktop** (installed and running)
 - **Git**
+- **Postman**
 
 ### 1. Clone & Setup
 ```bash
@@ -41,6 +42,43 @@ docker ps
 # Run the application
 ./gradlew run
 ```
+
+### 5 Testing with Sample Data
+##### Register a user:
+```bash
+POST http://localhost:8080/auth/register
+```
+Body:
+```bash
+{
+  "email": "test@example.com",
+  "password": "testpass123"
+}
+£ Save the JWT token from the response
+```
+
+##### Get your account IDs:
+```bash
+GET http://localhost:8080/accounts
+Headers: Authorization: Bearer <your-jwt-token>
+# Save the account IDs from the response
+```
+
+##### Prepare sample data:
+- Download sample data: [sample-transactions.json](https://gist.githubusercontent.com/markgithinji/a6f2b56c782b404e8e71ee9238b3e1e8/raw/sample-transactions.json)
+- Use this AI prompt to update the account IDs and dates:
+
+**AI Prompt:** *"First, replace all accountId values in this JSON: replace accountId 1 with [your-bank-account-id] and accountId 2 with [your-wallet-account-id]. Then update all dates to be within the last 7 days from today, ensuring each day has multiple transactions (both income and expenses) with realistic timestamps throughout each day. Keep the same structure and categories, but spread the transactions evenly across the past week with 2-4 transactions per day."*
+
+##### Add sample transactions:
+```bash
+POST http://localhost:8080/transactions/bulk
+Headers: Authorization: Bearer <your-jwt-token>
+Body: [paste-your-updated-json-here]
+```
+> 📝 **Important**: Make sure to replace the account IDs in the sample data with your real account IDs from step 3, and update the dates to be recent (within the last 7 days). This ensures the KMP mobile app charts display meaningful data since they work with recent transaction history.
+> 🔑 Note: You need to include the JWT token in the Authorization header for all protected endpoints.
+
 ---
 
 ## 🏗️ Tech Stack
