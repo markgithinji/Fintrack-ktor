@@ -5,6 +5,7 @@ import com.fintrack.core.withContext
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import feature.transaction.data.TransactionsTable
+import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -45,7 +46,7 @@ object DatabaseFactory {
             }
 
             dataSource = HikariDataSource(config)
-            Database.Companion.connect(dataSource!!)
+            Database.connect(dataSource!!)
 
             log.withContext(
                 "url" to config.jdbcUrl.replace(Regex(":[^:]*@"), ":****@"),
@@ -70,10 +71,26 @@ object DatabaseFactory {
     }
 
     private fun runMigrations() {
-        transaction {
-            SchemaUtils.create(TransactionsTable)
+        val flyway = Flyway.configure()
+            .dataSource(dataSource)
+            .locations("classpath:db/migration")
+            .baselineOnMigrate(true)
+            .load()
+
+        try {
+            val result = flyway.migrate()
+
+            log.withContext(
+                "migrationsExecuted" to result.migrationsExecuted,
+                "migrationFiles" to result.migrations.map { it.filepath }
+            ).info { "Flyway migrations completed" }
+
+        } catch (e: Exception) {
+            log.withContext(
+                "error" to e.message
+            ).error({ "Flyway migration failed" }, e)
+            throw e
         }
-        log.info("Database schema initialized successfully")
     }
 
     fun checkConnection(): Boolean {

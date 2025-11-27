@@ -1,7 +1,8 @@
 [versions]
-kotlin = "2.1.10"
+kotlin = "2.2.21"
 ktor = "3.2.3"
 logback = "1.4.14"
+flyway = "11.18.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
@@ -33,6 +34,8 @@ ktor-server-metrics-micrometer = { module = "io.ktor:ktor-server-metrics-microme
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version = "1.11.5" }
 ktor-server-rate-limit = { module = "io.ktor:ktor-server-rate-limit", version.ref = "ktor" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.6.0" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
