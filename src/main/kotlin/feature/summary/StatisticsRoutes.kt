@@ -173,14 +173,16 @@ fun Route.summaryRoutes(service: StatisticsService) {
         get("/counts") {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val isIncome = call.request.queryParameters["isIncome"]?.toBooleanStrictOrNull()
 
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/counts",
-                "accountId" to accountId
+                "accountId" to accountId,
+                "isIncome" to isIncome
             ).info { "Transaction counts request received" }
 
-            val summary = service.getTransactionCountSummary(userId, accountId)
+            val summary = service.getTransactionCountSummary(userId, accountId, isIncome)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
         }
     }

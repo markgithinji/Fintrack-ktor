@@ -39,12 +39,23 @@ class TransactionRepositoryImpl : TransactionRepository {
 
         if (afterDateTime != null && afterId != null) {
             val afterDateTimeJava = afterDateTime.toJavaLocalDateTime()
-            query = query.andWhere {
-                (TransactionsTable.dateTime greater afterDateTimeJava) or
-                        ((TransactionsTable.dateTime eq afterDateTimeJava) and
-                                (TransactionsTable.id greater afterId))
+            query = if (order == SortOrder.DESC) {
+                // For DESC order: get records that are "less than" (older than) the cursor
+                query.andWhere {
+                    (TransactionsTable.dateTime less afterDateTimeJava) or
+                            ((TransactionsTable.dateTime eq afterDateTimeJava) and
+                                    (TransactionsTable.id less afterId))
+                }
+            } else {
+                // For ASC order: get records that are "greater than" (newer than) the cursor
+                query.andWhere {
+                    (TransactionsTable.dateTime greater afterDateTimeJava) or
+                            ((TransactionsTable.dateTime eq afterDateTimeJava) and
+                                    (TransactionsTable.id greater afterId))
+                }
             }
         }
+
         val orderColumn = when (sortBy) {
             "amount" -> TransactionsTable.amount
             else -> TransactionsTable.dateTime

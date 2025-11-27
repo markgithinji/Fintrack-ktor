@@ -384,18 +384,18 @@ class StatisticsServiceImpl(
 
     override suspend fun getTransactionCountSummary(
         userId: UUID,
-        accountId: UUID?
+        accountId: UUID?,
+        isIncome: Boolean?
     ): TransactionCountSummaryDto {
         requireNotNull(accountId) { "Account ID is required" }
 
-        log.withContext("userId" to userId, "accountId" to accountId)
-            .debug { "Fetching transaction count summary" }
+        log.withContext(
+            "userId" to userId,
+            "accountId" to accountId,
+            "isIncome" to isIncome
+        ).debug { "Fetching transaction count summary" }
 
-        val counts = statisticsRepository.getTransactionCounts(userId, accountId)
-
-        if (counts.totalCount == 0) {
-            throw NoSuchElementException("No transactions found for accountId=$accountId")
-        }
+        val counts = statisticsRepository.getTransactionCounts(userId, accountId, isIncome)
 
         val result = TransactionCountSummaryDto(
             totalIncomeTransactions = counts.incomeCount,
@@ -406,6 +406,7 @@ class StatisticsServiceImpl(
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
+            "isIncome" to isIncome,
             "totalTransactions" to counts.totalCount,
             "incomeCount" to counts.incomeCount,
             "expenseCount" to counts.expenseCount

@@ -14,6 +14,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.selectAll
@@ -176,43 +177,50 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
     override suspend fun getTransactionCounts(
         userId: UUID,
-        accountId: UUID?
-    ): TransactionCounts =
-        dbQuery {
-            val incomeCount = TransactionsTable
-                .selectAll()
-                .where {
-                    (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
-                            (accountId?.let {
-                                TransactionsTable.accountId eq EntityID(
-                                    it,
-                                    AccountsTable
-                                )
-                            } ?: Op.TRUE) and
-                            (TransactionsTable.isIncome eq true)
-                }
-                .count()
-
-            val expenseCount = TransactionsTable
-                .selectAll()
-                .where {
-                    (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
-                            (accountId?.let {
-                                TransactionsTable.accountId eq EntityID(
-                                    it,
-                                    AccountsTable
-                                )
-                            } ?: Op.TRUE) and
-                            (TransactionsTable.isIncome eq false)
-                }
-                .count()
-
-            TransactionCounts(
-                incomeCount = incomeCount.toInt(),
-                expenseCount = expenseCount.toInt(),
-                totalCount = (incomeCount + expenseCount).toInt()
-            )
+        accountId: UUID?,
+        isIncome: Boolean?
+    ): TransactionCounts = dbQuery {
+        val baseCondition = { ->
+            (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
+                    (accountId?.let {
+                        TransactionsTable.accountId eq EntityID(it, AccountsTable)
+                    } ?: Op.TRUE)
         }
+
+        val incomeCount = when (isIncome) {
+            true -> TransactionsTable
+                .selectAll()
+                .where { baseCondition() and (TransactionsTable.isIncome eq true) }
+                .count()
+
+            false -> 0L // If filtering for expenses only, income count is 0
+
+            null -> TransactionsTable // No filter, count all income
+                .selectAll()
+                .where { baseCondition() and (TransactionsTable.isIncome eq true) }
+                .count()
+        }
+
+        val expenseCount = when (isIncome) {
+            false -> TransactionsTable
+                .selectAll()
+                .where { baseCondition() and (TransactionsTable.isIncome eq false) }
+                .count()
+
+            true -> 0L // If filtering for income only, expense count is 0
+
+            null -> TransactionsTable // No filter, count all expenses
+                .selectAll()
+                .where { baseCondition() and (TransactionsTable.isIncome eq false) }
+                .count()
+        }
+
+        TransactionCounts(
+            incomeCount = incomeCount.toInt(),
+            expenseCount = expenseCount.toInt(),
+            totalCount = (incomeCount + expenseCount).toInt()
+        )
+    }
 
     private fun ResultRow.toTransaction() = Transaction(
         id = this[TransactionsTable.id].value,

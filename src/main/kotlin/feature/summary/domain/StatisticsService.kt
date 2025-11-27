@@ -60,7 +60,8 @@ interface StatisticsService {
 
     suspend fun getTransactionCountSummary(
         userId: UUID,
-        accountId: UUID?
+        accountId: UUID?,
+        isIncome: Boolean? = null
     ): TransactionCountSummaryDto
 
     // Helper methods for route parameter processing
