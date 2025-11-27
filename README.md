@@ -6,6 +6,95 @@
 
 ---
 
+## 🚀 Quick Setup
+
+### Prerequisites
+- **Java 17** or higher
+- **Docker Desktop** (installed and running)
+- **Git**
+- **Postman**
+
+### 1. Clone & Setup
+```bash
+git clone https://github.com/markgithinji/Fintrack-ktor
+cd fintrack-ktor
+```
+
+### 2. Database Setup with Docker
+```bash
+# Pull PostgreSQL image
+docker pull postgres:15
+
+# Create and run container
+docker run -d --name fintrack-db -e POSTGRES_DB=fintrack_db -e POSTGRES_USER=fintrack -e POSTGRES_PASSWORD=secret -p 5432:5432 postgres:15
+```
+
+### 3. Verify Database
+```bash
+docker ps
+# Should show fintrack-db running
+```
+
+### 4 Build the application
+```bash
+./gradlew build
+
+# Run the application
+./gradlew run
+```
+
+### 5 Testing with Sample Data
+##### Register a user:
+```bash
+POST http://localhost:8080/auth/register
+```
+Body:
+```bash
+{
+  "email": "test@example.com",
+  "password": "testpass123"
+}
+£ Save the JWT token from the response
+```
+
+##### Get your account IDs:
+```bash
+GET http://localhost:8080/accounts
+Headers: Authorization: Bearer <your-jwt-token>
+# Save the account IDs from the response
+```
+
+##### Prepare sample data:
+- Download sample data: [sample-transactions.json](https://gist.githubusercontent.com/markgithinji/a6f2b56c782b404e8e71ee9238b3e1e8/raw/sample-transactions.json)
+- Use this AI prompt to update the account IDs and dates:
+
+**AI Prompt:** *"First, replace ALL accountId values in this JSON with [your-bank-account-id] (use the same bank account ID for every transaction). Then update all dates to be within the last 7 days from today, ensuring each day has multiple transactions (both income and expenses) with realistic timestamps throughout each day. 
+
+Use ONLY these specific categories:
+- **Income categories**: Salary, Freelance, Investments, Gifts, Other
+- **Expense categories**: Food, Transport, Shopping, Health, Bills, Entertainment, Education, Gifts, Travel, Personal Care, Subscriptions, Rent, Groceries, Insurance, Misc
+
+Keep the same transaction structure but ensure categories match the allowed set above. Spread the transactions evenly across the past week with 2-4 transactions per day."*
+
+##### Add sample transactions:
+```bash
+POST http://localhost:8080/transactions/bulk
+Headers: Authorization: Bearer <your-jwt-token>
+Body: [paste-your-updated-json-here]
+```
+
+#### Cleanup (Optional)
+To quickly delete all transactions and start fresh:
+```bash
+DELETE http://localhost:8080/transactions/clear
+Headers: Authorization: Bearer <your-jwt-token>
+```
+
+> 📝 **Important**: Make sure to replace the account IDs in the sample data with your real account IDs, and update the dates to be recent (within the last 7 days). This ensures the KMP mobile app charts display meaningful data since they work with recent transaction history.
+> 🔑 Note: You need to include the JWT token in the Authorization header for all protected endpoints.
+
+---
+
 ## 🏗️ Tech Stack
 
 **Server & Framework:**
@@ -85,22 +174,10 @@
 ## 🏗️ Architecture
 
 **Clean Architecture Layers:**
-- **Presentation**: Ktor routes, authentication, validation
-- **Application**: Use cases, business logic, DTOs
-- **Domain**: Business entities, interfaces, abstractions  
+- **Presentation**: Ktor routes, authentication, validation, DTOs
+- **Application**: Use cases, business logic, services  
+- **Domain**: Domain objects, interfaces
 - **Data**: Database entities, repositories, mappers
-
----
-
-## 📊 API Endpoints
-
-> 📋 **Coming Soon**: Complete API documentation with endpoints for users, accounts, transactions, budgets, and analytics will be published shortly.
-
----
-
-## 🚀 Getting Started
-
-> ⚙️ **Setup Guide Coming Soon**: Detailed installation, configuration, and deployment instructions will be available in the next update.
 
 ---
 
@@ -113,3 +190,10 @@
 
 # Check code formatting
 ./gradlew spotlessCheck
+```
+
+## 📊 API Endpoints
+
+> 📋 **Coming Soon**: Complete API documentation with endpoints for users, accounts, transactions, budgets, and analytics will be published shortly.
+
+---
