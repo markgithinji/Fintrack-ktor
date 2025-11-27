@@ -25,6 +25,7 @@ class TransactionServiceImpl(
         userId: UUID,
         accountId: UUID?,
         typeFilter: String?,
+        isIncome: Boolean?,
         categories: List<String>?,
         startDate: String?,
         endDate: String?,
@@ -38,6 +39,7 @@ class TransactionServiceImpl(
             "userId" to userId,
             "accountId" to accountId,
             "typeFilter" to typeFilter,
+            "isIncome" to isIncome,
             "categories" to categories?.size,
             "startDate" to startDate,
             "endDate" to endDate,
@@ -48,7 +50,8 @@ class TransactionServiceImpl(
             "afterId" to afterId
         ).debug { "Fetching transactions with cursor pagination" }
 
-        val isIncome = when (typeFilter?.lowercase()) {
+        // PREFER isIncome parameter over typeFilter if both are provided
+        val finalIsIncome = isIncome ?: when (typeFilter?.lowercase()) {
             "income" -> true
             "expense" -> false
             else -> null
@@ -60,7 +63,7 @@ class TransactionServiceImpl(
         val parsedAfterDateTime = afterDateTime?.let { LocalDateTime.parse(it) }
 
         val transactions = repo.getAllCursor(
-            userId, accountId, isIncome, categories,
+            userId, accountId, finalIsIncome, categories,
             start, end, sortBy, sortOrder, limit, parsedAfterDateTime, afterId
         )
 
@@ -71,7 +74,8 @@ class TransactionServiceImpl(
         log.withContext(
             "userId" to userId,
             "transactionCount" to transactionDtos.size,
-            "hasNextCursor" to (nextCursor != null)
+            "hasNextCursor" to (nextCursor != null),
+            "finalIsIncome" to finalIsIncome
         ).debug { "Transactions retrieved with cursor pagination" }
 
         return PaginatedTransactionDto(transactionDtos, nextCursor)

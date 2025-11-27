@@ -57,6 +57,7 @@ fun Route.transactionRoutes(service: TransactionService) {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
             val typeFilter = call.request.queryParameters["type"]
+            val isIncomeParam = call.request.queryParameters["isIncome"]?.toBooleanStrictOrNull()
             val categories = call.request.queryParameters["category"]?.split(",")
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
@@ -71,6 +72,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "endpoint" to "GET /transactions",
                 "accountId" to accountId,
                 "typeFilter" to typeFilter,
+                "isIncomeParam" to isIncomeParam,
                 "categoryCount" to categories?.size,
                 "startDate" to startDate,
                 "endDate" to endDate,
@@ -85,6 +87,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 userId = userId,
                 accountId = accountId,
                 typeFilter = typeFilter,
+                isIncome = isIncomeParam,
                 categories = categories,
                 startDate = startDate,
                 endDate = endDate,
