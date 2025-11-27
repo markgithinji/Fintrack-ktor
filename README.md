@@ -54,7 +54,7 @@ Body:
   "email": "test@example.com",
   "password": "testpass123"
 }
-£ Save the JWT token from the response
+# Save the JWT token from the response
 ```
 
 ##### Get your account IDs:
@@ -68,13 +68,11 @@ Headers: Authorization: Bearer <your-jwt-token>
 - Download sample data: [sample-transactions.json](https://gist.githubusercontent.com/markgithinji/a6f2b56c782b404e8e71ee9238b3e1e8/raw/sample-transactions.json)
 - Use this AI prompt to update the account IDs and dates:
 
-**AI Prompt:** *"First, replace ALL accountId values in this JSON with [your-bank-account-id] (use the same bank account ID for every transaction). Then update all dates to be within the last 7 days from today, ensuring each day has multiple transactions (both income and expenses) with realistic timestamps throughout each day. 
-
+**AI Prompt:** "First, replace ALL accountId values in this JSON with [your-bank-account-id] (use the same bank account ID for every transaction). Then update all dates to be within the last 7 days from today, ensuring each day has multiple transactions (both income and expenses) with realistic timestamps throughout each day. 
 Use ONLY these specific categories:
 - **Income categories**: Salary, Freelance, Investments, Gifts, Other
-- **Expense categories**: Food, Transport, Shopping, Health, Bills, Entertainment, Education, Gifts, Travel, Personal Care, Subscriptions, Rent, Groceries, Insurance, Misc
-
-Keep the same transaction structure but ensure categories match the allowed set above. Spread the transactions evenly across the past week with 2-4 transactions per day."*
+- **Expense categories**: Food, Transport, Shopping, Health, Bills, Entertainment, Education, Gifts, Travel, Personal Care, Subscriptions, Rent, Groceries, Insurance, Misc.
+Keep the same transaction structure but ensure categories match the allowed set above. Spread the transactions evenly across the past week with 2-4 transactions per day."
 
 ##### Add sample transactions:
 ```bash
@@ -109,6 +107,7 @@ Headers: Authorization: Bearer <your-jwt-token>
 - **HikariCP**: High-performance connection pooling
 - **Kotlinx DateTime**: Modern date/time handling
 - **Pagination**: Efficient server-side pagination for large datasets
+- **Flyway**: Database migrations and version control
 
 **Security & Authentication:**
 - **JWT Authentication**: Stateless token-based auth
