@@ -10,6 +10,7 @@ import com.fintrack.feature.budget.data.toDomain
 import com.fintrack.feature.budget.data.toDto
 import com.fintrack.feature.budget.domain.BudgetStatus
 import com.fintrack.feature.budget.domain.BudgetWithStatus
+import com.fintrack.feature.transaction.data.model.DeleteResponse
 import core.ResourceNotFoundException
 import feature.transaction.Budget
 import kotlinx.datetime.DateTimeUnit
@@ -142,6 +143,26 @@ class BudgetServiceImpl(
 
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Budget deleted successfully" }
+    }
+
+    override suspend fun deleteAllBudgets(userId: UUID): DeleteResponse {
+        log.withContext("userId" to userId)
+            .info { "Deleting all budgets for user" }
+
+        val deletedCount = budgetRepository.deleteAllByUser(userId)
+
+        val result = DeleteResponse(
+            message = "Successfully deleted $deletedCount budgets",
+            cleared = deletedCount > 0
+        )
+
+        log.withContext(
+            "userId" to userId,
+            "deletedCount" to deletedCount,
+            "cleared" to result.cleared
+        ).info { "All budgets deletion completed" }
+
+        return result
     }
 
     private suspend fun calculateBudgetStatus(budget: Budget): BudgetStatus {

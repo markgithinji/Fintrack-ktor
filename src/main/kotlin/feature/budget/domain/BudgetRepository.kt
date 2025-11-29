@@ -11,6 +11,7 @@ interface BudgetRepository {
     suspend fun addAll(budgets: List<Budget>): List<Budget>
     suspend fun update(userId: UUID, id: UUID, budget: Budget): Budget?
     suspend fun delete(userId: UUID, id: UUID): Boolean
+    suspend fun deleteAllByUser(userId: UUID): Int
     suspend fun getTransactionsInDateRange(
         accountId: UUID,
         categories: List<String>,

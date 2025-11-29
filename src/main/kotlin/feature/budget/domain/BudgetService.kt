@@ -3,6 +3,7 @@ package feature.budget.domain
 import com.fintrack.feature.budget.data.BudgetWithStatusDto
 import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
+import com.fintrack.feature.transaction.data.model.DeleteResponse
 import java.util.UUID
 
 
@@ -22,4 +23,5 @@ interface BudgetService {
     ): BudgetWithStatusDto
 
     suspend fun deleteBudget(userId: UUID, id: UUID)
+    suspend fun deleteAllBudgets(userId: UUID): DeleteResponse
 }

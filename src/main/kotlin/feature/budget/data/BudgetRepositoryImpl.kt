@@ -133,6 +133,13 @@ class BudgetRepositoryImpl : BudgetRepository {
             } > 0
         }
 
+    override suspend fun deleteAllByUser(userId: UUID): Int =
+        dbQuery {
+            BudgetsTable.deleteWhere {
+                BudgetsTable.userId eq EntityID(userId, UsersTable)
+            }
+        }
+
     override suspend fun getTransactionsInDateRange(
         accountId: UUID,
         categories: List<String>,

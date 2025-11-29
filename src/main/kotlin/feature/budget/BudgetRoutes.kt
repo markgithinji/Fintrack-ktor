@@ -86,6 +86,18 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
             call.respond(ApiResponse.Success("Deleted budget with id: $id"))
         }
 
+        delete("/clear") {
+            val userId = call.userIdOrThrow()
+
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "DELETE /budgets/clear"
+            ).info { "Delete all budgets request received" }
+
+            val result = budgetService.deleteAllBudgets(userId)
+            call.respond(ApiResponse.Success(result))
+        }
+
         get {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
