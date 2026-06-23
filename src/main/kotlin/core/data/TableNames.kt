@@ -5,4 +5,5 @@ object TableNames {
     const val ACCOUNTS = "accounts"
     const val TRANSACTIONS = "transactions"
     const val BUDGETS = "budgets"
+    const val REFRESH_TOKENS = "refresh_tokens"
 }

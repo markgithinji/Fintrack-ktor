@@ -1,9 +1,11 @@
 package feature.auth.di
 
+import feature.auth.data.ExposedRefreshTokenRepository
 import feature.auth.data.RedisTokenBlacklistService
 import feature.auth.domain.TokenBlacklistService
 import feature.auth.domain.AuthService
 import feature.auth.domain.AuthServiceImpl
+import feature.auth.domain.RefreshTokenRepository
 import org.koin.dsl.module
 import redis.clients.jedis.JedisPool
 import redis.clients.jedis.JedisPoolConfig
@@ -22,5 +24,6 @@ val authModule = module {
     }
     
     single<TokenBlacklistService> { RedisTokenBlacklistService(get()) }
-    single<AuthService> { AuthServiceImpl(get(), get(), get()) }
+    single<RefreshTokenRepository> { ExposedRefreshTokenRepository() }
+    single<AuthService> { AuthServiceImpl(get(), get(), get(), get()) }
 }

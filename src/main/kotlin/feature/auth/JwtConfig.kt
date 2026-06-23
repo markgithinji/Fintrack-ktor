@@ -5,7 +5,6 @@ import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import io.ktor.server.config.ApplicationConfig
 import java.util.Date
-
 import java.util.UUID
 
 object JwtConfig {
@@ -17,6 +16,9 @@ object JwtConfig {
         val audience: String,
         val realm: String
     )
+
+    const val ACCESS_TOKEN_EXPIRATION = 15 * 60 * 1000 // 15 minutes
+    const val REFRESH_TOKEN_EXPIRATION = 30L * 24 * 60 * 60 * 1000 // 30 days
 
     fun init(applicationConfig: ApplicationConfig) {
         config = Config(
@@ -38,13 +40,15 @@ object JwtConfig {
             .withIssuer(config.issuer)
             .build()
 
-    fun generateToken(userId: UUID): String =
+    fun generateAccessToken(userId: UUID): String =
         JWT.create()
             .withAudience(config.audience)
             .withIssuer(config.issuer)
             .withClaim("userId", userId.toString())
-            .withExpiresAt(Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)) // 24h
+            .withExpiresAt(Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION))
             .sign(Algorithm.HMAC256(config.secret))
+
+    fun generateRefreshToken(): String = UUID.randomUUID().toString()
 
     val realm: String get() = config.realm
 }
