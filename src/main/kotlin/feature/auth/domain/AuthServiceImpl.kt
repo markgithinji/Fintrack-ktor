@@ -1,5 +1,6 @@
 package feature.auth.domain
 
+import com.fintrack.core.info
 import com.fintrack.core.logger
 import com.fintrack.core.warn
 import com.fintrack.core.withContext
@@ -96,6 +97,11 @@ class AuthServiceImpl(
                 message = "Invalid token: missing userId claim"
             )
         }
+    }
+
+    override suspend fun logout(token: String) {
+        log.info { "User logged out" }
+        // TODO: add the token to a blacklist here
     }
 
     private suspend fun createDefaultAccounts(userId: UUID) {

@@ -79,5 +79,16 @@ fun Route.authRoutes(authService: AuthService) {
                 call.respond(HttpStatusCode.Unauthorized, response)
             }
         }
+
+        post("/logout") {
+            val authHeader = call.request.headers["Authorization"]
+            val token = authHeader?.removePrefix("Bearer ")?.trim()
+
+            if (token != null) {
+                authService.logout(token)
+            }
+
+            call.respond(HttpStatusCode.OK)
+        }
     }
 }
