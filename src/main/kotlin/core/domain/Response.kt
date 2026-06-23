@@ -8,5 +8,11 @@ sealed class ApiResponse<out T> {
     data class Success<T>(val result: T) : ApiResponse<T>()
 
     @Serializable
-    data class Error(val error: String) : ApiResponse<Nothing>()
+    data class Error(val error: String, val errorCode: String? = null) : ApiResponse<Nothing>()
 }
+
+@Serializable
+data class ErrorResponse(
+    val message: String,
+    val errorCode: String? = null
+)

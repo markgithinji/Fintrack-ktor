@@ -25,7 +25,7 @@ class AuthServiceImpl(
 
         if (userRepository.userExists(email)) {
             log.withContext("email" to email).warn { "Registration failed - user already exists" }
-            throw IllegalArgumentException("User with email '$email' already exists")
+            throw AuthenticationException("User with email '$email' already exists", "USER_ALREADY_EXISTS")
         }
 
         val userId = userRepository.createUser(email, password)
@@ -45,13 +45,13 @@ class AuthServiceImpl(
 
         val user = userRepository.findByEmail(email) ?: run {
             log.withContext("email" to email).warn { "Login failed - user not found" }
-            throw AuthenticationException("Invalid credentials")
+            throw AuthenticationException("Invalid credentials", "INVALID_CREDENTIALS")
         }
 
         if (!BCrypt.checkpw(password, user.passwordHash)) {
             log.withContext("userId" to user.id, "email" to email)
                 .warn { "Login failed - invalid password" }
-            throw AuthenticationException("Invalid credentials")
+            throw AuthenticationException("Invalid credentials", "INVALID_CREDENTIALS")
         }
 
         val token = JwtConfig.generateToken(user.id)
