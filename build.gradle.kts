@@ -41,6 +41,7 @@ dependencies {
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.ktor.server.rate.limit)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.jedis)
     implementation(libs.flyway.core)
     implementation(libs.flyway.database.postgresql)
 }

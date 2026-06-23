@@ -7,16 +7,19 @@ import com.fintrack.core.withContext
 import com.fintrack.feature.accounts.domain.Account
 import com.fintrack.feature.accounts.domain.AccountsRepository
 import com.fintrack.feature.auth.JwtConfig
+import feature.auth.domain.TokenBlacklistService
 import com.fintrack.feature.auth.domain.AuthValidationResponse
 import core.AuthenticationException
 import feature.auth.data.model.AuthResponse
 import feature.user.domain.UserRepository
 import org.mindrot.jbcrypt.BCrypt
 import java.util.UUID
+import com.auth0.jwt.JWT
 
 class AuthServiceImpl(
     private val userRepository: UserRepository,
-    private val accountsRepository: AccountsRepository
+    private val accountsRepository: AccountsRepository,
+    private val tokenBlacklistService: TokenBlacklistService
 ) : AuthService {
 
     private val log = logger<AuthServiceImpl>()
@@ -63,6 +66,15 @@ class AuthServiceImpl(
     override suspend fun validateToken(token: String): AuthValidationResponse {
         log.withContext("tokenLength" to token.length).info { "Token validation attempt" }
 
+        if (tokenBlacklistService.isTokenBlacklisted(token)) {
+            log.warn { "Token validation failed - token is blacklisted" }
+            return AuthValidationResponse(
+                isValid = false,
+                userId = null,
+                message = "Token has been revoked"
+            )
+        }
+
         val jwtVerifier = JwtConfig.createVerifier()
         val decodedJWT = jwtVerifier.verify(token)
 
@@ -101,7 +113,19 @@ class AuthServiceImpl(
 
     override suspend fun logout(token: String) {
         log.info { "User logged out" }
-        // TODO: add the token to a blacklist here
+        
+        try {
+            val decodedJWT = JWT.decode(token)
+            val expiresAt = decodedJWT.expiresAt
+            val timeLeft = expiresAt.time - System.currentTimeMillis()
+            
+            if (timeLeft > 0) {
+                tokenBlacklistService.blacklistToken(token, timeLeft)
+                log.info { "Token blacklisted for $timeLeft ms" }
+            }
+        } catch (e: Exception) {
+            log.warn { "Failed to blacklist token during logout: ${e.message}" }
+        }
     }
 
     private suspend fun createDefaultAccounts(userId: UUID) {
