@@ -7,6 +7,7 @@ import feature.accounts.data.AccountsTable
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.javatime.date
+import org.jetbrains.exposed.sql.javatime.datetime
 
 object BudgetsTable : UUIDTable(TableNames.BUDGETS) {
     val userId = reference(BudgetsColumns.USER_ID, UsersTable, onDelete = ReferenceOption.CASCADE)
@@ -17,4 +18,6 @@ object BudgetsTable : UUIDTable(TableNames.BUDGETS) {
     val isExpense = bool(BudgetsColumns.IS_EXPENSE)
     val startDate = date(BudgetsColumns.START_DATE)
     val endDate = date(BudgetsColumns.END_DATE)
+    val createdAt = datetime(BudgetsColumns.CREATED_AT)
+    val updatedAt = datetime(BudgetsColumns.UPDATED_AT)
 }

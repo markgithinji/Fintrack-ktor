@@ -20,9 +20,11 @@ class BudgetRepositoryImpl : BudgetRepository {
         dbQuery {
             var query = BudgetsTable.selectAll()
                 .where { BudgetsTable.userId eq EntityID(userId, UsersTable) }
-            if (accountId != null) query =
-                query.andWhere { BudgetsTable.accountId eq EntityID(accountId, AccountsTable) }
-            query.map { it.toBudget() }
+            if (accountId != null) {
+                query = query.andWhere { BudgetsTable.accountId eq EntityID(accountId, AccountsTable) }
+            }
+            query.orderBy(BudgetsTable.updatedAt, SortOrder.DESC)
+                .map { it.toBudget() }
         }
 
     override suspend fun getById(userId: UUID, id: UUID): Budget? =
@@ -51,6 +53,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                 .singleOrNull()
                 ?: throw IllegalArgumentException("Account not found")
             val accountUserId = account[AccountsTable.userId].value
+            val now = java.time.LocalDateTime.now()
             val insertStatement = BudgetsTable.insert {
                 it[id] = EntityID(budget.id ?: UUID.randomUUID(), BudgetsTable)
                 it[userId] = EntityID(accountUserId, UsersTable) // Use the account's userId
@@ -61,6 +64,8 @@ class BudgetRepositoryImpl : BudgetRepository {
                 it[isExpense] = budget.isExpense
                 it[startDate] = budget.startDate.toJavaLocalDate()
                 it[endDate] = budget.endDate.toJavaLocalDate()
+                it[createdAt] = now
+                it[updatedAt] = now
             }
             val generatedId = insertStatement[BudgetsTable.id].value
             budget.copy(id = generatedId)
@@ -68,6 +73,7 @@ class BudgetRepositoryImpl : BudgetRepository {
 
     override suspend fun addAll(budgets: List<Budget>): List<Budget> =
         dbQuery {
+            val now = java.time.LocalDateTime.now()
             budgets.map { budget ->
                 val account = AccountsTable
                     .selectAll()
@@ -86,6 +92,8 @@ class BudgetRepositoryImpl : BudgetRepository {
                     it[isExpense] = budget.isExpense
                     it[startDate] = budget.startDate.toJavaLocalDate()
                     it[endDate] = budget.endDate.toJavaLocalDate()
+                    it[createdAt] = now
+                    it[updatedAt] = now
                 }
 
                 val generatedId =
@@ -109,6 +117,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                 it[isExpense] = budget.isExpense
                 it[startDate] = budget.startDate.toJavaLocalDate()
                 it[endDate] = budget.endDate.toJavaLocalDate()
+                it[updatedAt] = java.time.LocalDateTime.now()
             }
 
             if (rows > 0) {

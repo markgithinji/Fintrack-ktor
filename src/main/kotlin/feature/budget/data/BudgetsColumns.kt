@@ -9,4 +9,6 @@ object BudgetsColumns {
     const val IS_EXPENSE = "is_expense"
     const val START_DATE = "start_date"
     const val END_DATE = "end_date"
+    const val CREATED_AT = "created_at"
+    const val UPDATED_AT = "updated_at"
 }
