@@ -139,7 +139,7 @@ class AuthServiceImpl(
     private suspend fun createDefaultAccounts(userId: UUID) {
         val defaultAccounts = listOf("Bank", "Wallet", "Cash", "Savings")
         defaultAccounts.forEach { accountName ->
-            accountsRepository.addAccount(Account(userId = userId, name = accountName))
+            accountsRepository.addAccount(Account(userId = userId, name = accountName, isDefault = true))
         }
     }
 }

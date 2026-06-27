@@ -9,4 +9,5 @@ import org.jetbrains.exposed.sql.ReferenceOption
 object AccountsTable : UUIDTable(TableNames.ACCOUNTS) {
     val userId = reference(AccountsColumns.USER_ID, UsersTable, onDelete = ReferenceOption.CASCADE)
     val name = varchar(AccountsColumns.NAME, 100)
+    val isDefault = bool("is_default").default(false)
 }

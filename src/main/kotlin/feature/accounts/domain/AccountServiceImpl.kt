@@ -122,7 +122,7 @@ class AccountServiceImpl(
             throw UnauthorizedAccessException("Account does not belong to user")
         }
 
-        val account = request.toDomain(userId, accountId)
+        val account = existingAccount.copy(name = request.name)
         val updatedAccount = accountsRepository.updateAccount(account)
         val aggregates = getAccountAggregates(userId, updatedAccount.id)
         val accountDto = updatedAccount.toDto(

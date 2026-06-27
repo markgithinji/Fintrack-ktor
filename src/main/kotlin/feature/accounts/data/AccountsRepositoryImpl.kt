@@ -36,6 +36,7 @@ class AccountsRepositoryImpl : AccountsRepository {
                 // UUIDTable automatically handles the ID, so we don't need to set it
                 row[AccountsTable.userId] = EntityID(account.userId, UsersTable)
                 row[AccountsTable.name] = account.name
+                row[AccountsTable.isDefault] = account.isDefault
             }
             val id = insertStatement[AccountsTable.id].value
             account.copy(id = id)
@@ -76,6 +77,7 @@ class AccountsRepositoryImpl : AccountsRepository {
     private fun toAccount(row: ResultRow): Account = Account(
         id = row[AccountsTable.id].value,
         userId = row[AccountsTable.userId].value,
-        name = row[AccountsTable.name]
+        name = row[AccountsTable.name],
+        isDefault = row[AccountsTable.isDefault]
     )
 }
