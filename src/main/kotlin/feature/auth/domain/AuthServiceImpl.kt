@@ -33,7 +33,8 @@ class AuthServiceImpl(
             throw AuthenticationException("User with email '$email' already exists", "USER_ALREADY_EXISTS")
         }
 
-        val userId = userRepository.createUser(email, password)
+        val name = email.substringBefore("@")
+        val userId = userRepository.createUser(email, password, name)
         createDefaultAccounts(userId)
 
         return generateAuthResponse(userId)

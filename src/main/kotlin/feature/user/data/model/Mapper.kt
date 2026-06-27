@@ -4,6 +4,6 @@ import com.fintrack.feature.user.domain.User
 import feature.user.data.model.UserDto
 
 fun User.toDto(): UserDto = UserDto(
-    name = this.email,
+    name = this.name,
     email = this.email
 )

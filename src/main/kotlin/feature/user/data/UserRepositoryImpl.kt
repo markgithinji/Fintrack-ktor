@@ -14,12 +14,13 @@ import org.mindrot.jbcrypt.BCrypt
 import java.util.UUID
 
 class UserRepositoryImpl : UserRepository {
-    override suspend fun createUser(email: String, password: String): UUID =
+    override suspend fun createUser(email: String, password: String, name: String): UUID =
         dbQuery {
             val hashed = BCrypt.hashpw(password, BCrypt.gensalt())
 
             val inserted = UsersTable.insert {
                 it[UsersTable.email] = email
+                it[UsersTable.name] = name
                 it[UsersTable.passwordHash] = hashed
             }
 
@@ -35,6 +36,7 @@ class UserRepositoryImpl : UserRepository {
                     User(
                         id = it[UsersTable.id].value,
                         email = it[UsersTable.email],
+                        name = it[UsersTable.name],
                         passwordHash = it[UsersTable.passwordHash]
                     )
                 }
@@ -48,15 +50,17 @@ class UserRepositoryImpl : UserRepository {
                     User(
                         id = it[UsersTable.id].value,
                         email = it[UsersTable.email],
+                        name = it[UsersTable.name],
                         passwordHash = it[UsersTable.passwordHash]
                     )
                 }
         }
 
-    override suspend fun updateUser(userId: UUID, email: String?, password: String?): Boolean =
+    override suspend fun updateUser(userId: UUID, name: String?, email: String?, password: String?): Boolean =
         dbQuery {
             val updateStatement =
                 UsersTable.update({ UsersTable.id eq EntityID(userId, UsersTable) }) {
+                    if (name != null) it[UsersTable.name] = name
                     if (email != null) it[UsersTable.email] = email
                     if (password != null) it[UsersTable.passwordHash] =
                         BCrypt.hashpw(password, BCrypt.gensalt())

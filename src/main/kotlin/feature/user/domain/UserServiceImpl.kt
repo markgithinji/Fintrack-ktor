@@ -59,7 +59,7 @@ class UserServiceImpl(
             }
         }
 
-        val updated = userRepository.updateUser(userId, request.email, request.password)
+        val updated = userRepository.updateUser(userId, request.name, request.email, request.password)
 
         if (!updated) {
             log.withContext("userId" to userId).warn { "User update failed" }
