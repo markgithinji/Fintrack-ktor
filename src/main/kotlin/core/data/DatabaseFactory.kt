@@ -6,6 +6,7 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import feature.transaction.data.TransactionsTable
 import org.flywaydb.core.Flyway
+import org.flywaydb.core.api.exception.FlywayValidateException
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -85,6 +86,19 @@ object DatabaseFactory {
                 "migrationFiles" to result.migrations.map { it.filepath }
             ).info { "Flyway migrations completed" }
 
+        } catch (e: FlywayValidateException) {
+            log.warn("Flyway validation failed, attempting repair: ${e.message}")
+            try {
+                flyway.repair()
+                log.info("Flyway repair completed successfully. Retrying migration...")
+                val result = flyway.migrate()
+                log.withContext(
+                    "migrationsExecuted" to result.migrationsExecuted
+                ).info { "Flyway migrations completed after repair" }
+            } catch (repairError: Exception) {
+                log.error("Flyway repair or retry failed", repairError)
+                throw repairError
+            }
         } catch (e: Exception) {
             log.withContext(
                 "error" to e.message

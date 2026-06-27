@@ -10,6 +10,8 @@ import feature.budget.domain.BudgetService
 import feature.summary.domain.StatisticsService
 import feature.transaction.accountsRoutes
 import feature.transaction.budgetRoutes
+import feature.transaction.categoryRoutes
+import feature.transaction.domain.CategoryService
 import feature.transaction.domain.TransactionService
 import feature.transaction.transactionRoutes
 import feature.user.domain.UserService
@@ -23,6 +25,7 @@ import org.koin.ktor.ext.inject
 fun Application.configureRouting() {
     val accountService: AccountService by inject()
     val transactionService: TransactionService by inject()
+    val categoryService: CategoryService by inject()
     val statisticsService: StatisticsService by inject()
     val budgetService: BudgetService by inject()
     val userService: UserService by inject()
@@ -40,7 +43,7 @@ fun Application.configureRouting() {
         authenticationRoutes(authService)
 
         // Business API endpoints
-        apiRoutes(accountService, transactionService, statisticsService, budgetService, userService)
+        apiRoutes(accountService, transactionService, categoryService, statisticsService, budgetService, userService)
     }
 }
 
@@ -60,6 +63,7 @@ fun Routing.authenticationRoutes(authService: AuthService) {
 fun Routing.apiRoutes(
     accountService: AccountService,
     transactionService: TransactionService,
+    categoryService: CategoryService,
     statisticsService: StatisticsService,
     budgetService: BudgetService,
     userService: UserService
@@ -67,6 +71,7 @@ fun Routing.apiRoutes(
     authenticate("auth-jwt") {
         withProtectedRateLimit {
             transactionRoutes(transactionService)
+            categoryRoutes(categoryService)
             accountsRoutes(accountService)
             budgetRoutes(budgetService)
             summaryRoutes(statisticsService)
