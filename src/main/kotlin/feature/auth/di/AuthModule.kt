@@ -25,5 +25,5 @@ val authModule = module {
     
     single<TokenBlacklistService> { RedisTokenBlacklistService(get()) }
     single<RefreshTokenRepository> { ExposedRefreshTokenRepository() }
-    single<AuthService> { AuthServiceImpl(get(), get(), get(), get()) }
+    single<AuthService> { AuthServiceImpl(get(), get(), get(), get(), get()) }
 }

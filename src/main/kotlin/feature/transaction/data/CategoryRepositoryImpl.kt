@@ -36,6 +36,19 @@ class CategoryRepositoryImpl : CategoryRepository {
         inserted.toCategory()
     }
 
+    override suspend fun addAll(categories: List<Category>): List<Category> = dbQuery {
+        categories.map { category ->
+            CategoriesTable.insert { row ->
+                row[id] = EntityID(UUID.randomUUID(), CategoriesTable)
+                row[userId] = EntityID(category.userId, UsersTable)
+                row[name] = category.name
+                row[isExpense] = category.isExpense
+                row[iconName] = category.iconName
+                row[isDefault] = category.isDefault
+            }.resultedValues?.singleOrNull()?.toCategory() ?: throw IllegalStateException("Failed to insert category ${category.name}")
+        }
+    }
+
     override suspend fun delete(id: UUID, userId: UUID): Boolean = dbQuery {
         val deleted = CategoriesTable.deleteWhere {
             (CategoriesTable.id eq EntityID(id, CategoriesTable)) and (CategoriesTable.userId eq EntityID(userId, UsersTable))

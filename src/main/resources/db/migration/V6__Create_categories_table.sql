@@ -12,6 +12,6 @@ CREATE INDEX idx_categories_user_id ON categories(user_id);
 
 -- Optional: Migrate existing categories from transactions to the new table
 INSERT INTO categories (user_id, name, is_expense)
-SELECT DISTINCT user_id, category, is_income
+SELECT DISTINCT user_id, category, NOT is_income
 FROM transactions
 ON CONFLICT DO NOTHING;

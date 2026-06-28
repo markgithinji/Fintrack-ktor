@@ -7,6 +7,8 @@ import com.fintrack.feature.accounts.domain.Account
 import com.fintrack.feature.accounts.domain.AccountsRepository
 import com.fintrack.feature.auth.JwtConfig
 import com.fintrack.feature.auth.domain.AuthValidationResponse
+import feature.transaction.domain.CategoryRepository
+import feature.transaction.domain.model.Category
 import core.AuthenticationException
 import feature.auth.data.model.AuthResponse
 import feature.user.domain.UserRepository
@@ -19,6 +21,7 @@ import java.time.ZoneOffset
 class AuthServiceImpl(
     private val userRepository: UserRepository,
     private val accountsRepository: AccountsRepository,
+    private val categoryRepository: CategoryRepository,
     private val tokenBlacklistService: TokenBlacklistService,
     private val refreshTokenRepository: RefreshTokenRepository
 ) : AuthService {
@@ -36,6 +39,7 @@ class AuthServiceImpl(
         val name = email.substringBefore("@")
         val userId = userRepository.createUser(email, password, name)
         createDefaultAccounts(userId)
+        createDefaultCategories(userId)
 
         return generateAuthResponse(userId)
     }
@@ -159,5 +163,47 @@ class AuthServiceImpl(
         defaultAccounts.forEach { accountName ->
             accountsRepository.addAccount(Account(userId = userId, name = accountName, isDefault = true))
         }
+    }
+
+    private suspend fun createDefaultCategories(userId: UUID) {
+        val incomeCategories = listOf(
+            "Salary" to "AttachMoney",
+            "Freelance" to "Work",
+            "Investments" to "TrendingUp",
+            "Bonus" to "Paid",
+            "Rental" to "RealEstateAgent",
+            "Dividends" to "Analytics",
+            "Interest" to "Percent",
+            "Other Income" to "AttachMoney"
+        )
+        val expenseCategories = listOf(
+            "Food" to "Fastfood",
+            "Transport" to "DirectionsCar",
+            "Shopping" to "ShoppingCart",
+            "Health" to "LocalHospital",
+            "Bills" to "Receipt",
+            "Entertainment" to "Movie",
+            "Education" to "School",
+            "Travel" to "Flight",
+            "Personal Care" to "ContentCut",
+            "Subscriptions" to "Subscriptions",
+            "Rent" to "Home",
+            "Groceries" to "ShoppingBag",
+            "Insurance" to "Shield",
+            "Dining Out" to "Restaurant",
+            "Utilities" to "Lightbulb",
+            "Pets" to "Pets",
+            "Fitness" to "FitnessCenter",
+            "Maintenance" to "Build",
+            "Misc" to "HelpOutline"
+        )
+
+        val categories = incomeCategories.map { (name, icon) ->
+            Category(UUID.randomUUID(), userId, name, isExpense = false, iconName = icon, isDefault = true)
+        } + expenseCategories.map { (name, icon) ->
+            Category(UUID.randomUUID(), userId, name, isExpense = true, iconName = icon, isDefault = true)
+        }
+
+        categoryRepository.addAll(categories)
     }
 }
