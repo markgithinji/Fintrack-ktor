@@ -117,6 +117,23 @@ class AuthServiceImpl(
         return generateAuthResponse(storedToken.userId)
     }
 
+    override suspend fun changePassword(userId: UUID, currentPassword: String, newPassword: String) {
+        log.info { "Password change attempt for userId: $userId" }
+
+        val user = userRepository.findById(userId) ?: run {
+            log.warn { "Password change failed - user not found: $userId" }
+            throw AuthenticationException("User not found", "USER_NOT_FOUND")
+        }
+
+        if (!BCrypt.checkpw(currentPassword, user.passwordHash)) {
+            log.warn { "Password change failed - invalid current password for userId: $userId" }
+            throw AuthenticationException("Invalid current password", "INVALID_CREDENTIALS")
+        }
+
+        userRepository.updatePassword(userId, newPassword)
+        log.info { "Password changed successfully for userId: $userId" }
+    }
+
     private suspend fun generateAuthResponse(userId: UUID): AuthResponse {
         val accessToken = JwtConfig.generateAccessToken(userId)
         val refreshTokenString = JwtConfig.generateRefreshToken()

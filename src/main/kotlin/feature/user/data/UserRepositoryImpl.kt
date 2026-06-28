@@ -68,6 +68,14 @@ class UserRepositoryImpl : UserRepository {
             updateStatement > 0
         }
 
+    override suspend fun updatePassword(userId: UUID, newPassword: String): Boolean =
+        dbQuery {
+            val hashed = BCrypt.hashpw(newPassword, BCrypt.gensalt())
+            UsersTable.update({ UsersTable.id eq EntityID(userId, UsersTable) }) {
+                it[UsersTable.passwordHash] = hashed
+            } > 0
+        }
+
     override suspend fun deleteUser(userId: UUID): Boolean =
         dbQuery {
             UsersTable.deleteWhere { UsersTable.id eq EntityID(userId, UsersTable) } > 0
