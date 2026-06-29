@@ -85,6 +85,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             row[accountId] = EntityID(entity.accountId, AccountsTable)
             row[isIncome] = entity.isIncome
             row[amount] = entity.amount
+            row[transactionCost] = entity.transactionCost
             row[category] = entity.category
             row[dateTime] = entity.dateTime.toJavaLocalDateTime()
             row[description] = entity.description
@@ -104,6 +105,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             row[accountId] = EntityID(entity.accountId, AccountsTable)
             row[isIncome] = entity.isIncome
             row[amount] = entity.amount
+            row[transactionCost] = entity.transactionCost
             row[category] = entity.category
             row[dateTime] = entity.dateTime.toJavaLocalDateTime()
             row[description] = entity.description
@@ -147,6 +149,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         userId = this[TransactionsTable.userId].value,
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
+        transactionCost = this[TransactionsTable.transactionCost],
         category = this[TransactionsTable.category],
         dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(),
         description = this[TransactionsTable.description],

@@ -1,6 +1,6 @@
 package feature.budget.di
 
-import com.fintrack.feature.budget.data.BudgetRepositoryImpl
+import feature.budget.data.BudgetRepositoryImpl
 import feature.budget.domain.BudgetRepository
 import feature.budget.domain.BudgetService
 import feature.budget.domain.BudgetServiceImpl

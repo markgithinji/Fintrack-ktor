@@ -14,6 +14,7 @@ object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
     val accountId = reference(TransactionsColumns.ACCOUNT_ID, AccountsTable)
     val isIncome = bool(TransactionsColumns.IS_INCOME)
     val amount = double(TransactionsColumns.AMOUNT)
+    val transactionCost = double(TransactionsColumns.TRANSACTION_COST).default(0.0)
     val category = varchar(TransactionsColumns.CATEGORY, 100)
     val dateTime = datetime(TransactionsColumns.DATE_TIME)
     val description = varchar(TransactionsColumns.DESCRIPTION, 255).nullable()

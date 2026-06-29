@@ -1,11 +1,14 @@
 package com.fintrack.feature.transactions.data.model
 
 import kotlinx.datetime.LocalDateTime
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class UpdateTransactionRequest(
     val accountId: String,
     val isIncome: Boolean,
     val amount: Double,
+    val transactionCost: Double? = null,
     val category: String,
     val dateTime: LocalDateTime,
     val description: String

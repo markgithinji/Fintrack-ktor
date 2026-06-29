@@ -172,7 +172,14 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
             query
                 .groupBy { it[TransactionsTable.category] }
-                .mapValues { (_, rows) -> rows.sumOf { it[TransactionsTable.amount] } }
+                .mapValues { (_, rows) ->
+                    rows.sumOf {
+                        val amt = it[TransactionsTable.amount]
+                        val cost = it[TransactionsTable.transactionCost]
+                        val isInc = it[TransactionsTable.isIncome]
+                        if (isInc) amt - cost else amt + cost
+                    }
+                }
         }
 
     override suspend fun getTransactionCounts(
@@ -227,6 +234,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         userId = this[TransactionsTable.userId].value,
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
+        transactionCost = this[TransactionsTable.transactionCost],
         category = this[TransactionsTable.category],
         dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(),
         description = this[TransactionsTable.description],

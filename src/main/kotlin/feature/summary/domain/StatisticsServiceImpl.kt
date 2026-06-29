@@ -67,13 +67,13 @@ class StatisticsServiceImpl(
                     it.dateTime.monthNumber.toString().padStart(2, '0')
                 }"
             }
-                .mapValues { it.value.sumOf { t -> t.amount } }
+                .mapValues { it.value.sumOf { t -> t.totalAmount } }
                 .maxByOrNull { it.value }
                 ?.let { HighlightDto(label = it.key, value = it.key, amount = it.value) }
 
         fun highestCategory(txns: List<Transaction>) =
             txns.groupBy { it.category.trim().lowercase() }
-                .mapValues { it.value.sumOf { t -> t.amount } }
+                .mapValues { it.value.sumOf { t -> t.totalAmount } }
                 .maxByOrNull { it.value }
                 ?.let { entry ->
                     val displayName =
@@ -84,7 +84,7 @@ class StatisticsServiceImpl(
 
         fun highestDay(txns: List<Transaction>) =
             txns.groupBy { it.dateTime.date }
-                .mapValues { it.value.sumOf { t -> t.amount } }
+                .mapValues { it.value.sumOf { t -> t.totalAmount } }
                 .maxByOrNull { it.value }
                 ?.let {
                     HighlightDto(
@@ -96,7 +96,7 @@ class StatisticsServiceImpl(
 
         fun averagePerDay(txns: List<Transaction>): Double {
             val days = txns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
-            val total = txns.sumOf { it.amount }
+            val total = txns.sumOf { it.totalAmount }
             return total / days
         }
 
@@ -175,7 +175,7 @@ class StatisticsServiceImpl(
             }
             val txnsInPeriod = grouped[period].orEmpty()
             val deduped = txnsInPeriod.groupBy { it.category.trim().lowercase() }.map { (_, list) ->
-                val sum = list.sumOf { it.amount }
+                val sum = list.sumOf { it.totalAmount }
                 val displayName = list.first().category
                 CategorySummaryDto(category = displayName, total = sum, percentage = 0.0)
             }
@@ -295,8 +295,8 @@ class StatisticsServiceImpl(
 
         val summaries = dates.map { date ->
             val dayTxs = transactions.filter { it.dateTime.date == date }
-            val income = dayTxs.filter { it.isIncome }.sumOf { it.amount }
-            val expense = dayTxs.filter { !it.isIncome }.sumOf { it.amount }
+            val income = dayTxs.filter { it.isIncome }.sumOf { it.totalAmount }
+            val expense = dayTxs.filter { !it.isIncome }.sumOf { it.totalAmount }
             DaySummaryDto(date = date, income = income, expense = expense)
         }
 

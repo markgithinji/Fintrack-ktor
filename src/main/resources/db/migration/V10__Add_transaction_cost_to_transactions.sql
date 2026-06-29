@@ -1,0 +1,1 @@
+ALTER TABLE transactions ADD COLUMN transaction_cost DOUBLE PRECISION NOT NULL DEFAULT 0.0;

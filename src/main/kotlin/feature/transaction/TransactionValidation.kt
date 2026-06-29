@@ -1,4 +1,4 @@
-package feature.transaction.domain
+package feature.transaction
 
 
 import com.fintrack.feature.transaction.data.model.BulkCreateTransactionRequest
@@ -20,6 +20,11 @@ fun RequestValidationConfig.configureTransactionValidation() {
             request.amount > 1_000_000 -> violations.add("Amount cannot exceed 1,000,000")
         }
 
+        // Transaction cost validation
+        if (request.transactionCost < 0) {
+            violations.add("Transaction cost cannot be negative")
+        }
+
         // Category validation
         when {
             request.category.isBlank() -> violations.add("Category cannot be blank")
@@ -32,10 +37,10 @@ fun RequestValidationConfig.configureTransactionValidation() {
         }
 
         // Date validation - prevent future dates
-//        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-//        if (request.dateTime > now) {
-//            violations.add("Transaction date cannot be in the future")
-//        }
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        if (request.dateTime > now) {
+            violations.add("Transaction date cannot be in the future")
+        }
 
         if (violations.isNotEmpty()) {
             ValidationResult.Invalid(violations.joinToString(", "))
@@ -56,6 +61,11 @@ fun RequestValidationConfig.configureTransactionValidation() {
         when {
             request.amount <= 0 -> violations.add("Amount must be greater than 0")
             request.amount > 1_000_000 -> violations.add("Amount cannot exceed 1,000,000")
+        }
+
+        // Transaction cost validation
+        if ((request.transactionCost != null) && (request.transactionCost < 0)) {
+            violations.add("Transaction cost cannot be negative")
         }
 
         // Category validation
@@ -104,10 +114,10 @@ fun RequestValidationConfig.configureTransactionValidation() {
             }
 
             // Date validation - prevent future dates
-//            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-//            if (request.dateTime > now) {
-//                violations.add("Transaction #${index + 1}: date cannot be in the future")
-//            }
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            if (request.dateTime > now) {
+                violations.add("Transaction #${index + 1}: date cannot be in the future")
+            }
 
             violations
         }

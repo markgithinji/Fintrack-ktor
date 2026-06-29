@@ -1,4 +1,4 @@
-package com.fintrack.feature.budget.data
+package feature.budget.data
 
 import com.fintrack.feature.user.UsersTable
 import core.dbQuery
@@ -196,6 +196,7 @@ private fun ResultRow.toTransaction(): feature.transaction.domain.model.Transact
         userId = this[TransactionsTable.userId].value,
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
+        transactionCost = this[TransactionsTable.transactionCost],
         category = this[TransactionsTable.category],
         dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(),
         description = this[TransactionsTable.description],

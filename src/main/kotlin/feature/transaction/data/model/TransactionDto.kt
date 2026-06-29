@@ -8,6 +8,7 @@ data class TransactionDto(
     val accountId: String,
     val isIncome: Boolean,
     val amount: Double,
+    val transactionCost: Double,
     val category: String,
     val dateTime: String,
     val description: String? = null
