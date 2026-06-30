@@ -141,7 +141,11 @@ class AuthServiceImpl(
         }
 
         userRepository.updatePassword(userId, newPassword)
-        log.info { "Password changed successfully for userId: $userId" }
+        
+        // Invalidate all active refresh tokens to force re-login on all devices
+        refreshTokenRepository.deleteByUserId(userId)
+        
+        log.info { "Password changed successfully for userId: $userId. All refresh tokens revoked." }
     }
 
     private suspend fun generateAuthResponse(userId: UUID): AuthResponse {
