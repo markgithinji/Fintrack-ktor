@@ -9,6 +9,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
@@ -40,6 +41,15 @@ class AccountsRepositoryImpl : AccountsRepository {
             }
             val id = insertStatement[AccountsTable.id].value
             account.copy(id = id)
+        }
+
+    override suspend fun addAll(accounts: List<Account>): List<Account> =
+        dbQuery {
+            AccountsTable.batchInsert(accounts) { account ->
+                this[AccountsTable.userId] = EntityID(account.userId, UsersTable)
+                this[AccountsTable.name] = account.name
+                this[AccountsTable.isDefault] = account.isDefault
+            }.map { toAccount(it) }
         }
 
     override suspend fun updateAccount(account: Account): Account =

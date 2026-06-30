@@ -159,10 +159,11 @@ class AuthServiceImpl(
     }
 
     private suspend fun createDefaultAccounts(userId: UUID) {
-        val defaultAccounts = listOf("Bank", "Wallet", "Cash", "Savings")
-        defaultAccounts.forEach { accountName ->
-            accountsRepository.addAccount(Account(userId = userId, name = accountName, isDefault = true))
+        val defaultAccountNames = listOf("Bank", "Wallet", "Cash", "Savings")
+        val defaultAccounts = defaultAccountNames.map { accountName ->
+            Account(userId = userId, name = accountName, isDefault = true)
         }
+        accountsRepository.addAll(defaultAccounts)
     }
 
     private suspend fun createDefaultCategories(userId: UUID) {

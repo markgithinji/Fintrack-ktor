@@ -37,16 +37,14 @@ class CategoryRepositoryImpl : CategoryRepository {
     }
 
     override suspend fun addAll(categories: List<Category>): List<Category> = dbQuery {
-        categories.map { category ->
-            CategoriesTable.insert { row ->
-                row[id] = EntityID(UUID.randomUUID(), CategoriesTable)
-                row[userId] = EntityID(category.userId, UsersTable)
-                row[name] = category.name
-                row[isExpense] = category.isExpense
-                row[iconName] = category.iconName
-                row[isDefault] = category.isDefault
-            }.resultedValues?.singleOrNull()?.toCategory() ?: throw IllegalStateException("Failed to insert category ${category.name}")
-        }
+        CategoriesTable.batchInsert(categories) { category ->
+            this[CategoriesTable.id] = EntityID(category.id, CategoriesTable)
+            this[CategoriesTable.userId] = EntityID(category.userId, UsersTable)
+            this[CategoriesTable.name] = category.name
+            this[CategoriesTable.isExpense] = category.isExpense
+            this[CategoriesTable.iconName] = category.iconName
+            this[CategoriesTable.isDefault] = category.isDefault
+        }.map { it.toCategory() }
     }
 
     override suspend fun delete(id: UUID, userId: UUID): Boolean = dbQuery {
