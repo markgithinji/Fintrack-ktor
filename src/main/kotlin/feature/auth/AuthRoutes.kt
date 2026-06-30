@@ -17,24 +17,26 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import com.fintrack.plugins.withAuthRateLimit
 
 fun Route.authRoutes(authService: AuthService) {
     val log = logger("AuthRoutes")
 
     route("/auth") {
+        withAuthRateLimit {
+            post("/register") {
+                val request = call.receive<AuthRequest>()
+                log.withContext("email" to request.email).info { "Registration request received" }
+                val response = authService.register(request.email, request.password)
+                call.respond(HttpStatusCode.Created, response)
+            }
 
-        post("/register") {
-            val request = call.receive<AuthRequest>()
-            log.withContext("email" to request.email).info { "Registration request received" }
-            val response = authService.register(request.email, request.password)
-            call.respond(HttpStatusCode.Created, response)
-        }
-
-        post("/login") {
-            val request = call.receive<AuthRequest>()
-            log.withContext("email" to request.email).info { "Login request received" }
-            val response = authService.login(request.email, request.password)
-            call.respond(HttpStatusCode.OK, response)
+            post("/login") {
+                val request = call.receive<AuthRequest>()
+                log.withContext("email" to request.email).info { "Login request received" }
+                val response = authService.login(request.email, request.password)
+                call.respond(HttpStatusCode.OK, response)
+            }
         }
 
         post("/refresh") {

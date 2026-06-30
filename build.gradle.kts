@@ -31,7 +31,7 @@ dependencies {
     implementation(libs.kotlinx.datetime)
     implementation(libs.ktor.server.auth)
     implementation(libs.ktor.server.auth.jwt)
-    implementation(libs.jbcrypt) // For password hashing
+    implementation(libs.jbcrypt) // For password hashing TODO: Remove
     implementation(libs.argon2) // Modern password hashing
     implementation(libs.koin.core)
     implementation(libs.koin.ktor)
@@ -41,6 +41,7 @@ dependencies {
     implementation(libs.ktor.server.metrics.micrometer)
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.ktor.server.rate.limit)
+    implementation(libs.ktor.server.doublereceive)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.jedis)
     implementation(libs.flyway.core)

@@ -34,6 +34,7 @@ logstash-logback-encoder = { module = "net.logstash.logback:logstash-logback-enc
 ktor-server-metrics-micrometer = { module = "io.ktor:ktor-server-metrics-micrometer", version.ref = "ktor" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version = "1.11.5" }
 ktor-server-rate-limit = { module = "io.ktor:ktor-server-rate-limit", version.ref = "ktor" }
+ktor-server-doublereceive = { module = "io.ktor:ktor-server-double-receive", version.ref = "ktor" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.6.0" }
 jedis = { module = "redis.clients:jedis", version = "5.1.0" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
