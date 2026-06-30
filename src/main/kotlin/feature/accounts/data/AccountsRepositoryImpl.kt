@@ -38,6 +38,7 @@ class AccountsRepositoryImpl : AccountsRepository {
                 row[AccountsTable.userId] = EntityID(account.userId, UsersTable)
                 row[AccountsTable.name] = account.name
                 row[AccountsTable.isDefault] = account.isDefault
+                row[AccountsTable.isMpesa] = account.isMpesa
             }
             val id = insertStatement[AccountsTable.id].value
             account.copy(id = id)
@@ -49,6 +50,7 @@ class AccountsRepositoryImpl : AccountsRepository {
                 this[AccountsTable.userId] = EntityID(account.userId, UsersTable)
                 this[AccountsTable.name] = account.name
                 this[AccountsTable.isDefault] = account.isDefault
+                this[AccountsTable.isMpesa] = account.isMpesa
             }.map { toAccount(it) }
         }
 
@@ -57,6 +59,7 @@ class AccountsRepositoryImpl : AccountsRepository {
             requireNotNull(account.id) { "Account ID must not be null for update" }
             AccountsTable.update({ AccountsTable.id eq EntityID(account.id, AccountsTable) }) {
                 it[AccountsTable.name] = account.name
+                it[AccountsTable.isMpesa] = account.isMpesa
             }
             account
         }
@@ -88,6 +91,7 @@ class AccountsRepositoryImpl : AccountsRepository {
         id = row[AccountsTable.id].value,
         userId = row[AccountsTable.userId].value,
         name = row[AccountsTable.name],
-        isDefault = row[AccountsTable.isDefault]
+        isDefault = row[AccountsTable.isDefault],
+        isMpesa = row[AccountsTable.isMpesa]
     )
 }

@@ -165,10 +165,13 @@ class AuthServiceImpl(
     }
 
     private suspend fun createDefaultAccounts(userId: UUID) {
-        val defaultAccountNames = listOf("Bank", "Wallet", "Cash", "Savings")
-        val defaultAccounts = defaultAccountNames.map { accountName ->
-            Account(userId = userId, name = accountName, isDefault = true)
-        }
+        val defaultAccounts = listOf(
+            Account(userId = userId, name = "Bank", isDefault = true),
+            Account(userId = userId, name = "Wallet", isDefault = true),
+            Account(userId = userId, name = "Cash", isDefault = true),
+            Account(userId = userId, name = "Savings", isDefault = true),
+            Account(userId = userId, name = "Mpesa", isDefault = true, isMpesa = true)
+        )
         accountsRepository.addAll(defaultAccounts)
     }
 
@@ -199,6 +202,7 @@ class AuthServiceImpl(
             "Insurance" to "Shield",
             "Dining Out" to "Restaurant",
             "Utilities" to "Lightbulb",
+            "Transfer" to "CompareArrows",
             "Pets" to "Pets",
             "Fitness" to "FitnessCenter",
             "Maintenance" to "Build",

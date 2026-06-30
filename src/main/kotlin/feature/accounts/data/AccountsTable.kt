@@ -10,4 +10,5 @@ object AccountsTable : UUIDTable(TableNames.ACCOUNTS) {
     val userId = reference(AccountsColumns.USER_ID, UsersTable, onDelete = ReferenceOption.CASCADE)
     val name = varchar(AccountsColumns.NAME, 100)
     val isDefault = bool("is_default").default(false)
+    val isMpesa = bool("is_mpesa").default(false)
 }
