@@ -25,6 +25,7 @@ kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version 
 ktor-server-auth = { module = "io.ktor:ktor-server-auth", version.ref = "ktor" }
 ktor-server-auth-jwt = { module = "io.ktor:ktor-server-auth-jwt", version.ref = "ktor" }
 jbcrypt = { module = "org.mindrot:jbcrypt", version = "0.4" }
+argon2 = { module = "de.mkammerer:argon2-jvm", version = "2.11" }
 koin-core = { module = "io.insert-koin:koin-core", version = "3.4.3" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version = "3.4.3" }
 ktor-server-request-validation = { module = "io.ktor:ktor-server-request-validation", version.ref = "ktor" }

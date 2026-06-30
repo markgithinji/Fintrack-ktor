@@ -13,7 +13,7 @@ import core.AuthenticationException
 import core.dbQuery
 import feature.auth.data.model.AuthResponse
 import feature.user.domain.UserRepository
-import org.mindrot.jbcrypt.BCrypt
+import core.PasswordHasher
 import java.util.UUID
 import com.auth0.jwt.JWT
 import java.time.LocalDateTime
@@ -52,9 +52,15 @@ class AuthServiceImpl(
             throw AuthenticationException("Invalid credentials", "INVALID_CREDENTIALS")
         }
 
-        if (!BCrypt.checkpw(password, user.passwordHash)) {
+        if (!PasswordHasher.verify(password, user.passwordHash)) {
             log.warn { "Login failed - invalid password for: $email" }
             throw AuthenticationException("Invalid credentials", "INVALID_CREDENTIALS")
+        }
+
+        // Migration: If legacy BCrypt hash, update to Argon2
+        if (PasswordHasher.isLegacyHash(user.passwordHash)) {
+            log.info { "Upgrading legacy password hash for $email" }
+            userRepository.updatePassword(user.id, password)
         }
 
         return generateAuthResponse(user.id)
@@ -129,7 +135,7 @@ class AuthServiceImpl(
             throw AuthenticationException("User not found", "USER_NOT_FOUND")
         }
 
-        if (!BCrypt.checkpw(currentPassword, user.passwordHash)) {
+        if (!PasswordHasher.verify(currentPassword, user.passwordHash)) {
             log.warn { "Password change failed - invalid current password for userId: $userId" }
             throw AuthenticationException("Invalid current password", "INVALID_CREDENTIALS")
         }

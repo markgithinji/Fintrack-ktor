@@ -2,6 +2,7 @@ package com.fintrack.feature.user.data
 
 import com.fintrack.feature.user.UsersTable
 import com.fintrack.feature.user.domain.User
+import core.PasswordHasher
 import core.dbQuery
 import feature.user.domain.UserRepository
 import org.jetbrains.exposed.dao.id.EntityID
@@ -10,13 +11,12 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
-import org.mindrot.jbcrypt.BCrypt
 import java.util.UUID
 
 class UserRepositoryImpl : UserRepository {
     override suspend fun createUser(email: String, password: String, name: String): UUID =
         dbQuery {
-            val hashed = BCrypt.hashpw(password, BCrypt.gensalt())
+            val hashed = PasswordHasher.hash(password)
 
             val inserted = UsersTable.insert {
                 it[UsersTable.email] = email
@@ -63,14 +63,14 @@ class UserRepositoryImpl : UserRepository {
                     if (name != null) it[UsersTable.name] = name
                     if (email != null) it[UsersTable.email] = email
                     if (password != null) it[UsersTable.passwordHash] =
-                        BCrypt.hashpw(password, BCrypt.gensalt())
+                        PasswordHasher.hash(password)
                 }
             updateStatement > 0
         }
 
     override suspend fun updatePassword(userId: UUID, newPassword: String): Boolean =
         dbQuery {
-            val hashed = BCrypt.hashpw(newPassword, BCrypt.gensalt())
+            val hashed = PasswordHasher.hash(newPassword)
             UsersTable.update({ UsersTable.id eq EntityID(userId, UsersTable) }) {
                 it[UsersTable.passwordHash] = hashed
             } > 0

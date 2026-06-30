@@ -32,6 +32,7 @@ dependencies {
     implementation(libs.ktor.server.auth)
     implementation(libs.ktor.server.auth.jwt)
     implementation(libs.jbcrypt) // For password hashing
+    implementation(libs.argon2) // Modern password hashing
     implementation(libs.koin.core)
     implementation(libs.koin.ktor)
     implementation(libs.ktor.server.request.validation)
