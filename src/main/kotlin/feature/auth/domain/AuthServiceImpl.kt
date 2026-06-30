@@ -10,13 +10,13 @@ import com.fintrack.feature.auth.domain.AuthValidationResponse
 import feature.transaction.domain.CategoryRepository
 import feature.transaction.domain.model.Category
 import core.AuthenticationException
+import core.dbQuery
 import feature.auth.data.model.AuthResponse
 import feature.user.domain.UserRepository
 import org.mindrot.jbcrypt.BCrypt
 import java.util.UUID
 import com.auth0.jwt.JWT
 import java.time.LocalDateTime
-import java.time.ZoneOffset
 
 class AuthServiceImpl(
     private val userRepository: UserRepository,
@@ -28,7 +28,7 @@ class AuthServiceImpl(
 
     private val log = logger<AuthServiceImpl>()
 
-    override suspend fun register(email: String, password: String): AuthResponse {
+    override suspend fun register(email: String, password: String): AuthResponse = dbQuery {
         log.info { "Registration attempt for $email" }
 
         if (userRepository.userExists(email)) {
@@ -41,7 +41,7 @@ class AuthServiceImpl(
         createDefaultAccounts(userId)
         createDefaultCategories(userId)
 
-        return generateAuthResponse(userId)
+        generateAuthResponse(userId)
     }
 
     override suspend fun login(email: String, password: String): AuthResponse {
