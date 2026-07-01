@@ -209,6 +209,8 @@ class AuthServiceImpl(
             "Dining Out" to "Restaurant",
             "Utilities" to "Lightbulb",
             "Transfer" to "CompareArrows",
+            "Charity" to "VolunteerActivism",
+            "Loans" to "AccountBalanceWallet",
             "Pets" to "Pets",
             "Fitness" to "FitnessCenter",
             "Maintenance" to "Build",
