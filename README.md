@@ -1,8 +1,8 @@
 # 🚀 Fintrack Ktor API — Personal Finance Backend Service
 
-**Fintrack Ktor API** is a robust, high-performance backend service built with **Ktor** and **Kotlin**, designed to power the [Fintrack KMP mobile application](https://github.com/markgithinji/fintrack-kmp). It follows **clean architecture** principles to deliver a scalable, maintainable, and secure financial data API.
+**Fintrack Ktor API** is a robust, high-performance backend service built with **Ktor** and **Kotlin**, designed to power the [Fintrack KMP mobile application](https://github.com/markgithinji/fintrack-kmp). It follows **clean architecture** principles and implements modern security standards to deliver a scalable, maintainable, and secure financial data API.
 
-> 🔒 **Production Ready**: Features enterprise-grade security, monitoring, and reliability measures.
+> 🔒 **Production Ready**: Features enterprise-grade security, distributed monitoring, and high-availability architecture.
 
 ---
 
@@ -12,187 +12,152 @@
 - **Java 17** or higher
 - **Docker Desktop** (installed and running)
 - **Git**
-- **Postman**
 
 ### 1. Clone & Setup
 ```bash
-git clone https://github.com/markgithinji/Fintrack-ktor
-cd fintrack-ktor
+git clone https://github.com/markgithinji/fintrack-backend
+cd fintrack-backend
 ```
 
-### 2. Database Setup with Docker
-```bash
-# Pull PostgreSQL image
-docker pull postgres:15
+### 2. Infrastructure Setup with Docker
+You'll need PostgreSQL for data and Redis for rate limiting and token management.
 
-# Create and run container
+```bash
+# PostgreSQL
 docker run -d --name fintrack-db -e POSTGRES_DB=fintrack_db -e POSTGRES_USER=fintrack -e POSTGRES_PASSWORD=secret -p 5432:5432 postgres:15
+
+# Redis
+docker run -d --name fintrack-redis -p 6379:6379 redis:alpine
 ```
 
-### 3. Verify Database
-```bash
-docker ps
-# Should show fintrack-db running
-```
-
-### 4 Build the application
+### 3. Build & Run
 ```bash
 ./gradlew build
-
-# Run the application
 ./gradlew run
 ```
 
-### 5 Testing with Sample Data
+### 4. Testing with Sample Data
+To see the API in action, you can follow this quick flow:
+
 ##### Register a user:
 ```bash
 POST http://localhost:8080/auth/register
-```
-Body:
-```bash
 {
   "email": "test@example.com",
   "password": "testpass123"
 }
-# Save the JWT token from the response
 ```
+*Note: Save the JWT token from the response.*
 
 ##### Get your account IDs:
 ```bash
 GET http://localhost:8080/accounts
 Headers: Authorization: Bearer <your-jwt-token>
-# Save the account IDs from the response
 ```
 
-##### Prepare sample data:
-- Download sample data: [sample-transactions.json](https://gist.githubusercontent.com/markgithinji/a6f2b56c782b404e8e71ee9238b3e1e8/raw/sample-transactions.json)
-- Use this AI prompt to update the account IDs and dates:
-
-**AI Prompt:** "First, replace ALL accountId values in this JSON with [your-bank-account-id] (use the same bank account ID for every transaction). Then update all dates to be within the last 7 days from today, ensuring each day has multiple transactions (both income and expenses) with realistic timestamps throughout each day. 
-Use ONLY these specific categories:
-- **Income categories**: Salary, Freelance, Investments, Gifts, Other
-- **Expense categories**: Food, Transport, Shopping, Health, Bills, Entertainment, Education, Gifts, Travel, Personal Care, Subscriptions, Rent, Groceries, Insurance, Misc.
-Keep the same transaction structure but ensure categories match the allowed set above. Spread the transactions evenly across the past week with 2-4 transactions per day."
-
-##### Add sample transactions:
+##### Add sample transactions (Bulk):
+1. **Fetch IDs**: Get your `accountId` from the `/accounts` endpoint.
+2. **Prepare Data**: Use the [sample-transactions.json](sample-data/sample-transactions.json) file included in this repo. You can use this AI prompt with your `accountId` to generate a personalized dataset:
+    > "Using the structure in `sample-data/sample-transactions.json`, replace all `accountId` values with [your-id]. Update all dates to be within the last 7 days from today, ensuring 3-4 transactions per day with realistic timestamps and categories."
+3. **Upload**:
 ```bash
 POST http://localhost:8080/transactions/bulk
 Headers: Authorization: Bearer <your-jwt-token>
-Body: [paste-your-updated-json-here]
+Body: [your-generated-json]
 ```
 
-#### Cleanup (Optional)
-To quickly delete all transactions and start fresh:
+##### Cleanup:
+To start fresh:
 ```bash
 DELETE http://localhost:8080/transactions/clear
 Headers: Authorization: Bearer <your-jwt-token>
 ```
-
-> 📝 **Important**: Make sure to replace the account IDs in the sample data with your real account IDs, and update the dates to be recent (within the last 7 days). This ensures the KMP mobile app charts display meaningful data since they work with recent transaction history.
-> 🔑 Note: You need to include the JWT token in the Authorization header for all protected endpoints.
 
 ---
 
 ## 🏗️ Tech Stack
 
 **Server & Framework:**
-- **Ktor**: Asynchronous web framework for Kotlin
-- **Netty Engine**: High-performance web server
-- **Kotlin Serialization**: Type-safe JSON serialization/deserialization
-- **Content Negotiation**: Automatic content type handling
+- **Ktor**: Asynchronous non-blocking web framework for Kotlin.
+- **Netty Engine**: High-performance event-driven network application framework.
+- **Kotlinx Serialization**: Type-safe, multiplatform JSON serialization.
+- **DoubleReceive**: Optimized request body handling for logging and validation.
 
 **Database & Persistence:**
-- **PostgreSQL**: Primary relational database
-- **Exposed**: Type-safe SQL DSL and DAO
-- **HikariCP**: High-performance connection pooling
-- **Kotlinx DateTime**: Modern date/time handling
-- **Pagination**: Efficient server-side pagination for large datasets
-- **Flyway**: Database migrations and version control
+- **PostgreSQL**: Primary relational database for financial records.
+- **Exposed**: Type-safe SQL DSL and Lightweight DAO for Kotlin.
+- **HikariCP**: Production-ready high-performance JDBC connection pooling.
+- **Flyway**: Automated database schema migrations and versioning.
+- **Redis (Jedis)**: High-speed in-memory data store for distributed rate limiting and token management.
 
 **Security & Authentication:**
-- **JWT Authentication**: Stateless token-based auth
-- **BCrypt**: Secure password hashing
-- **Rate Limiting**: API abuse protection
-- **Request Validation**: Input sanitization and validation
+- **JWT (JSON Web Tokens)**: Stateless authentication with secure payload signing.
+- **Argon2id**: Industry-standard, memory-hard password hashing (Winner of PHC).
+- **Redis Token Blacklist**: Immediate session revocation/logout capabilities.
+- **Distributed Rate Limiting**: Redis-backed protection against brute-force and DDoS.
+- **Request Validation**: Strict input sanitization and schema enforcement.
 
-**Monitoring & Operations:**
-- **Micrometer Metrics**: Application metrics collection
-- **Prometheus**: Metrics endpoint for monitoring
-- **Health Checks**: System and dependency health monitoring
-- **Structured Logging**: JSON logging with Logstash encoder
+**Observability & Operations:**
+- **Micrometer & Prometheus**: Real-time metrics collection and monitoring.
+- **Structured Logging**: JSON-encoded logs with Logstash for ELK/Grafana integration.
+- **Correlation IDs**: Trace requests across service boundaries.
+- **Health Checks**: Automated system and dependency health monitoring.
 
-**Dependency & Configuration:**
-- **Koin**: Dependency injection framework
-- **YAML Configuration**: Externalized configuration management
-- **Gradle Version Catalog**: Centralized dependency management
-
-**Code Quality & Style:**
-- **Spotless**: Automated code formatting and license headers
-- **Detekt**: Static code analysis with customizable rulesets
-- **Ktlint**: Kotlin linter integrated with Spotless
+**Development & Quality:**
+- **Koin**: Pragmatic lightweight dependency injection.
+- **Detekt**: Static code analysis for code smells and complexity.
+- **Spotless & Ktlint**: Automated code formatting and style enforcement.
+- **Gradle Version Catalog**: Centralized, type-safe dependency management.
 
 ---
 
 ## 💡 Core Features
 
-### 🔐 Security & Auth
-- **JWT-based Authentication** with configurable expiration
-- **Secure Password Hashing** using BCrypt
-- **Rate Limiting** per endpoint to prevent abuse
-- **Request Validation** with comprehensive error handling
+### 🔐 Advanced Security
+- **Modern Hashing**: Migrated from BCrypt to **Argon2id** for superior resistance against GPU/ASIC cracking.
+- **Stateful Logout in Stateless Auth**: Uses Redis to blacklist JWTs upon logout, ensuring tokens cannot be reused.
+- **Granular Rate Limiting**: Per-endpoint and per-user limits to ensure API stability.
+- **Audit Logging**: Comprehensive request/response logging for security auditing.
 
-### 📊 Financial Operations
-- **User Management** with secure registration/login
-- **Account CRUD** for multiple account types (checking, savings, credit)
-- **Transaction Processing** with category tagging
-- **Budget Management** with category-wise limits
-- **Financial Analytics** for spending insights and trends
-- **Server-side Pagination** for efficient data retrieval
+### 📊 Financial Intelligence
+- **Advanced Analytics**: Category-wise distribution, period comparisons (Week/Month/Year), and spending trends.
+- **Bulk Operations**: High-performance bulk transaction creation for data imports/syncs.
+- **Budgeting Engine**: Real-time tracking of spending against category-specific limits.
+- **Flexible Reporting**: Server-side aggregation for responsive mobile charts.
 
-### ⚡ Performance & Reliability
-- **Async Non-blocking** I/O operations
-- **Connection Pooling** for database efficiency
-- **Structured Logging** for easy debugging and monitoring
-- **Health Checks** for system reliability
-- **Optimized Queries** with pagination support
-
-### 🔍 Monitoring & Metrics
-- **Prometheus Metrics** endpoint for monitoring
-- **Request Logging** with correlation IDs
-- **Error Tracking** with detailed status pages
-- **Performance Metrics** for API endpoints
-
-### 🎯 Code Quality
-- **Automated Code Formatting** with Spotless
-- **Static Analysis** with Detekt for bug detection
-- **Consistent Code Style** across the codebase
-- **License Header Management** automated by Spotless
+### ⚙️ Maintainability & Architecture
+- **Clean Architecture**: Strict separation of concerns (Domain -> Application -> Data -> Presentation).
+- **Feature-Modular Design**: Code organized by business domains (Auth, Transactions, Budgets, Summary) to reduce coupling.
+- **Migration Strategy**: Graceful migration path for legacy password hashes (BCrypt to Argon2) during user login.
+- **Type Safety**: End-to-end type safety using Kotlin's powerful type system and Exposed DSL.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture Layers
 
-**Clean Architecture Layers:**
-- **Presentation**: Ktor routes, authentication, validation, DTOs
-- **Application**: Use cases, business logic, services  
-- **Domain**: Domain objects, interfaces
-- **Data**: Database entities, repositories, mappers
+1.  **Domain**: Pure Kotlin logic, Entities, and Repository Interfaces. No dependencies on frameworks.
+2.  **Application**: Implementation of business use cases (Services).
+3.  **Data**: Database implementations, Redis services, Mappers, and External API integrations.
+4.  **Presentation**: Ktor Routes, DTOs, Authentication interceptors, and Exception mapping.
 
 ---
 
-## 🛠️ Code Quality
+## 🛠️ Code Quality & Standards
 
-### Spotless (Code Formatting)
+We maintain high standards through automated tooling:
+
 ```bash
-# Apply code formatting
-./gradlew spotlessApply
+# Check for code smells and style violations
+./gradlew detekt
 
-# Check code formatting
-./gradlew spotlessCheck
+# Automatically fix formatting issues
+./gradlew spotlessApply
 ```
 
-## 📊 API Endpoints
+---
 
-> 📋 **Coming Soon**: Complete API documentation with endpoints for users, accounts, transactions, budgets, and analytics will be published shortly.
+## 📊 API Documentation
+
+> 📋 **API Spec**: The API follows RESTful principles. Interactive Swagger/OpenAPI documentation is available at `/openapi` (Coming Soon).
 
 ---

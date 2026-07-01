@@ -1,0 +1,13 @@
+{
+  "transactions": [
+    { "accountId": "REPLACE_WITH_YOUR_ID", "isIncome": true, "amount": 12000.0, "category": "Salary", "dateTime": "2023-10-25T09:00:00Z", "description": "Monthly salary" },
+    { "accountId": "REPLACE_WITH_YOUR_ID", "isIncome": false, "amount": 5000.0, "category": "Groceries", "dateTime": "2023-10-25T12:30:00Z", "description": "Weekly groceries" },
+    { "accountId": "REPLACE_WITH_YOUR_ID", "isIncome": false, "amount": 8000.0, "category": "Transport", "dateTime": "2023-10-26T08:15:00Z", "description": "Taxi & fuel" },
+    { "accountId": "REPLACE_WITH_YOUR_ID", "isIncome": true, "amount": 20000.0, "category": "Freelance", "dateTime": "2023-10-27T10:45:00Z", "description": "Project payment" },
+    { "accountId": "REPLACE_WITH_YOUR_ID", "isIncome": false, "amount": 7000.0, "category": "Shopping", "dateTime": "2023-10-27T16:00:00Z", "description": "Clothes & accessories" },
+    { "accountId": "REPLACE_WITH_YOUR_ID", "isIncome": true, "amount": 15000.0, "category": "Investments", "dateTime": "2023-10-28T11:00:00Z", "description": "Dividend payout" },
+    { "accountId": "REPLACE_WITH_YOUR_ID", "isIncome": false, "amount": 12000.0, "category": "Entertainment", "dateTime": "2023-10-29T20:00:00Z", "description": "Concert & movies" },
+    { "accountId": "REPLACE_WITH_YOUR_ID", "isIncome": false, "amount": 4000.0, "category": "Bills", "dateTime": "2023-10-30T18:30:00Z", "description": "Electricity & water" },
+    { "accountId": "REPLACE_WITH_YOUR_ID", "isIncome": false, "amount": 9000.0, "category": "Groceries", "dateTime": "2023-10-31T13:45:00Z", "description": "Midweek groceries" }
+  ]
+}
