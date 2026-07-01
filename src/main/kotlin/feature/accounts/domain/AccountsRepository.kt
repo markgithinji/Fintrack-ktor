@@ -12,4 +12,5 @@ interface AccountsRepository {
     suspend fun updateAccount(account: Account): Account
     suspend fun deleteAccount(id: UUID)
     suspend fun getTransactionAmounts(userId: UUID, accountId: UUID?): List<Pair<Double, Boolean>>
+    suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double?
 }

@@ -84,6 +84,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             row[TransactionsTable.dateTime] = entity.dateTime
             row[TransactionsTable.description] = entity.description
             row[TransactionsTable.externalId] = entity.externalId
+            row[TransactionsTable.balance] = entity.balance
         }.resultedValues?.singleOrNull()
             ?: throw IllegalStateException("Failed to insert transaction")
 
@@ -105,6 +106,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             row[TransactionsTable.dateTime] = entity.dateTime
             row[TransactionsTable.description] = entity.description
             row[TransactionsTable.externalId] = entity.externalId
+            row[TransactionsTable.balance] = entity.balance
         }
 
         if (updated == 0) throw NoSuchElementException("Transaction with id $id not found for user $userId")
@@ -152,7 +154,24 @@ class TransactionRepositoryImpl : TransactionRepository {
             this[TransactionsTable.dateTime] = entity.dateTime
             this[TransactionsTable.description] = entity.description
             this[TransactionsTable.externalId] = entity.externalId
+            this[TransactionsTable.balance] = entity.balance
         }.map { it.toTransaction() }
+    }
+
+    override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double? = dbQuery {
+        val query = TransactionsTable.selectAll()
+            .where { TransactionsTable.userId eq userId }
+            .andWhere { TransactionsTable.balance.isNotNull() }
+
+        if (accountId != null) {
+            query.andWhere { TransactionsTable.accountId eq accountId }
+        }
+
+        query.orderBy(TransactionsTable.dateTime to SortOrder.DESC)
+            .orderBy(TransactionsTable.id to SortOrder.DESC)
+            .limit(1)
+            .map { it[TransactionsTable.balance] }
+            .singleOrNull()
     }
 
     private fun ResultRow.toTransaction() = Transaction(
@@ -165,6 +184,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
         accountId = this[TransactionsTable.accountId].value,
-        externalId = this[TransactionsTable.externalId]
+        externalId = this[TransactionsTable.externalId],
+        balance = this[TransactionsTable.balance]
     )
 }

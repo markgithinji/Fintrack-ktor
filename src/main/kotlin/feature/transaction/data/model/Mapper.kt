@@ -14,7 +14,8 @@ fun Transaction.toDto() = TransactionDto(
     category = this.category,
     dateTime = this.dateTime.toString(),
     description = this.description,
-    externalId = this.externalId
+    externalId = this.externalId,
+    balance = this.balance
 )
 
 fun CreateTransactionRequest.toDomain(userId: UUID): Transaction = Transaction(
@@ -27,7 +28,8 @@ fun CreateTransactionRequest.toDomain(userId: UUID): Transaction = Transaction(
     category = category,
     dateTime = dateTime,
     description = description,
-    externalId = externalId
+    externalId = externalId,
+    balance = balance
 )
 
 fun UpdateTransactionRequest.toDomain(userId: UUID, transactionId: UUID): Transaction = Transaction(
@@ -40,5 +42,6 @@ fun UpdateTransactionRequest.toDomain(userId: UUID, transactionId: UUID): Transa
     category = category,
     dateTime = dateTime,
     description = description,
-    externalId = externalId
+    externalId = externalId,
+    balance = balance
 )

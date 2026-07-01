@@ -87,6 +87,25 @@ class AccountsRepositoryImpl : AccountsRepository {
             }
         }
 
+    override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double? =
+        dbQuery {
+            val query = TransactionsTable
+                .select(TransactionsTable.balance)
+                .where { TransactionsTable.userId eq EntityID(userId, UsersTable) }
+                .andWhere { TransactionsTable.balance.isNotNull() }
+
+            val filteredQuery = accountId?.let {
+                query.andWhere { TransactionsTable.accountId eq EntityID(it, AccountsTable) }
+            } ?: query
+
+            filteredQuery
+                .orderBy(TransactionsTable.dateTime to org.jetbrains.exposed.sql.SortOrder.DESC)
+                .orderBy(TransactionsTable.id to org.jetbrains.exposed.sql.SortOrder.DESC)
+                .limit(1)
+                .map { it[TransactionsTable.balance] }
+                .singleOrNull()
+        }
+
     private fun toAccount(row: ResultRow): Account = Account(
         id = row[AccountsTable.id].value,
         userId = row[AccountsTable.userId].value,

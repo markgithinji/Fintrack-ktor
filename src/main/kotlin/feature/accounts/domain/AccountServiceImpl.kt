@@ -26,14 +26,19 @@ class AccountServiceImpl(
 
         val incomeSum = income.sumOf { it.first }
         val expenseSum = expense.sumOf { it.first }
-        val balance = incomeSum - expenseSum
+
+        // Use the latest balance from transactions if available (e.g., for M-Pesa),
+        // otherwise fall back to the calculated balance.
+        val latestBalance = accountsRepository.getLatestBalance(userId, accountId)
+        val balance = latestBalance ?: (incomeSum - expenseSum)
 
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
             "income" to incomeSum,
             "expense" to expenseSum,
-            "balance" to balance
+            "latestBalance" to latestBalance,
+            "finalBalance" to balance
         ).debug { "Account aggregates calculated" }
 
         return AccountAggregates(incomeSum, expenseSum, balance)

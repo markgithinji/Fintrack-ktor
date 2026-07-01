@@ -19,6 +19,7 @@ object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
     val dateTime = timestamp(TransactionsColumns.DATE_TIME)
     val description = varchar(TransactionsColumns.DESCRIPTION, 255).nullable()
     val externalId = varchar(TransactionsColumns.EXTERNAL_ID, 100).nullable()
+    val balance = double(TransactionsColumns.BALANCE).nullable()
 
     init {
         uniqueIndex(externalId, userId)

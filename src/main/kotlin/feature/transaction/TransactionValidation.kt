@@ -7,6 +7,7 @@ import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
 import io.ktor.server.plugins.requestvalidation.ValidationResult
 import kotlinx.datetime.Clock
+import kotlin.time.Duration.Companion.seconds
 
 fun RequestValidationConfig.configureTransactionValidation() {
     validate<CreateTransactionRequest> { request ->
@@ -34,8 +35,8 @@ fun RequestValidationConfig.configureTransactionValidation() {
             violations.add("Description cannot exceed 255 characters")
         }
 
-        // Date validation - prevent future dates
-        if (request.dateTime > Clock.System.now()) {
+        // Date validation - allow 5s buffer for clock skew
+        if (request.dateTime > Clock.System.now().plus(5.seconds)) {
             violations.add("Transaction date cannot be in the future")
         }
 
@@ -76,8 +77,8 @@ fun RequestValidationConfig.configureTransactionValidation() {
             violations.add("Description cannot exceed 255 characters")
         }
 
-        // Date validation - prevent future dates
-        if (request.dateTime > Clock.System.now()) {
+        // Date validation - allow 5s buffer for clock skew
+        if (request.dateTime > Clock.System.now().plus(5.seconds)) {
             violations.add("Transaction date cannot be in the future")
         }
 
@@ -109,8 +110,8 @@ fun RequestValidationConfig.configureTransactionValidation() {
                 violations.add("Transaction #${index + 1}: description cannot exceed 255 characters")
             }
 
-            // Date validation - prevent future dates
-            if (request.dateTime > Clock.System.now()) {
+            // Date validation - allow 5s buffer for clock skew
+            if (request.dateTime > Clock.System.now().plus(5.seconds)) {
                 violations.add("Transaction #${index + 1}: date cannot be in the future")
             }
 

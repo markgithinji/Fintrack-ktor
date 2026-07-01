@@ -12,5 +12,6 @@ data class TransactionDto(
     val category: String,
     val dateTime: String,
     val description: String? = null,
-    val externalId: String? = null
+    val externalId: String? = null,
+    val balance: Double? = null
 )
