@@ -38,27 +38,28 @@ fun Logger.withContext(context: Map<String, Any?>): StructuredLogger {
     return StructuredLogger(this, context)
 }
 
-class StructuredLogger internal constructor(
-    private val logger: Logger,
-    private val context: Map<String, Any?>
+class StructuredLogger @PublishedApi internal constructor(
+    @PublishedApi internal val logger: Logger,
+    @PublishedApi internal val context: Map<String, Any?>
 ) {
-    fun debug(lazyMessage: () -> String) =
+    inline fun debug(lazyMessage: () -> String) =
         logger.debug { "${lazyMessage()} ${context.formatContext()}" }
 
-    fun info(lazyMessage: () -> String) =
+    inline fun info(lazyMessage: () -> String) =
         logger.info { "${lazyMessage()} ${context.formatContext()}" }
 
-    fun warn(lazyMessage: () -> String) =
+    inline fun warn(lazyMessage: () -> String) =
         logger.warn { "${lazyMessage()} ${context.formatContext()}" }
 
-    fun error(lazyMessage: () -> String, exception: Throwable? = null) =
+    inline fun error(lazyMessage: () -> String, exception: Throwable? = null) =
         logger.error({ "${lazyMessage()} ${context.formatContext()}" }, exception)
 
-    fun trace(lazyMessage: () -> String) =
+    inline fun trace(lazyMessage: () -> String) =
         logger.trace { "${lazyMessage()} ${context.formatContext()}" }
 }
 
-private fun Map<String, Any?>.formatContext(): String = entries
+@PublishedApi
+internal fun Map<String, Any?>.formatContext(): String = entries
     .filter { it.value != null }
     .joinToString(" ") { "${it.key}=[${it.value}]" }
 
