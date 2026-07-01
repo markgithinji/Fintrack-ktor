@@ -51,12 +51,12 @@ class AuthServiceImpl(
 
         val user = userRepository.findByEmail(email) ?: run {
             log.warn { "Login failed - user not found: $email" }
-            throw AuthenticationException("Invalid credentials", "INVALID_CREDENTIALS")
+            throw AuthenticationException("No account found with this email", "USER_NOT_FOUND")
         }
 
         if (!PasswordHasher.verify(password, user.passwordHash)) {
             log.warn { "Login failed - invalid password for: $email" }
-            throw AuthenticationException("Invalid credentials", "INVALID_CREDENTIALS")
+            throw AuthenticationException("The password you entered is incorrect", "INVALID_PASSWORD")
         }
 
         // Migration: If legacy BCrypt hash, update to Argon2
