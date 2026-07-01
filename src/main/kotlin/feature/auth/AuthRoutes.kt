@@ -37,13 +37,13 @@ fun Route.authRoutes(authService: AuthService) {
                 val response = authService.login(request.email, request.password)
                 call.respond(HttpStatusCode.OK, response)
             }
-        }
 
-        post("/refresh") {
-            val request = call.receive<RefreshRequest>()
-            log.info { "Token refresh request received" }
-            val response = authService.refreshToken(request.refreshToken)
-            call.respond(HttpStatusCode.OK, response)
+            post("/refresh") {
+                val request = call.receive<RefreshRequest>()
+                log.info { "Token refresh request received" }
+                val response = authService.refreshToken(request.refreshToken)
+                call.respond(HttpStatusCode.OK, response)
+            }
         }
 
         get("/validate") {

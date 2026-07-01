@@ -55,9 +55,7 @@ fun Routing.monitoringRoutes(healthService: HealthService) {
 }
 
 fun Routing.authenticationRoutes(authService: AuthService) {
-    withAuthRateLimit {
-        authRoutes(authService)
-    }
+    authRoutes(authService)
 }
 
 fun Routing.apiRoutes(

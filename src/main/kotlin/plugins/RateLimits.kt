@@ -16,7 +16,8 @@ import kotlinx.datetime.Clock
 
 class RateLimitConfig {
     companion object {
-        val AUTH_LIMIT = RateLimitName("auth")
+        val AUTH_IP_LIMIT = RateLimitName("auth-ip")
+        val AUTH_EMAIL_LIMIT = RateLimitName("auth-email")
         val PUBLIC_API_LIMIT = RateLimitName("public-api")
         val PROTECTED_API_LIMIT = RateLimitName("protected-api")
         val HEALTH_LIMIT = RateLimitName("health")
@@ -32,26 +33,36 @@ fun Application.configureRateLimiting() {
             rateLimiter(limit = 1000, refillPeriod = 1.minutes)
         }
 
-        // Authentication endpoints - stricter limits with Redis and Account-based peeking
-        register(RateLimitConfig.AUTH_LIMIT) {
+        // 1. IP-based Auth Limit (Prevent high-frequency attacks from one source)
+        register(RateLimitConfig.AUTH_IP_LIMIT) {
             rateLimiter { _, key ->
                 RedisRateLimiter(
                     jedisPool = jedisPool,
-                    key = key.toString(),
-                    limit = 10,
+                    key = "ip:$key",
+                    limit = 20,
+                    refillPeriod = 1.minutes
+                )
+            }
+            requestKey { it.request.origin.remoteHost }
+        }
+
+        // 2. Email-based Auth Limit (Prevent distributed brute force against a single account)
+        register(RateLimitConfig.AUTH_EMAIL_LIMIT) {
+            rateLimiter { _, key ->
+                RedisRateLimiter(
+                    jedisPool = jedisPool,
+                    key = "email:$key",
+                    limit = 5,
                     refillPeriod = 1.minutes
                 )
             }
             requestKey { call ->
-                val ip = call.request.origin.remoteHost
-                val email = try {
+                try {
                     // Peek into the body for email (requires DoubleReceive)
-                    call.receiveNullable<AuthRequest>()?.email
+                    call.receiveNullable<AuthRequest>()?.email ?: call.request.origin.remoteHost
                 } catch (_: Exception) {
-                    null
+                    call.request.origin.remoteHost
                 }
-                
-                if (email != null) "auth:$ip:$email" else "auth:$ip"
             }
         }
 
@@ -90,21 +101,25 @@ class RedisRateLimiter(
     override suspend fun tryConsume(tokens: Int): RateLimiter.State {
         return jedisPool.resource.use { jedis ->
             val redisKey = "ratelimit:$key"
-            val current = jedis[redisKey]?.toLong() ?: 0L
             
-            if ((current + tokens) <= limit) {
-                val newValue = jedis.incrBy(redisKey, tokens.toLong())
-                if (newValue == tokens.toLong()) {
-                    jedis.expire(redisKey, refillPeriod.inWholeSeconds)
-                }
-                val ttl = jedis.ttl(redisKey).coerceAtLeast(0)
+            // Atomic increment
+            val newValue = jedis.incrBy(redisKey, tokens.toLong())
+            
+            // Set TTL only on the first increment
+            if (newValue == tokens.toLong()) {
+                jedis.expire(redisKey, refillPeriod.inWholeSeconds)
+            }
+
+            val ttl = jedis.ttl(redisKey).coerceAtLeast(0)
+            val expiresAt = Clock.System.now().plus(ttl.seconds).toEpochMilliseconds()
+
+            if (newValue <= limit) {
                 RateLimiter.State.Available(
                     (limit - newValue).toInt(),
                     limit,
-                    Clock.System.now().plus(ttl.seconds).toEpochMilliseconds()
+                    expiresAt
                 )
             } else {
-                val ttl = jedis.ttl(redisKey).coerceAtLeast(0)
                 RateLimiter.State.Exhausted(
                     ttl.seconds
                 )
@@ -115,8 +130,10 @@ class RedisRateLimiter(
 
 // Extension functions for easy rate limiting
 fun Route.withAuthRateLimit(block: Route.() -> Unit) {
-    rateLimit(RateLimitConfig.AUTH_LIMIT) {
-        block()
+    rateLimit(RateLimitConfig.AUTH_IP_LIMIT) {
+        rateLimit(RateLimitConfig.AUTH_EMAIL_LIMIT) {
+            block()
+        }
     }
 }
 
