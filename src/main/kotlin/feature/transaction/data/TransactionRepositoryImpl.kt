@@ -143,19 +143,26 @@ class TransactionRepositoryImpl : TransactionRepository {
     }
 
     override suspend fun addBulk(entities: List<Transaction>): List<Transaction> = dbQuery {
-        TransactionsTable.batchInsert(entities) { entity ->
-            this[TransactionsTable.id] = entity.id ?: UUID.randomUUID()
-            this[TransactionsTable.userId] = entity.userId
-            this[TransactionsTable.accountId] = entity.accountId
-            this[TransactionsTable.isIncome] = entity.isIncome
-            this[TransactionsTable.amount] = entity.amount
-            this[TransactionsTable.transactionCost] = entity.transactionCost
-            this[TransactionsTable.category] = entity.category
-            this[TransactionsTable.dateTime] = entity.dateTime
-            this[TransactionsTable.description] = entity.description
-            this[TransactionsTable.externalId] = entity.externalId
-            this[TransactionsTable.balance] = entity.balance
-        }.map { it.toTransaction() }
+        entities.mapNotNull { entity ->
+            try {
+                TransactionsTable.insert { row ->
+                    row[TransactionsTable.id] = entity.id ?: UUID.randomUUID()
+                    row[TransactionsTable.userId] = entity.userId
+                    row[TransactionsTable.accountId] = entity.accountId
+                    row[TransactionsTable.isIncome] = entity.isIncome
+                    row[TransactionsTable.amount] = entity.amount
+                    row[TransactionsTable.transactionCost] = entity.transactionCost
+                    row[TransactionsTable.category] = entity.category
+                    row[TransactionsTable.dateTime] = entity.dateTime
+                    row[TransactionsTable.description] = entity.description
+                    row[TransactionsTable.externalId] = entity.externalId
+                    row[TransactionsTable.balance] = entity.balance
+                }.resultedValues?.singleOrNull()?.toTransaction()
+            } catch (e: Exception) {
+                // Skip duplicates (unique constraint violations)
+                null
+            }
+        }
     }
 
     override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double? = dbQuery {
