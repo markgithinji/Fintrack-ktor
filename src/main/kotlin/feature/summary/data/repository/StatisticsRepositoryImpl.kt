@@ -206,7 +206,8 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         category = this[TransactionsTable.category],
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
-        accountId = this[TransactionsTable.accountId].value
+        accountId = this[TransactionsTable.accountId].value,
+        externalId = this[TransactionsTable.externalId]
     )
 }
 

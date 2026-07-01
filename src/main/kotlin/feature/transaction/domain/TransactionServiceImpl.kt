@@ -170,17 +170,15 @@ class TransactionServiceImpl(
         log.withContext("userId" to userId, "bulkCount" to requests.size)
             .info { "Creating bulk transactions" }
 
-        val transactions = requests.map { request ->
-            val transaction = request.toDomain(userId)
-            repo.add(transaction)
-        }
+        val transactions = requests.map { it.toDomain(userId) }
+        val result = repo.addBulk(transactions)
 
         log.withContext(
             "userId" to userId,
             "requestedCount" to requests.size,
-            "createdCount" to transactions.size
+            "createdCount" to result.size
         ).info { "Bulk transactions created successfully" }
 
-        return transactions.map { it.toDto() }
+        return result.map { it.toDto() }
     }
 }

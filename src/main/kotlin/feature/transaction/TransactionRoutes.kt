@@ -53,6 +53,34 @@ fun Route.transactionRoutes(service: TransactionService) {
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
         }
 
+        post("/batch") {
+            val userId = call.userIdOrThrow()
+            val requests = call.receive<List<CreateTransactionRequest>>()
+
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "POST /transactions/batch",
+                "transactionCount" to requests.size
+            ).info { "Batch transaction creation request received" }
+
+            val saved = service.addBulk(userId, requests)
+            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+        }
+
+        post("/mpesa") {
+            val userId = call.userIdOrThrow()
+            val requests = call.receive<List<CreateTransactionRequest>>()
+
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "POST /transactions/mpesa",
+                "transactionCount" to requests.size
+            ).info { "M-Pesa batch transaction creation request received" }
+
+            val saved = service.addBulk(userId, requests)
+            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+        }
+
         get {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }

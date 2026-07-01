@@ -26,4 +26,5 @@ interface TransactionRepository {
     suspend fun update(id: UUID, userId: UUID, entity: Transaction): Transaction
     suspend fun delete(id: UUID, userId: UUID): Boolean
     suspend fun clearAll(userId: UUID, accountId: UUID?): Boolean
+    suspend fun addBulk(entities: List<Transaction>): List<Transaction>
 }

@@ -11,5 +11,6 @@ data class UpdateTransactionRequest(
     val transactionCost: Double? = null,
     val category: String,
     val dateTime: Instant,
-    val description: String
+    val description: String,
+    val externalId: String? = null
 )

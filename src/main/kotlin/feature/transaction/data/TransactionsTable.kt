@@ -18,4 +18,9 @@ object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
     val category = varchar(TransactionsColumns.CATEGORY, 100)
     val dateTime = timestamp(TransactionsColumns.DATE_TIME)
     val description = varchar(TransactionsColumns.DESCRIPTION, 255).nullable()
+    val externalId = varchar(TransactionsColumns.EXTERNAL_ID, 100).nullable()
+
+    init {
+        uniqueIndex(externalId, userId)
+    }
 }

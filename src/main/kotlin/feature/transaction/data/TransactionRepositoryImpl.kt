@@ -1,12 +1,9 @@
 package feature.transaction.data
 
-import com.fintrack.feature.user.UsersTable
 import core.dbQuery
-import feature.accounts.data.AccountsTable
 import feature.transaction.domain.TransactionRepository
 import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.Instant
-import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import java.util.*
@@ -26,10 +23,10 @@ class TransactionRepositoryImpl : TransactionRepository {
         afterId: UUID?
     ): List<Transaction> = dbQuery {
         var query = TransactionsTable.selectAll()
-            .andWhere { TransactionsTable.userId eq EntityID(userId, UsersTable) }
+            .andWhere { TransactionsTable.userId eq userId }
 
         if (accountId != null) query =
-            query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
+            query.andWhere { TransactionsTable.accountId eq accountId }
         if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
         if (!categories.isNullOrEmpty()) query = query.andWhere { TransactionsTable.category inList categories }
         if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start }
@@ -67,8 +64,8 @@ class TransactionRepositoryImpl : TransactionRepository {
     override suspend fun getById(id: UUID, userId: UUID): Transaction = dbQuery {
         TransactionsTable
             .selectAll().where {
-                (TransactionsTable.id eq EntityID(id, TransactionsTable)) and
-                        (TransactionsTable.userId eq EntityID(userId, UsersTable))
+                (TransactionsTable.id eq id) and
+                        (TransactionsTable.userId eq userId)
             }
             .map { it.toTransaction() }
             .singleOrNull()
@@ -77,15 +74,16 @@ class TransactionRepositoryImpl : TransactionRepository {
 
     override suspend fun add(entity: Transaction): Transaction = dbQuery {
         val inserted = TransactionsTable.insert { row ->
-            row[id] = EntityID(entity.id ?: UUID.randomUUID(), TransactionsTable)
-            row[userId] = EntityID(entity.userId, UsersTable)
-            row[accountId] = EntityID(entity.accountId, AccountsTable)
-            row[isIncome] = entity.isIncome
-            row[amount] = entity.amount
-            row[transactionCost] = entity.transactionCost
-            row[category] = entity.category
-            row[dateTime] = entity.dateTime
-            row[description] = entity.description
+            row[TransactionsTable.id] = entity.id ?: UUID.randomUUID()
+            row[TransactionsTable.userId] = entity.userId
+            row[TransactionsTable.accountId] = entity.accountId
+            row[TransactionsTable.isIncome] = entity.isIncome
+            row[TransactionsTable.amount] = entity.amount
+            row[TransactionsTable.transactionCost] = entity.transactionCost
+            row[TransactionsTable.category] = entity.category
+            row[TransactionsTable.dateTime] = entity.dateTime
+            row[TransactionsTable.description] = entity.description
+            row[TransactionsTable.externalId] = entity.externalId
         }.resultedValues?.singleOrNull()
             ?: throw IllegalStateException("Failed to insert transaction")
 
@@ -95,25 +93,26 @@ class TransactionRepositoryImpl : TransactionRepository {
     override suspend fun update(id: UUID, userId: UUID, entity: Transaction): Transaction = dbQuery {
         val updated = TransactionsTable.update(
             where = {
-                (TransactionsTable.id eq EntityID(id, TransactionsTable)) and
-                        (TransactionsTable.userId eq EntityID(userId, UsersTable))
+                (TransactionsTable.id eq id) and
+                        (TransactionsTable.userId eq userId)
             }
         ) { row ->
-            row[accountId] = EntityID(entity.accountId, AccountsTable)
-            row[isIncome] = entity.isIncome
-            row[amount] = entity.amount
-            row[transactionCost] = entity.transactionCost
-            row[category] = entity.category
-            row[dateTime] = entity.dateTime
-            row[description] = entity.description
+            row[TransactionsTable.accountId] = entity.accountId
+            row[TransactionsTable.isIncome] = entity.isIncome
+            row[TransactionsTable.amount] = entity.amount
+            row[TransactionsTable.transactionCost] = entity.transactionCost
+            row[TransactionsTable.category] = entity.category
+            row[TransactionsTable.dateTime] = entity.dateTime
+            row[TransactionsTable.description] = entity.description
+            row[TransactionsTable.externalId] = entity.externalId
         }
 
         if (updated == 0) throw NoSuchElementException("Transaction with id $id not found for user $userId")
         // Re-fetch the updated transaction
         TransactionsTable
             .selectAll().where {
-                (TransactionsTable.id eq EntityID(id, TransactionsTable)) and
-                        (TransactionsTable.userId eq EntityID(userId, UsersTable))
+                (TransactionsTable.id eq id) and
+                        (TransactionsTable.userId eq userId)
             }
             .map { it.toTransaction() }
             .singleOrNull()
@@ -122,8 +121,8 @@ class TransactionRepositoryImpl : TransactionRepository {
 
     override suspend fun delete(id: UUID, userId: UUID): Boolean = dbQuery {
         val deleted = TransactionsTable.deleteWhere {
-            (TransactionsTable.id eq EntityID(id, TransactionsTable)) and
-                    (TransactionsTable.userId eq EntityID(userId, UsersTable))
+            (TransactionsTable.id eq id) and
+                    (TransactionsTable.userId eq userId)
         }
         if (deleted == 0) throw NoSuchElementException("Transaction with id $id not found for user $userId")
         true
@@ -132,13 +131,28 @@ class TransactionRepositoryImpl : TransactionRepository {
     override suspend fun clearAll(userId: UUID, accountId: UUID?): Boolean = dbQuery {
         val deleted = if (accountId != null) {
             TransactionsTable.deleteWhere {
-                (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
-                        (TransactionsTable.accountId eq EntityID(accountId, AccountsTable))
+                (TransactionsTable.userId eq userId) and
+                        (TransactionsTable.accountId eq accountId)
             }
         } else {
-            TransactionsTable.deleteWhere { TransactionsTable.userId eq EntityID(userId, UsersTable) }
+            TransactionsTable.deleteWhere { TransactionsTable.userId eq userId }
         }
         deleted > 0
+    }
+
+    override suspend fun addBulk(entities: List<Transaction>): List<Transaction> = dbQuery {
+        TransactionsTable.batchInsert(entities) { entity ->
+            this[TransactionsTable.id] = entity.id ?: UUID.randomUUID()
+            this[TransactionsTable.userId] = entity.userId
+            this[TransactionsTable.accountId] = entity.accountId
+            this[TransactionsTable.isIncome] = entity.isIncome
+            this[TransactionsTable.amount] = entity.amount
+            this[TransactionsTable.transactionCost] = entity.transactionCost
+            this[TransactionsTable.category] = entity.category
+            this[TransactionsTable.dateTime] = entity.dateTime
+            this[TransactionsTable.description] = entity.description
+            this[TransactionsTable.externalId] = entity.externalId
+        }.map { it.toTransaction() }
     }
 
     private fun ResultRow.toTransaction() = Transaction(
@@ -150,6 +164,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         category = this[TransactionsTable.category],
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
-        accountId = this[TransactionsTable.accountId].value
+        accountId = this[TransactionsTable.accountId].value,
+        externalId = this[TransactionsTable.externalId]
     )
 }

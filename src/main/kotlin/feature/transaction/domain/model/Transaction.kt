@@ -13,7 +13,8 @@ data class Transaction(
     val category: String,
     val dateTime: Instant,
     val description: String?,
-    val accountId: UUID
+    val accountId: UUID,
+    val externalId: String? = null
 ) {
     val totalAmount: Double
         get() = if (isIncome) amount - transactionCost else amount + transactionCost
