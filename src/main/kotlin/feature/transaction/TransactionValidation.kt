@@ -7,8 +7,6 @@ import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
 import io.ktor.server.plugins.requestvalidation.ValidationResult
 import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 fun RequestValidationConfig.configureTransactionValidation() {
     validate<CreateTransactionRequest> { request ->
@@ -37,8 +35,7 @@ fun RequestValidationConfig.configureTransactionValidation() {
         }
 
         // Date validation - prevent future dates
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        if (request.dateTime > now) {
+        if (request.dateTime > Clock.System.now()) {
             violations.add("Transaction date cannot be in the future")
         }
 
@@ -80,8 +77,7 @@ fun RequestValidationConfig.configureTransactionValidation() {
         }
 
         // Date validation - prevent future dates
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-        if (request.dateTime > now) {
+        if (request.dateTime > Clock.System.now()) {
             violations.add("Transaction date cannot be in the future")
         }
 
@@ -114,8 +110,7 @@ fun RequestValidationConfig.configureTransactionValidation() {
             }
 
             // Date validation - prevent future dates
-            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-            if (request.dateTime > now) {
+            if (request.dateTime > Clock.System.now()) {
                 violations.add("Transaction #${index + 1}: date cannot be in the future")
             }
 

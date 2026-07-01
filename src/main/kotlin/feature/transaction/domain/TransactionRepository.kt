@@ -1,7 +1,7 @@
 package feature.transaction.domain
 
 import feature.transaction.domain.model.Transaction
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Instant
 import org.jetbrains.exposed.sql.SortOrder
 
 import java.util.UUID
@@ -12,12 +12,12 @@ interface TransactionRepository {
         accountId: UUID?,
         isIncome: Boolean?,
         categories: List<String>?,
-        start: LocalDateTime?,
-        end: LocalDateTime?,
+        start: Instant?,
+        end: Instant?,
         sortBy: String,
         order: SortOrder,
         limit: Int,
-        afterDateTime: LocalDateTime?,
+        afterDateTime: Instant?,
         afterId: UUID?
     ): List<Transaction>
 

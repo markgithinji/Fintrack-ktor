@@ -6,7 +6,7 @@ import com.fintrack.feature.user.UsersTable
 import feature.accounts.data.AccountsTable
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
-import org.jetbrains.exposed.sql.javatime.datetime
+import org.jetbrains.exposed.sql.kotlin.datetime.timestamp
 
 object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
     val userId =
@@ -16,6 +16,6 @@ object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
     val amount = double(TransactionsColumns.AMOUNT)
     val transactionCost = double(TransactionsColumns.TRANSACTION_COST).default(0.0)
     val category = varchar(TransactionsColumns.CATEGORY, 100)
-    val dateTime = datetime(TransactionsColumns.DATE_TIME)
+    val dateTime = timestamp(TransactionsColumns.DATE_TIME)
     val description = varchar(TransactionsColumns.DESCRIPTION, 255).nullable()
 }

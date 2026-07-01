@@ -19,12 +19,13 @@ import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atTime
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
 import java.time.temporal.WeekFields
@@ -40,8 +41,8 @@ class StatisticsServiceImpl(
         userId: UUID,
         accountId: UUID?,
         isIncome: Boolean?,
-        start: LocalDateTime?,
-        end: LocalDateTime?
+        start: Instant?,
+        end: Instant?
     ): StatisticsSummaryDto {
         log.withContext(
             "userId" to userId,
@@ -63,8 +64,9 @@ class StatisticsServiceImpl(
 
         fun highestMonth(txns: List<Transaction>) =
             txns.groupBy {
-                "${it.dateTime.year}-${
-                    it.dateTime.monthNumber.toString().padStart(2, '0')
+                val dt = it.dateTime.toLocalDateTime(TimeZone.UTC)
+                "${dt.year}-${
+                    dt.monthNumber.toString().padStart(2, '0')
                 }"
             }
                 .mapValues { it.value.sumOf { t -> t.totalAmount } }
@@ -83,7 +85,7 @@ class StatisticsServiceImpl(
                 }
 
         fun highestDay(txns: List<Transaction>) =
-            txns.groupBy { it.dateTime.date }
+            txns.groupBy { it.dateTime.toLocalDateTime(TimeZone.UTC).date }
                 .mapValues { it.value.sumOf { t -> t.totalAmount } }
                 .maxByOrNull { it.value }
                 ?.let {
@@ -95,7 +97,7 @@ class StatisticsServiceImpl(
                 }
 
         fun averagePerDay(txns: List<Transaction>): Double {
-            val days = txns.groupBy { it.dateTime.date }.size.coerceAtLeast(1)
+            val days = txns.groupBy { it.dateTime.toLocalDateTime(TimeZone.UTC).date }.size.coerceAtLeast(1)
             val total = txns.sumOf { it.totalAmount }
             return total / days
         }
@@ -134,8 +136,8 @@ class StatisticsServiceImpl(
         period: String,
         accountId: UUID?,
         isIncome: Boolean?,
-        start: LocalDateTime?,
-        end: LocalDateTime?
+        start: Instant?,
+        end: Instant?
     ): DistributionSummaryDto {
         if (!period.matches(Regex("^(\\d{4}-W\\d{2}|\\d{4}-\\d{2}|\\d{4})$"))) {
             throw ValidationException("Period must be in format: YYYY-Www, YYYY-MM, or YYYY")
@@ -161,16 +163,18 @@ class StatisticsServiceImpl(
         fun categorySummary(txns: List<Transaction>): List<CategorySummaryDto> {
             val grouped = when {
                 weekMode -> txns.groupBy {
-                    val javaDateTime = it.dateTime.toJavaLocalDateTime()
+                    val dt = it.dateTime.toLocalDateTime(TimeZone.UTC)
+                    val javaDateTime = dt.toJavaLocalDateTime()
                     val week = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
                     "${javaDateTime.year}-W${week.toString().padStart(2, '0')}"
                 }
 
                 monthMode -> txns.groupBy {
-                    "${it.dateTime.year}-${it.dateTime.monthNumber.toString().padStart(2, '0')}"
+                    val dt = it.dateTime.toLocalDateTime(TimeZone.UTC)
+                    "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
                 }
 
-                yearMode -> txns.groupBy { it.dateTime.year.toString() }
+                yearMode -> txns.groupBy { it.dateTime.toLocalDateTime(TimeZone.UTC).year.toString() }
                 else -> emptyMap()
             }
             val txnsInPeriod = grouped[period].orEmpty()
@@ -243,7 +247,7 @@ class StatisticsServiceImpl(
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Calculating overview summary" }
 
-        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        val today = Clock.System.now().toLocalDateTime(TimeZone.UTC).date
         val weeklyStart = today.minus(DatePeriod(days = 6))
         val monthlyStart = today.minus(DatePeriod(days = 29))
 
@@ -294,7 +298,7 @@ class StatisticsServiceImpl(
         }.toList()
 
         val summaries = dates.map { date ->
-            val dayTxs = transactions.filter { it.dateTime.date == date }
+            val dayTxs = transactions.filter { it.dateTime.toLocalDateTime(TimeZone.UTC).date == date }
             val income = dayTxs.filter { it.isIncome }.sumOf { it.totalAmount }
             val expense = dayTxs.filter { !it.isIncome }.sumOf { it.totalAmount }
             DaySummaryDto(date = date, income = income, expense = expense)
@@ -316,7 +320,7 @@ class StatisticsServiceImpl(
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Calculating category comparisons" }
 
-        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        val now = Clock.System.now().toLocalDateTime(TimeZone.UTC).date
 
         val thisWeekStart = now.minus(DatePeriod(days = 6))
         val lastWeekStart = thisWeekStart.minus(DatePeriod(days = 7))
@@ -424,9 +428,12 @@ class StatisticsServiceImpl(
         requireNotNull(startParam) { "start parameter is required" }
         requireNotNull(endParam) { "end parameter is required" }
 
-        val (start, end) = parseDateRange(startParam, endParam)
-        val startDate = start?.date ?: throw ValidationException("Invalid start date")
-        val endDate = end?.date ?: throw ValidationException("Invalid end date")
+        val range = parseDateRange(startParam, endParam)
+        val start = range.first ?: throw ValidationException("Invalid start date")
+        val end = range.second ?: throw ValidationException("Invalid end date")
+
+        val startDate = start.toLocalDateTime(TimeZone.UTC).date
+        val endDate = end.toLocalDateTime(TimeZone.UTC).date
 
         return getDaySummaries(userId, startDate, endDate, accountId)
     }
@@ -446,15 +453,15 @@ class StatisticsServiceImpl(
     override fun parseDateRange(
         startDate: String?,
         endDate: String?
-    ): Pair<LocalDateTime?, LocalDateTime?> {
+    ): Pair<Instant?, Instant?> {
         log.withContext("startDate" to startDate, "endDate" to endDate)
             .debug { "Parsing date range" }
 
         val start = startDate?.let {
-            LocalDate.parse(it).atTime(LocalTime(0, 0, 0))
+            LocalDate.parse(it).atTime(LocalTime(0, 0, 0)).toInstant(TimeZone.UTC)
         }
         val end = endDate?.let {
-            LocalDate.parse(it).atTime(LocalTime(23, 59, 59))
+            LocalDate.parse(it).atTime(LocalTime(23, 59, 59)).toInstant(TimeZone.UTC)
         }
 
         // Validate date range logic

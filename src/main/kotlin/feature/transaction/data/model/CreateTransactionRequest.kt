@@ -1,6 +1,6 @@
 package com.fintrack.feature.transactions.data.model
 
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -10,6 +10,6 @@ data class CreateTransactionRequest(
     val amount: Double,
     val transactionCost: Double = 0.0,
     val category: String,
-    val dateTime: LocalDateTime,
+    val dateTime: Instant,
     val description: String
 )

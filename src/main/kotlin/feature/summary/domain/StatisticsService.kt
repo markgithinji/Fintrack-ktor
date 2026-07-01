@@ -10,7 +10,7 @@ import core.DaySummaryDto
 import core.OverviewSummaryDto
 import core.StatisticsSummaryDto
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Instant
 import java.util.UUID
 
 interface StatisticsService {
@@ -18,8 +18,8 @@ interface StatisticsService {
         userId: UUID,
         accountId: UUID?,
         isIncome: Boolean?,
-        start: LocalDateTime?,
-        end: LocalDateTime?
+        start: Instant?,
+        end: Instant?
     ): StatisticsSummaryDto
 
     suspend fun getDistributionSummary(
@@ -27,8 +27,8 @@ interface StatisticsService {
         period: String,
         accountId: UUID?,
         isIncome: Boolean?,
-        start: LocalDateTime?,
-        end: LocalDateTime?
+        start: Instant?,
+        end: Instant?
     ): DistributionSummaryDto
 
     suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeksDto
@@ -66,5 +66,5 @@ interface StatisticsService {
 
     // Helper methods for route parameter processing
     fun parseTypeFilter(typeFilter: String?): Boolean?
-    fun parseDateRange(startDate: String?, endDate: String?): Pair<LocalDateTime?, LocalDateTime?>
+    fun parseDateRange(startDate: String?, endDate: String?): Pair<Instant?, Instant?>
 }

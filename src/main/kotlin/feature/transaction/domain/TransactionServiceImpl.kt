@@ -10,8 +10,10 @@ import feature.transaction.data.model.TransactionDto
 import feature.transaction.data.model.toDomain
 import feature.transaction.data.model.toDto
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atTime
+import kotlinx.datetime.toInstant
 import org.jetbrains.exposed.sql.SortOrder
 import java.util.UUID
 
@@ -57,10 +59,10 @@ class TransactionServiceImpl(
             else -> null
         }
 
-        val start = startDate?.let { LocalDate.parse(it).atTime(0, 0, 0) }
-        val end = endDate?.let { LocalDate.parse(it).atTime(23, 59, 59) }
+        val start = startDate?.let { LocalDate.parse(it).atTime(0, 0, 0).toInstant(TimeZone.UTC) }
+        val end = endDate?.let { LocalDate.parse(it).atTime(23, 59, 59).toInstant(TimeZone.UTC) }
         val sortOrder = if (order == "DESC") SortOrder.DESC else SortOrder.ASC
-        val parsedAfterDateTime = afterDateTime?.let { LocalDateTime.parse(it) }
+        val parsedAfterDateTime = afterDateTime?.let { Instant.parse(it) }
 
         val transactions = repo.getAllCursor(
             userId, accountId, finalIsIncome, categories,

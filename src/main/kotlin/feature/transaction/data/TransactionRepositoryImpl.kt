@@ -5,9 +5,7 @@ import core.dbQuery
 import feature.accounts.data.AccountsTable
 import feature.transaction.domain.TransactionRepository
 import feature.transaction.domain.model.Transaction
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toKotlinLocalDateTime
+import kotlinx.datetime.Instant
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -19,12 +17,12 @@ class TransactionRepositoryImpl : TransactionRepository {
         accountId: UUID?,
         isIncome: Boolean?,
         categories: List<String>?,
-        start: LocalDateTime?,
-        end: LocalDateTime?,
+        start: Instant?,
+        end: Instant?,
         sortBy: String,
         order: SortOrder,
         limit: Int,
-        afterDateTime: LocalDateTime?,
+        afterDateTime: Instant?,
         afterId: UUID?
     ): List<Transaction> = dbQuery {
         var query = TransactionsTable.selectAll()
@@ -34,23 +32,22 @@ class TransactionRepositoryImpl : TransactionRepository {
             query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
         if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
         if (!categories.isNullOrEmpty()) query = query.andWhere { TransactionsTable.category inList categories }
-        if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
-        if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
+        if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start }
+        if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end }
 
         if (afterDateTime != null && afterId != null) {
-            val afterDateTimeJava = afterDateTime.toJavaLocalDateTime()
             query = if (order == SortOrder.DESC) {
                 // For DESC order: get records that are "less than" (older than) the cursor
                 query.andWhere {
-                    (TransactionsTable.dateTime less afterDateTimeJava) or
-                            ((TransactionsTable.dateTime eq afterDateTimeJava) and
+                    (TransactionsTable.dateTime less afterDateTime) or
+                            ((TransactionsTable.dateTime eq afterDateTime) and
                                     (TransactionsTable.id less afterId))
                 }
             } else {
                 // For ASC order: get records that are "greater than" (newer than) the cursor
                 query.andWhere {
-                    (TransactionsTable.dateTime greater afterDateTimeJava) or
-                            ((TransactionsTable.dateTime eq afterDateTimeJava) and
+                    (TransactionsTable.dateTime greater afterDateTime) or
+                            ((TransactionsTable.dateTime eq afterDateTime) and
                                     (TransactionsTable.id greater afterId))
                 }
             }
@@ -87,7 +84,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             row[amount] = entity.amount
             row[transactionCost] = entity.transactionCost
             row[category] = entity.category
-            row[dateTime] = entity.dateTime.toJavaLocalDateTime()
+            row[dateTime] = entity.dateTime
             row[description] = entity.description
         }.resultedValues?.singleOrNull()
             ?: throw IllegalStateException("Failed to insert transaction")
@@ -107,7 +104,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             row[amount] = entity.amount
             row[transactionCost] = entity.transactionCost
             row[category] = entity.category
-            row[dateTime] = entity.dateTime.toJavaLocalDateTime()
+            row[dateTime] = entity.dateTime
             row[description] = entity.description
         }
 
@@ -151,7 +148,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
         category = this[TransactionsTable.category],
-        dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(),
+        dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
         accountId = this[TransactionsTable.accountId].value
     )

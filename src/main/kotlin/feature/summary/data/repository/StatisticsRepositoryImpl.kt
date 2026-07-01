@@ -6,10 +6,7 @@ import feature.accounts.data.AccountsTable
 import feature.summary.domain.StatisticsRepository
 import feature.transaction.data.TransactionsTable
 import feature.transaction.domain.model.Transaction
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toKotlinLocalDateTime
+import kotlinx.datetime.*
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.Query
@@ -26,8 +23,8 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         userId: UUID,
         accountId: UUID?,
         isIncome: Boolean?,
-        start: LocalDateTime?,
-        end: LocalDateTime?
+        start: Instant?,
+        end: Instant?
     ): List<Transaction> =
         dbQuery {
             var query: Query = TransactionsTable.selectAll()
@@ -37,9 +34,9 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                 query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
             if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
             if (start != null) query =
-                query.andWhere { TransactionsTable.dateTime greaterEq start.toJavaLocalDateTime() }
+                query.andWhere { TransactionsTable.dateTime greaterEq start }
             if (end != null) query =
-                query.andWhere { TransactionsTable.dateTime lessEq end.toJavaLocalDateTime() }
+                query.andWhere { TransactionsTable.dateTime lessEq end }
 
             query.map { it.toTransaction() }
         }
@@ -64,7 +61,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
             when (periodType) {
                 "weeks" -> query
-                    .map { it[TransactionsTable.dateTime].toLocalDate() }
+                    .map { it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime().toLocalDate() }
                     .map { date ->
                         val year = date.year
                         val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
@@ -74,7 +71,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                     .sortedDescending()
 
                 "months" -> query
-                    .map { it[TransactionsTable.dateTime].toLocalDate() }
+                    .map { it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime().toLocalDate() }
                     .map { date ->
                         val year = date.year
                         val month = date.monthValue
@@ -84,7 +81,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                     .sortedDescending()
 
                 "years" -> query
-                    .map { it[TransactionsTable.dateTime].toLocalDate().year.toString() }
+                    .map { it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).year.toString() }
                     .distinct()
                     .sortedDescending()
 
@@ -99,29 +96,13 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         accountId: UUID?
     ): List<Transaction> =
         dbQuery {
-            val startJ = java.time.LocalDateTime.of(
-                start.year,
-                start.monthNumber,
-                start.dayOfMonth,
-                0,
-                0,
-                0,
-                0
-            )
-            val endJ = java.time.LocalDateTime.of(
-                end.year,
-                end.monthNumber,
-                end.dayOfMonth,
-                23,
-                59,
-                59,
-                999_999_999
-            )
+            val startInstant = start.atStartOfDayIn(TimeZone.UTC)
+            val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
 
             var query = TransactionsTable.selectAll().where {
                 (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
-                        (TransactionsTable.dateTime greaterEq startJ) and
-                        (TransactionsTable.dateTime lessEq endJ)
+                        (TransactionsTable.dateTime greaterEq startInstant) and
+                        (TransactionsTable.dateTime lessEq endInstant)
             }
 
             if (accountId != null) {
@@ -149,25 +130,12 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             if (accountId != null) query =
                 query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
             if (start != null) {
-                val startJ = java.time.LocalDateTime.of(
-                    start.year,
-                    start.monthNumber,
-                    start.dayOfMonth,
-                    0,
-                    0
-                )
-                query = query.andWhere { TransactionsTable.dateTime greaterEq startJ }
+                val startInstant = start.atStartOfDayIn(TimeZone.UTC)
+                query = query.andWhere { TransactionsTable.dateTime greaterEq startInstant }
             }
             if (end != null) {
-                val endJ = java.time.LocalDateTime.of(
-                    end.year,
-                    end.monthNumber,
-                    end.dayOfMonth,
-                    23,
-                    59,
-                    59
-                )
-                query = query.andWhere { TransactionsTable.dateTime lessEq endJ }
+                val endInstant = end.atTime(23, 59, 59).toInstant(TimeZone.UTC)
+                query = query.andWhere { TransactionsTable.dateTime lessEq endInstant }
             }
 
             query
@@ -236,7 +204,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
         category = this[TransactionsTable.category],
-        dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(),
+        dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
         accountId = this[TransactionsTable.accountId].value
     )

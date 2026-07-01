@@ -1,6 +1,6 @@
 package feature.transaction.domain.model
 
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Instant
 
 import java.util.UUID
 
@@ -11,7 +11,7 @@ data class Transaction(
     val amount: Double,
     val transactionCost: Double,
     val category: String,
-    val dateTime: LocalDateTime,
+    val dateTime: Instant,
     val description: String?,
     val accountId: UUID
 ) {

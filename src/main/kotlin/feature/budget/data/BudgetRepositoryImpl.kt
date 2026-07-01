@@ -8,7 +8,6 @@ import feature.transaction.Budget
 import feature.transaction.BudgetsTable
 import feature.transaction.data.TransactionsTable
 import kotlinx.datetime.*
-import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
@@ -53,7 +52,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                 .singleOrNull()
                 ?: throw IllegalArgumentException("Account not found")
             val accountUserId = account[AccountsTable.userId].value
-            val now = java.time.LocalDateTime.now()
+            val now = Clock.System.now()
             val insertStatement = BudgetsTable.insert {
                 it[id] = EntityID(budget.id ?: UUID.randomUUID(), BudgetsTable)
                 it[userId] = EntityID(accountUserId, UsersTable) // Use the account's userId
@@ -73,7 +72,7 @@ class BudgetRepositoryImpl : BudgetRepository {
 
     override suspend fun addAll(budgets: List<Budget>): List<Budget> =
         dbQuery {
-            val now = java.time.LocalDateTime.now()
+            val now = Clock.System.now()
             budgets.map { budget ->
                 val account = AccountsTable
                     .selectAll()
@@ -117,7 +116,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                 it[isExpense] = budget.isExpense
                 it[startDate] = budget.startDate.toJavaLocalDate()
                 it[endDate] = budget.endDate.toJavaLocalDate()
-                it[updatedAt] = java.time.LocalDateTime.now()
+                it[updatedAt] = Clock.System.now()
             }
 
             if (rows > 0) {
@@ -161,12 +160,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                 .selectAll()
                 .where {
                     (TransactionsTable.accountId eq EntityID(accountId, AccountsTable)) and
-                            (TransactionsTable.dateTime.between(
-                                start.toLocalDateTime(TimeZone.currentSystemDefault())
-                                    .toJavaLocalDateTime(),
-                                end.toLocalDateTime(TimeZone.currentSystemDefault())
-                                    .toJavaLocalDateTime()
-                            )) and
+                            (TransactionsTable.dateTime.between(start, end)) and
                             (TransactionsTable.category inList categories) and
                             (TransactionsTable.isIncome eq !isExpense)
                 }
@@ -198,7 +192,7 @@ private fun ResultRow.toTransaction(): feature.transaction.domain.model.Transact
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
         category = this[TransactionsTable.category],
-        dateTime = this[TransactionsTable.dateTime].toKotlinLocalDateTime(),
+        dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
         accountId = this[TransactionsTable.accountId].value
     )

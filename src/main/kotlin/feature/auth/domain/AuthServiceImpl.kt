@@ -16,7 +16,9 @@ import feature.user.domain.UserRepository
 import core.PasswordHasher
 import java.util.UUID
 import com.auth0.jwt.JWT
-import java.time.LocalDateTime
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlin.time.Duration.Companion.milliseconds
 
 class AuthServiceImpl(
     private val userRepository: UserRepository,
@@ -116,7 +118,7 @@ class AuthServiceImpl(
         val storedToken = refreshTokenRepository.findByToken(refreshToken)
             ?: throw AuthenticationException("Invalid refresh token", "INVALID_REFRESH_TOKEN")
 
-        if (storedToken.expiresAt.isBefore(LocalDateTime.now())) {
+        if (storedToken.expiresAt < Clock.System.now()) {
             refreshTokenRepository.deleteByToken(refreshToken)
             throw AuthenticationException("Refresh token expired", "REFRESH_TOKEN_EXPIRED")
         }
@@ -152,7 +154,7 @@ class AuthServiceImpl(
         val accessToken = JwtConfig.generateAccessToken(userId)
         val refreshTokenString = JwtConfig.generateRefreshToken()
         
-        val expiresAt = LocalDateTime.now().plusNanos(JwtConfig.REFRESH_TOKEN_EXPIRATION * 1_000_000)
+        val expiresAt = Clock.System.now().plus(JwtConfig.REFRESH_TOKEN_EXPIRATION.milliseconds)
         
         refreshTokenRepository.save(
             RefreshToken(
