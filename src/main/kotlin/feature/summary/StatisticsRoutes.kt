@@ -24,6 +24,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
             val typeFilter = call.request.queryParameters["type"]
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
+            val period = call.request.queryParameters["period"]
 
             log.withContext(
                 "userId" to userId,
@@ -31,7 +32,8 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "accountId" to accountId,
                 "typeFilter" to typeFilter,
                 "startDate" to startDate,
-                "endDate" to endDate
+                "endDate" to endDate,
+                "period" to period
             ).info { "Highlights request received" }
 
             val (start, end) = service.parseDateRange(startDate, endDate)
@@ -42,7 +44,8 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 accountId = accountId,
                 isIncome = isIncomeFilter,
                 start = start,
-                end = end
+                end = end,
+                period = period
             )
 
             call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
@@ -175,15 +178,20 @@ fun Route.summaryRoutes(service: StatisticsService) {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.toUUIDOrNull()
             val isIncome = call.request.queryParameters["isIncome"]?.toBooleanStrictOrNull()
+            val startDate = call.request.queryParameters["start"]
+            val endDate = call.request.queryParameters["end"]
 
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/counts",
                 "accountId" to accountId,
-                "isIncome" to isIncome
+                "isIncome" to isIncome,
+                "startDate" to startDate,
+                "endDate" to endDate
             ).info { "Transaction counts request received" }
 
-            val summary = service.getTransactionCountSummary(userId, accountId, isIncome)
+            val (start, end) = service.parseDateRange(startDate, endDate)
+            val summary = service.getTransactionCountSummary(userId, accountId, isIncome, start, end)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
         }
     }

@@ -8,13 +8,10 @@ import feature.transaction.data.TransactionsTable
 import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.*
 import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.Query
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import java.time.temporal.IsoFields
 import java.util.UUID
 
@@ -24,7 +21,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         accountId: UUID?,
         isIncome: Boolean?,
         start: Instant?,
-        end: Instant?
+        end: Instant?,
     ): List<Transaction> =
         dbQuery {
             var query: Query = TransactionsTable.selectAll()
@@ -60,17 +57,18 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             }
 
             when (periodType) {
-                "weeks" -> query
+                "weeks" -> query.asSequence()
                     .map { it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime().toLocalDate() }
                     .map { date ->
                         val year = date.year
-                        val week = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)
+                        val week = date[IsoFields.WEEK_OF_WEEK_BASED_YEAR]
                         "%04d-W%02d".format(year, week)
                     }
                     .distinct()
+                    .toList()
                     .sortedDescending()
 
-                "months" -> query
+                "months" -> query.asSequence()
                     .map { it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime().toLocalDate() }
                     .map { date ->
                         val year = date.year
@@ -78,6 +76,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                         "%04d-%02d".format(year, month)
                     }
                     .distinct()
+                    .toList()
                     .sortedDescending()
 
                 "years" -> query
@@ -153,13 +152,19 @@ class StatisticsRepositoryImpl : StatisticsRepository {
     override suspend fun getTransactionCounts(
         userId: UUID,
         accountId: UUID?,
-        isIncome: Boolean?
+        isIncome: Boolean?,
+        start: Instant?,
+        end: Instant?
     ): TransactionCounts = dbQuery {
-        val baseCondition = { ->
-            (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
+        val baseCondition = {
+            var cond = (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
                     (accountId?.let {
                         TransactionsTable.accountId eq EntityID(it, AccountsTable)
                     } ?: Op.TRUE)
+            
+            if (start != null) cond = cond and (TransactionsTable.dateTime greaterEq start)
+            if (end != null) cond = cond and (TransactionsTable.dateTime lessEq end)
+            cond
         }
 
         val incomeCount = when (isIncome) {
@@ -190,10 +195,20 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                 .count()
         }
 
+        val costSum = TransactionsTable.transactionCost.sum()
+        val totalCost = TransactionsTable
+            .select(costSum)
+            .where {
+                val cond = baseCondition()
+                if (isIncome != null) cond and (TransactionsTable.isIncome eq isIncome) else cond
+            }
+            .singleOrNull()?.get(costSum) ?: 0.0
+
         TransactionCounts(
             incomeCount = incomeCount.toInt(),
             expenseCount = expenseCount.toInt(),
-            totalCount = (incomeCount + expenseCount).toInt()
+            totalCount = (incomeCount + expenseCount).toInt(),
+            totalTransactionCost = totalCost
         )
     }
 
@@ -215,5 +230,6 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 data class TransactionCounts(
     val incomeCount: Int,
     val expenseCount: Int,
-    val totalCount: Int
+    val totalCount: Int,
+    val totalTransactionCost: Double = 0.0
 )

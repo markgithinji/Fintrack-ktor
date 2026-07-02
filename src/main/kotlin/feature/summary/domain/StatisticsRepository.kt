@@ -39,6 +39,8 @@ interface StatisticsRepository {
     suspend fun getTransactionCounts(
         userId: UUID,
         accountId: UUID?,
-        isIncome: Boolean? = null
+        isIncome: Boolean? = null,
+        start: Instant? = null,
+        end: Instant? = null
     ): TransactionCounts
 }

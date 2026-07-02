@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DistributionSummaryDto(
     val period: String = "", // e.g. "2025-W37" or "2025-09"
+    val totalTransactionCost: Double = 0.0,
     val incomeCategories: List<CategorySummaryDto> = emptyList(),
     val expenseCategories: List<CategorySummaryDto> = emptyList()
 )

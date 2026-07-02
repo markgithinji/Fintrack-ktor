@@ -19,7 +19,8 @@ interface StatisticsService {
         accountId: UUID?,
         isIncome: Boolean?,
         start: Instant?,
-        end: Instant?
+        end: Instant?,
+        period: String? = null
     ): StatisticsSummaryDto
 
     suspend fun getDistributionSummary(
@@ -61,7 +62,9 @@ interface StatisticsService {
     suspend fun getTransactionCountSummary(
         userId: UUID,
         accountId: UUID?,
-        isIncome: Boolean? = null
+        isIncome: Boolean? = null,
+        start: Instant? = null,
+        end: Instant? = null
     ): TransactionCountSummaryDto
 
     // Helper methods for route parameter processing

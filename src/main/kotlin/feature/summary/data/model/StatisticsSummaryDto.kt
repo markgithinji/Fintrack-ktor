@@ -4,6 +4,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class StatisticsSummaryDto(
+    val income: Double = 0.0,
+    val expense: Double = 0.0,
+    val balance: Double = 0.0,
+    val totalTransactionCost: Double = 0.0,
     val incomeHighlights: HighlightsDto = HighlightsDto(),
     val expenseHighlights: HighlightsDto = HighlightsDto()
 )

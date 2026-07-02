@@ -42,26 +42,52 @@ class StatisticsServiceImpl(
         accountId: UUID?,
         isIncome: Boolean?,
         start: Instant?,
-        end: Instant?
+        end: Instant?,
+        period: String?
     ): StatisticsSummaryDto {
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
             "isIncome" to isIncome,
             "start" to start?.toString(),
-            "end" to end?.toString()
+            "end" to end?.toString(),
+            "period" to period
         ).debug { "Calculating statistics summary" }
 
         val filtered = statisticsRepository.getTransactions(userId, accountId, isIncome, start, end)
 
+        val txnsForHighlights = if (period != null) {
+            val weekMode = period.contains("W")
+            val yearMode = !weekMode && period.length == 4
+            val monthMode = !weekMode && !yearMode
+
+            fun getPeriodString(dateTime: Instant): String {
+                val dt = dateTime.toLocalDateTime(TimeZone.UTC)
+                return when {
+                    weekMode -> {
+                        val javaDateTime = dt.toJavaLocalDateTime()
+                        val week = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
+                        "${javaDateTime.year}-W${week.toString().padStart(2, '0')}"
+                    }
+                    monthMode -> "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
+                    yearMode -> dt.year.toString()
+                    else -> ""
+                }
+            }
+            filtered.filter { getPeriodString(it.dateTime) == period }
+        } else {
+            filtered
+        }
+
         log.withContext(
             "userId" to userId,
-            "transactionCount" to filtered.size
-        ).debug { "Retrieved transactions for statistics" }
+            "transactionCount" to txnsForHighlights.size
+        ).debug { "Retrieved transactions for statistics highlights" }
 
-        val incomeTxns = filtered.filter { it.isIncome }
-        val expenseTxns = filtered.filter { !it.isIncome }
+        val incomeTxns = txnsForHighlights.filter { it.isIncome }
+        val expenseTxns = txnsForHighlights.filter { !it.isIncome }
 
+        // ... existing highlight logic using incomeTxns/expenseTxns ...
         fun highestMonth(txns: List<Transaction>) =
             txns.groupBy {
                 val dt = it.dateTime.toLocalDateTime(TimeZone.UTC)
@@ -116,17 +142,13 @@ class StatisticsServiceImpl(
         )
 
         val summary = StatisticsSummaryDto(
+            income = incomeTxns.sumOf { it.totalAmount },
+            expense = expenseTxns.sumOf { it.totalAmount },
+            balance = incomeTxns.sumOf { it.totalAmount } - expenseTxns.sumOf { it.totalAmount },
             incomeHighlights = incomeHighlights,
-            expenseHighlights = expenseHighlights
+            expenseHighlights = expenseHighlights,
+            totalTransactionCost = txnsForHighlights.sumOf { it.transactionCost }
         )
-
-        log.withContext(
-            "userId" to userId,
-            "incomeTransactionCount" to incomeTxns.size,
-            "expenseTransactionCount" to expenseTxns.size,
-            "highestIncomeMonth" to incomeHighlights.highestMonth?.amount,
-            "highestExpenseMonth" to expenseHighlights.highestMonth?.amount
-        ).debug { "Statistics summary calculated successfully" }
 
         return summary
     }
@@ -153,32 +175,31 @@ class StatisticsServiceImpl(
         ).debug { "Calculating distribution summary" }
 
         val filtered = statisticsRepository.getTransactions(userId, accountId, isIncome, start, end)
-        val incomeTxns = filtered.filter { it.isIncome }
-        val expenseTxns = filtered.filter { !it.isIncome }
 
         val weekMode = period.contains("W")
         val yearMode = !weekMode && period.length == 4
         val monthMode = !weekMode && !yearMode
 
-        fun categorySummary(txns: List<Transaction>): List<CategorySummaryDto> {
-            val grouped = when {
-                weekMode -> txns.groupBy {
-                    val dt = it.dateTime.toLocalDateTime(TimeZone.UTC)
+        fun getPeriodString(dateTime: Instant): String {
+            val dt = dateTime.toLocalDateTime(TimeZone.UTC)
+            return when {
+                weekMode -> {
                     val javaDateTime = dt.toJavaLocalDateTime()
                     val week = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
                     "${javaDateTime.year}-W${week.toString().padStart(2, '0')}"
                 }
-
-                monthMode -> txns.groupBy {
-                    val dt = it.dateTime.toLocalDateTime(TimeZone.UTC)
-                    "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
-                }
-
-                yearMode -> txns.groupBy { it.dateTime.toLocalDateTime(TimeZone.UTC).year.toString() }
-                else -> emptyMap()
+                monthMode -> "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
+                yearMode -> dt.year.toString()
+                else -> ""
             }
-            val txnsInPeriod = grouped[period].orEmpty()
-            val deduped = txnsInPeriod.groupBy { it.category.trim().lowercase() }.map { (_, list) ->
+        }
+
+        val txnsInPeriod = filtered.filter { getPeriodString(it.dateTime) == period }
+        val incomeTxns = txnsInPeriod.filter { it.isIncome }
+        val expenseTxns = txnsInPeriod.filter { !it.isIncome }
+
+        fun categorySummary(txns: List<Transaction>): List<CategorySummaryDto> {
+            val deduped = txns.groupBy { it.category.trim().lowercase() }.map { (_, list) ->
                 val sum = list.sumOf { it.totalAmount }
                 val displayName = list.first().category
                 CategorySummaryDto(category = displayName, total = sum, percentage = 0.0)
@@ -196,6 +217,7 @@ class StatisticsServiceImpl(
 
         val distribution = DistributionSummaryDto(
             period = period,
+            totalTransactionCost = txnsInPeriod.sumOf { it.transactionCost },
             incomeCategories = incomeCategoriesFinal,
             expenseCategories = expenseCategoriesFinal
         )
@@ -374,7 +396,37 @@ class StatisticsServiceImpl(
             )
         }
 
-        val comparisons = listOfNotNull(weeklyComparison, monthlyComparison)
+        // Add Transaction Cost comparisons
+        val thisWeekTxns = statisticsRepository.getTransactionsByDateRange(userId, thisWeekStart, now, accountId)
+        val lastWeekTxns = statisticsRepository.getTransactionsByDateRange(userId, lastWeekStart, lastWeekEnd, accountId)
+        val thisMonthTxns = statisticsRepository.getTransactionsByDateRange(userId, thisMonthStart, now, accountId)
+        val lastMonthTxns = statisticsRepository.getTransactionsByDateRange(userId, lastMonthStart, lastMonthEnd, accountId)
+
+        val weeklyCostComparison = CategoryComparisonDto(
+            period = "weekly",
+            category = "Transaction Cost",
+            currentTotal = thisWeekTxns.sumOf { it.transactionCost },
+            previousTotal = lastWeekTxns.sumOf { it.transactionCost },
+            changePercentage = run {
+                val current = thisWeekTxns.sumOf { it.transactionCost }
+                val previous = lastWeekTxns.sumOf { it.transactionCost }
+                if (previous != 0.0) (current - previous) / previous * 100 else if (current > 0) 100.0 else 0.0
+            }
+        )
+
+        val monthlyCostComparison = CategoryComparisonDto(
+            period = "monthly",
+            category = "Transaction Cost",
+            currentTotal = thisMonthTxns.sumOf { it.transactionCost },
+            previousTotal = lastMonthTxns.sumOf { it.transactionCost },
+            changePercentage = run {
+                val current = thisMonthTxns.sumOf { it.transactionCost }
+                val previous = lastMonthTxns.sumOf { it.transactionCost }
+                if (previous != 0.0) (current - previous) / previous * 100 else if (current > 0) 100.0 else 0.0
+            }
+        )
+
+        val comparisons = listOfNotNull(weeklyComparison, monthlyComparison, weeklyCostComparison, monthlyCostComparison)
 
         log.withContext(
             "userId" to userId,
@@ -389,22 +441,27 @@ class StatisticsServiceImpl(
     override suspend fun getTransactionCountSummary(
         userId: UUID,
         accountId: UUID?,
-        isIncome: Boolean?
+        isIncome: Boolean?,
+        start: Instant?,
+        end: Instant?
     ): TransactionCountSummaryDto {
         requireNotNull(accountId) { "Account ID is required" }
 
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
-            "isIncome" to isIncome
+            "isIncome" to isIncome,
+            "start" to start,
+            "end" to end
         ).debug { "Fetching transaction count summary" }
 
-        val counts = statisticsRepository.getTransactionCounts(userId, accountId, isIncome)
+        val counts = statisticsRepository.getTransactionCounts(userId, accountId, isIncome, start, end)
 
         val result = TransactionCountSummaryDto(
             totalIncomeTransactions = counts.incomeCount,
             totalExpenseTransactions = counts.expenseCount,
-            totalTransactions = counts.totalCount
+            totalTransactions = counts.totalCount,
+            totalTransactionCost = counts.totalTransactionCost
         )
 
         log.withContext(
