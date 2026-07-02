@@ -2,6 +2,7 @@ package feature.transaction
 
 import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.logger
+import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
 import com.fintrack.feature.transaction.data.model.BulkCreateTransactionRequest
@@ -27,7 +28,7 @@ fun Route.transactionRoutes(service: TransactionService) {
         delete("/clear") {
             val userId = call.userIdOrThrow()
             val accountId: UUID? =
-                call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+                call.request.queryParameters["accountId"]?.toUUIDOrNull()
 
             log.withContext(
                 "userId" to userId,
@@ -83,7 +84,7 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         get {
             val userId = call.userIdOrThrow()
-            val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId = call.request.queryParameters["accountId"]?.toUUIDOrNull()
             val typeFilter = call.request.queryParameters["type"]
             val isIncomeParam = call.request.queryParameters["isIncome"]?.toBooleanStrictOrNull()
             val categories = call.request.queryParameters["category"]?.split(",")
@@ -137,7 +138,7 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         get("{id}") {
             val userId = call.userIdOrThrow()
-            val id = call.parameters["id"]?.let { UUID.fromString(it) }
+            val id = call.parameters["id"]?.toUUIDOrNull()
                 ?: throw ValidationException("Invalid ID")
 
             log.withContext(
@@ -169,7 +170,7 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         put("{id}") {
             val userId = call.userIdOrThrow()
-            val id = call.parameters["id"]?.let { UUID.fromString(it) }
+            val id = call.parameters["id"]?.toUUIDOrNull()
                 ?: throw ValidationException("Invalid ID")
             val request = call.receive<UpdateTransactionRequest>()
 
@@ -187,7 +188,7 @@ fun Route.transactionRoutes(service: TransactionService) {
 
         delete("{id}") {
             val userId = call.userIdOrThrow()
-            val id = call.parameters["id"]?.let { UUID.fromString(it) }
+            val id = call.parameters["id"]?.toUUIDOrNull()
                 ?: throw ValidationException("Invalid ID")
 
             log.withContext(

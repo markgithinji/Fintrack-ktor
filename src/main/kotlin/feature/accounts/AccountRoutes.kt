@@ -3,6 +3,7 @@ package feature.transaction
 
 import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.logger
+import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
 import com.fintrack.feature.accounts.data.model.AccountDto
@@ -36,7 +37,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
         }
 
         get("/{id}") {
-            val accountId = call.parameters["id"]?.let { UUID.fromString(it) }
+            val accountId = call.parameters["id"]?.toUUIDOrNull()
                 ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()
@@ -65,7 +66,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
         }
 
         put("/{id}") {
-            val accountId = call.parameters["id"]?.let { UUID.fromString(it) }
+            val accountId = call.parameters["id"]?.toUUIDOrNull()
                 ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()
@@ -83,7 +84,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
         }
 
         delete("/{id}") {
-            val accountId = call.parameters["id"]?.let { UUID.fromString(it) }
+            val accountId = call.parameters["id"]?.toUUIDOrNull()
                 ?: throw ValidationException("Invalid account ID")
 
             val userId = call.userIdOrThrow()

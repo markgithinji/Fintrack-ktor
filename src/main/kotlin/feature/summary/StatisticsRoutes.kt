@@ -2,6 +2,7 @@ package com.fintrack.feature.summary
 
 import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.logger
+import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
 import core.ValidationException
@@ -19,7 +20,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
     route("/transactions/summary") {
         get("/highlights") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.toUUIDOrNull()
             val typeFilter = call.request.queryParameters["type"]
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
@@ -52,7 +53,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
             val period = call.request.queryParameters["period"]
                 ?: throw ValidationException("Missing period parameter")
 
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.toUUIDOrNull()
             val typeFilter = call.request.queryParameters["type"]
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
@@ -84,7 +85,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/available-weeks") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.toUUIDOrNull()
 
             log.withContext(
                 "userId" to userId,
@@ -98,7 +99,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/available-months") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.toUUIDOrNull()
 
             log.withContext(
                 "userId" to userId,
@@ -112,7 +113,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/available-years") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.toUUIDOrNull()
 
             log.withContext(
                 "userId" to userId,
@@ -126,7 +127,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/overview") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.toUUIDOrNull()
 
             log.withContext(
                 "userId" to userId,
@@ -140,7 +141,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/overview/range") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.toUUIDOrNull()
             val startParam = call.request.queryParameters["start"]
             val endParam = call.request.queryParameters["end"]
 
@@ -158,7 +159,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/category-comparison") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId: UUID? = call.request.queryParameters["accountId"]?.toUUIDOrNull()
 
             log.withContext(
                 "userId" to userId,
@@ -172,7 +173,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
         get("/counts") {
             val userId = call.userIdOrThrow()
-            val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId = call.request.queryParameters["accountId"]?.toUUIDOrNull()
             val isIncome = call.request.queryParameters["isIncome"]?.toBooleanStrictOrNull()
 
             log.withContext(

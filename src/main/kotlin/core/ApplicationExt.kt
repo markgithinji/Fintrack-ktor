@@ -18,3 +18,9 @@ fun ApplicationCall.userIdOrThrow(): UUID {
 
     return UUID.fromString(userIdString)
 }
+
+fun String.toUUIDOrNull(): UUID? = try {
+    UUID.fromString(this)
+} catch (e: Exception) {
+    null
+}
