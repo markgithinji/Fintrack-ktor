@@ -4,9 +4,11 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class CategoryComparisonDto(
-    val period: String,
     val category: String,
     val currentTotal: Double,
     val previousTotal: Double,
-    val changePercentage: Double
+    val changePercentage: Double,
+    val period: String = "monthly",
+    val weeklyChangePercentage: Double? = null,
+    val weeklyCurrentTotal: Double? = null
 )

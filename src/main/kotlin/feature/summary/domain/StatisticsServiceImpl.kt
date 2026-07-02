@@ -370,69 +370,51 @@ class StatisticsServiceImpl(
         val lastMonthTotals =
             statisticsRepository.getCategoryTotals(userId, lastMonthStart, lastMonthEnd, accountId)
 
-        val topWeekCategory = thisWeekTotals.maxByOrNull { it.value }?.key
-        val weeklyComparison = topWeekCategory?.let { category ->
-            val current = thisWeekTotals[category] ?: 0.0
-            val previous = lastWeekTotals[category] ?: 0.0
-            CategoryComparisonDto(
-                period = "weekly",
-                category = category,
-                currentTotal = current,
-                previousTotal = previous,
-                changePercentage = if (previous != 0.0) (current - previous) / previous * 100 else 100.0
-            )
-        }
-
+        // Add Top Monthly Category with Weekly Context
         val topMonthCategory = thisMonthTotals.maxByOrNull { it.value }?.key
         val monthlyComparison = topMonthCategory?.let { category ->
-            val current = thisMonthTotals[category] ?: 0.0
-            val previous = lastMonthTotals[category] ?: 0.0
+            val monthCurrent = thisMonthTotals[category] ?: 0.0
+            val monthPrevious = lastMonthTotals[category] ?: 0.0
+            val weekCurrent = thisWeekTotals[category] ?: 0.0
+            val weekPrevious = lastWeekTotals[category] ?: 0.0
+            
             CategoryComparisonDto(
-                period = "monthly",
                 category = category,
-                currentTotal = current,
-                previousTotal = previous,
-                changePercentage = if (previous != 0.0) (current - previous) / previous * 100 else 100.0
+                currentTotal = monthCurrent,
+                previousTotal = monthPrevious,
+                changePercentage = if (monthPrevious != 0.0) (monthCurrent - monthPrevious) / monthPrevious * 100 else if (monthCurrent > 0) 100.0 else 0.0,
+                weeklyCurrentTotal = weekCurrent,
+                weeklyChangePercentage = if (weekPrevious != 0.0) (weekCurrent - weekPrevious) / weekPrevious * 100 else if (weekCurrent > 0) 100.0 else 0.0
             )
         }
 
-        // Add Transaction Cost comparisons
+        // Add Transaction Cost comparison (Merged Monthly/Weekly)
         val thisWeekTxns = statisticsRepository.getTransactionsByDateRange(userId, thisWeekStart, now, accountId)
         val lastWeekTxns = statisticsRepository.getTransactionsByDateRange(userId, lastWeekStart, lastWeekEnd, accountId)
         val thisMonthTxns = statisticsRepository.getTransactionsByDateRange(userId, thisMonthStart, now, accountId)
         val lastMonthTxns = statisticsRepository.getTransactionsByDateRange(userId, lastMonthStart, lastMonthEnd, accountId)
 
-        val weeklyCostComparison = CategoryComparisonDto(
-            period = "weekly",
-            category = "Transaction Cost",
-            currentTotal = thisWeekTxns.sumOf { it.transactionCost },
-            previousTotal = lastWeekTxns.sumOf { it.transactionCost },
-            changePercentage = run {
-                val current = thisWeekTxns.sumOf { it.transactionCost }
-                val previous = lastWeekTxns.sumOf { it.transactionCost }
-                if (previous != 0.0) (current - previous) / previous * 100 else if (current > 0) 100.0 else 0.0
-            }
-        )
+        val monthCostCurrent = thisMonthTxns.sumOf { it.transactionCost }
+        val monthCostPrevious = lastMonthTxns.sumOf { it.transactionCost }
+        val weekCostCurrent = thisWeekTxns.sumOf { it.transactionCost }
+        val weekCostPrevious = lastWeekTxns.sumOf { it.transactionCost }
 
         val monthlyCostComparison = CategoryComparisonDto(
-            period = "monthly",
             category = "Transaction Cost",
-            currentTotal = thisMonthTxns.sumOf { it.transactionCost },
-            previousTotal = lastMonthTxns.sumOf { it.transactionCost },
-            changePercentage = run {
-                val current = thisMonthTxns.sumOf { it.transactionCost }
-                val previous = lastMonthTxns.sumOf { it.transactionCost }
-                if (previous != 0.0) (current - previous) / previous * 100 else if (current > 0) 100.0 else 0.0
-            }
+            currentTotal = monthCostCurrent,
+            previousTotal = monthCostPrevious,
+            changePercentage = if (monthCostPrevious != 0.0) (monthCostCurrent - monthCostPrevious) / monthCostPrevious * 100 else if (monthCostCurrent > 0) 100.0 else 0.0,
+            weeklyCurrentTotal = weekCostCurrent,
+            weeklyChangePercentage = if (weekCostPrevious != 0.0) (weekCostCurrent - weekCostPrevious) / weekCostPrevious * 100 else if (weekCostCurrent > 0) 100.0 else 0.0
         )
 
-        val comparisons = listOfNotNull(weeklyComparison, monthlyComparison, weeklyCostComparison, monthlyCostComparison)
+        // Only return 2 entries: Top Category (with both period stats) and Transaction Fees (with both period stats)
+        val comparisons = listOfNotNull(monthlyComparison, monthlyCostComparison)
 
         log.withContext(
             "userId" to userId,
             "comparisonCount" to comparisons.size,
-            "weeklyCategory" to weeklyComparison?.category,
-            "monthlyCategory" to monthlyComparison?.category
+            "topCategory" to monthlyComparison?.category
         ).debug { "Category comparisons calculated successfully" }
 
         return comparisons
