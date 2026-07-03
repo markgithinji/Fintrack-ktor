@@ -40,6 +40,8 @@ interface StatisticsRepository {
         userId: UUID,
         accountId: UUID?,
         isIncome: Boolean? = null,
+        category: String? = null,
+        hasCost: Boolean? = null,
         start: Instant? = null,
         end: Instant? = null
     ): TransactionCounts

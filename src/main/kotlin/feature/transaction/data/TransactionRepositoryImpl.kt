@@ -20,7 +20,8 @@ class TransactionRepositoryImpl : TransactionRepository {
         order: SortOrder,
         limit: Int,
         afterDateTime: Instant?,
-        afterId: UUID?
+        afterId: UUID?,
+        hasTransactionCost: Boolean?
     ): List<Transaction> = dbQuery {
         var query = TransactionsTable.selectAll()
             .andWhere { TransactionsTable.userId eq userId }
@@ -31,6 +32,8 @@ class TransactionRepositoryImpl : TransactionRepository {
         if (!categories.isNullOrEmpty()) query = query.andWhere { TransactionsTable.category inList categories }
         if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start }
         if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end }
+        if (hasTransactionCost == true) query = query.andWhere { TransactionsTable.transactionCost greater 0.0 }
+        if (hasTransactionCost == false) query = query.andWhere { TransactionsTable.transactionCost eq 0.0 }
 
         if (afterDateTime != null && afterId != null) {
             query = if (order == SortOrder.DESC) {

@@ -424,6 +424,8 @@ class StatisticsServiceImpl(
         userId: UUID,
         accountId: UUID?,
         isIncome: Boolean?,
+        category: String?,
+        hasCost: Boolean?,
         start: Instant?,
         end: Instant?
     ): TransactionCountSummaryDto {
@@ -433,11 +435,21 @@ class StatisticsServiceImpl(
             "userId" to userId,
             "accountId" to accountId,
             "isIncome" to isIncome,
+            "category" to category,
+            "hasCost" to hasCost,
             "start" to start,
             "end" to end
         ).debug { "Fetching transaction count summary" }
 
-        val counts = statisticsRepository.getTransactionCounts(userId, accountId, isIncome, start, end)
+        val counts = statisticsRepository.getTransactionCounts(
+            userId = userId,
+            accountId = accountId,
+            isIncome = isIncome,
+            category = category,
+            hasCost = hasCost,
+            start = start,
+            end = end
+        )
 
         val result = TransactionCountSummaryDto(
             totalIncomeTransactions = counts.incomeCount,

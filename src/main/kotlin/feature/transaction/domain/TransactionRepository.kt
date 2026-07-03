@@ -18,7 +18,8 @@ interface TransactionRepository {
         order: SortOrder,
         limit: Int,
         afterDateTime: Instant?,
-        afterId: UUID?
+        afterId: UUID?,
+        hasTransactionCost: Boolean? = null
     ): List<Transaction>
 
     suspend fun getById(id: UUID, userId: UUID): Transaction

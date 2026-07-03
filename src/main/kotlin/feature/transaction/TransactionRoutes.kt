@@ -90,6 +90,7 @@ fun Route.transactionRoutes(service: TransactionService) {
             val categories = call.request.queryParameters["category"]?.split(",")
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
+            val hasCost = call.request.queryParameters["hasCost"]?.toBooleanStrictOrNull()
             val sortBy = call.request.queryParameters["sortBy"] ?: "dateTime"
             val order = call.request.queryParameters["order"]?.uppercase()
             val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceAtMost(50) ?: 20
@@ -105,6 +106,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "categoryCount" to categories?.size,
                 "startDate" to startDate,
                 "endDate" to endDate,
+                "hasCost" to hasCost,
                 "sortBy" to sortBy,
                 "order" to order,
                 "limit" to limit,
@@ -124,7 +126,8 @@ fun Route.transactionRoutes(service: TransactionService) {
                 order = order,
                 limit = limit,
                 afterDateTime = afterDateTime,
-                afterId = afterId
+                afterId = afterId,
+                hasTransactionCost = hasCost
             )
 
             log.withContext(

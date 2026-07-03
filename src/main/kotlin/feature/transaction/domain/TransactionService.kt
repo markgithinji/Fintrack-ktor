@@ -20,7 +20,8 @@ interface TransactionService {
         order: String?,
         limit: Int,
         afterDateTime: String?,
-        afterId: UUID?
+        afterId: UUID?,
+        hasTransactionCost: Boolean? = null
     ): PaginatedTransactionDto
 
     suspend fun getById(userId: UUID, id: UUID): TransactionDto

@@ -35,7 +35,8 @@ class TransactionServiceImpl(
         order: String?,
         limit: Int,
         afterDateTime: String?,
-        afterId: UUID?
+        afterId: UUID?,
+        hasTransactionCost: Boolean?
     ): PaginatedTransactionDto {
         log.withContext(
             "userId" to userId,
@@ -49,7 +50,8 @@ class TransactionServiceImpl(
             "order" to order,
             "limit" to limit,
             "afterDateTime" to afterDateTime,
-            "afterId" to afterId
+            "afterId" to afterId,
+            "hasTransactionCost" to hasTransactionCost
         ).debug { "Fetching transactions with cursor pagination" }
 
         // PREFER isIncome parameter over typeFilter if both are provided
@@ -66,7 +68,7 @@ class TransactionServiceImpl(
 
         val transactions = repo.getAllCursor(
             userId, accountId, finalIsIncome, categories,
-            start, end, sortBy, sortOrder, limit, parsedAfterDateTime, afterId
+            start, end, sortBy, sortOrder, limit, parsedAfterDateTime, afterId, hasTransactionCost
         )
 
         val transactionDtos = transactions.map { it.toDto() }

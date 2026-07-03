@@ -10,6 +10,7 @@ import kotlinx.datetime.*
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import java.time.temporal.IsoFields
@@ -153,6 +154,8 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         userId: UUID,
         accountId: UUID?,
         isIncome: Boolean?,
+        category: String?,
+        hasCost: Boolean?,
         start: Instant?,
         end: Instant?
     ): TransactionCounts = dbQuery {
@@ -164,32 +167,24 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             
             if (start != null) cond = cond and (TransactionsTable.dateTime greaterEq start)
             if (end != null) cond = cond and (TransactionsTable.dateTime lessEq end)
+            if (category != null) cond = cond and (TransactionsTable.category eq category)
+            if (hasCost == true) cond = cond and (TransactionsTable.transactionCost greater 0.0)
+            if (hasCost == false) cond = cond and (TransactionsTable.transactionCost eq 0.0)
             cond
         }
 
-        val incomeCount = when (isIncome) {
-            true -> TransactionsTable
-                .selectAll()
-                .where { baseCondition() and (TransactionsTable.isIncome eq true) }
-                .count()
-
-            false -> 0L // If filtering for expenses only, income count is 0
-
-            null -> TransactionsTable // No filter, count all income
+        val incomeCount = when {
+            isIncome == false -> 0L
+            hasCost == true -> 0L // Income usually doesn't have transaction cost in this app's logic
+            else -> TransactionsTable
                 .selectAll()
                 .where { baseCondition() and (TransactionsTable.isIncome eq true) }
                 .count()
         }
 
-        val expenseCount = when (isIncome) {
-            false -> TransactionsTable
-                .selectAll()
-                .where { baseCondition() and (TransactionsTable.isIncome eq false) }
-                .count()
-
-            true -> 0L // If filtering for income only, expense count is 0
-
-            null -> TransactionsTable // No filter, count all expenses
+        val expenseCount = when {
+            isIncome == true -> 0L
+            else -> TransactionsTable
                 .selectAll()
                 .where { baseCondition() and (TransactionsTable.isIncome eq false) }
                 .count()
@@ -200,6 +195,8 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             .select(costSum)
             .where {
                 val cond = baseCondition()
+                // If hasCost is true, we already filtered for cost > 0 in baseCondition.
+                // We just need to make sure we don't double filter isIncome if it was already handled.
                 if (isIncome != null) cond and (TransactionsTable.isIncome eq isIncome) else cond
             }
             .singleOrNull()?.get(costSum) ?: 0.0

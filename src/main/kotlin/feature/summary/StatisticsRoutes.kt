@@ -178,6 +178,8 @@ fun Route.summaryRoutes(service: StatisticsService) {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.toUUIDOrNull()
             val isIncome = call.request.queryParameters["isIncome"]?.toBooleanStrictOrNull()
+            val category = call.request.queryParameters["category"]
+            val hasCost = call.request.queryParameters["hasCost"]?.toBooleanStrictOrNull()
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
 
@@ -186,12 +188,22 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "endpoint" to "GET /transactions/summary/counts",
                 "accountId" to accountId,
                 "isIncome" to isIncome,
+                "category" to category,
+                "hasCost" to hasCost,
                 "startDate" to startDate,
                 "endDate" to endDate
             ).info { "Transaction counts request received" }
 
             val (start, end) = service.parseDateRange(startDate, endDate)
-            val summary = service.getTransactionCountSummary(userId, accountId, isIncome, start, end)
+            val summary = service.getTransactionCountSummary(
+                userId = userId,
+                accountId = accountId,
+                isIncome = isIncome,
+                category = category,
+                hasCost = hasCost,
+                start = start,
+                end = end
+            )
             call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
         }
     }
