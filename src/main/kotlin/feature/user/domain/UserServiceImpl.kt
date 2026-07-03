@@ -75,6 +75,18 @@ class UserServiceImpl(
         return updatedUser.toDto()
     }
 
+    override suspend fun updateTrackedCategories(userId: UUID, categories: List<String>): UserDto {
+        log.withContext("userId" to userId, "categories" to categories).info { "Updating tracked categories" }
+
+        val updated = userRepository.updateTrackedCategories(userId, categories.take(2))
+
+        if (!updated) {
+            throw IllegalStateException("Failed to update tracked categories")
+        }
+
+        return getUserProfile(userId)
+    }
+
     override suspend fun deleteUser(userId: UUID) {
         log.withContext("userId" to userId).warn { "Deleting user" }
 

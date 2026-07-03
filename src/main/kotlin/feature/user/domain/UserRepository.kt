@@ -9,6 +9,7 @@ interface UserRepository {
     suspend fun findByEmail(email: String): User?
     suspend fun findById(userId: UUID): User?
     suspend fun updateUser(userId: UUID, name: String?, email: String?, password: String?): Boolean
+    suspend fun updateTrackedCategories(userId: UUID, categories: List<String>): Boolean
     suspend fun updatePassword(userId: UUID, newPassword: String): Boolean
     suspend fun deleteUser(userId: UUID): Boolean
     suspend fun userExists(email: String): Boolean

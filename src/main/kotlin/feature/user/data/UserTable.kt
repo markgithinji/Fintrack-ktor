@@ -8,4 +8,5 @@ object UsersTable : UUIDTable(TableNames.USERS) {
     val email = varchar(UsersColumns.EMAIL, 100).uniqueIndex()
     val name = varchar(UsersColumns.NAME, 100)
     val passwordHash = varchar(UsersColumns.PASSWORD_HASH, 255)
+    val trackedCategories = text("tracked_categories").nullable()
 }

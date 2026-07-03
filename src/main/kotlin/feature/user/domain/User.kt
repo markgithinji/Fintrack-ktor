@@ -6,5 +6,6 @@ data class User(
     val id: UUID,
     val email: String,
     val name: String,
-    val passwordHash: String
+    val passwordHash: String,
+    val trackedCategories: String? = null
 )

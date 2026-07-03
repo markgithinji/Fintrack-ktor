@@ -37,7 +37,8 @@ class UserRepositoryImpl : UserRepository {
                         id = it[UsersTable.id].value,
                         email = it[UsersTable.email],
                         name = it[UsersTable.name],
-                        passwordHash = it[UsersTable.passwordHash]
+                        passwordHash = it[UsersTable.passwordHash],
+                        trackedCategories = it[UsersTable.trackedCategories]
                     )
                 }
         }
@@ -51,7 +52,8 @@ class UserRepositoryImpl : UserRepository {
                         id = it[UsersTable.id].value,
                         email = it[UsersTable.email],
                         name = it[UsersTable.name],
-                        passwordHash = it[UsersTable.passwordHash]
+                        passwordHash = it[UsersTable.passwordHash],
+                        trackedCategories = it[UsersTable.trackedCategories]
                     )
                 }
         }
@@ -66,6 +68,13 @@ class UserRepositoryImpl : UserRepository {
                         PasswordHasher.hash(password)
                 }
             updateStatement > 0
+        }
+
+    override suspend fun updateTrackedCategories(userId: UUID, categories: List<String>): Boolean =
+        dbQuery {
+            UsersTable.update({ UsersTable.id eq EntityID(userId, UsersTable) }) {
+                it[UsersTable.trackedCategories] = categories.joinToString(",")
+            } > 0
         }
 
     override suspend fun updatePassword(userId: UUID, newPassword: String): Boolean =

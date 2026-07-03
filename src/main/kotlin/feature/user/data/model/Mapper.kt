@@ -5,5 +5,6 @@ import feature.user.data.model.UserDto
 
 fun User.toDto(): UserDto = UserDto(
     name = this.name,
-    email = this.email
+    email = this.email,
+    trackedCategories = this.trackedCategories?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
 )

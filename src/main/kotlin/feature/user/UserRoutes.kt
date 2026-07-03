@@ -4,6 +4,7 @@ import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.logger
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
+import feature.user.data.model.TrackedCategoriesRequest
 import feature.user.data.model.UpdateUserRequest
 import feature.user.domain.UserService
 import io.ktor.http.HttpStatusCode
@@ -44,6 +45,19 @@ fun Route.userRoutes(userService: UserService) {
             ).info { "Update user profile request received" }
 
             val updatedUser = userService.updateUser(userId, updateRequest)
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(updatedUser))
+        }
+
+        put("/preferences/tracked-categories") {
+            val userId = call.userIdOrThrow()
+            val request = call.receive<TrackedCategoriesRequest>()
+
+            log.withContext(
+                "userId" to userId,
+                "categories" to request.categories
+            ).info { "Update tracked categories request received" }
+
+            val updatedUser = userService.updateTrackedCategories(userId, request.categories)
             call.respond(HttpStatusCode.OK, ApiResponse.Success(updatedUser))
         }
 
