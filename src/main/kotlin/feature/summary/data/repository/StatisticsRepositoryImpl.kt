@@ -12,6 +12,7 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import java.time.temporal.IsoFields
 import java.util.UUID
@@ -167,7 +168,14 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             
             if (start != null) cond = cond and (TransactionsTable.dateTime greaterEq start)
             if (end != null) cond = cond and (TransactionsTable.dateTime lessEq end)
-            if (category != null) cond = cond and (TransactionsTable.category eq category)
+            if (category != null) {
+                val categoryCond = if (category.contains(",")) {
+                    TransactionsTable.category inList category.split(",").map { it.trim() }
+                } else {
+                    TransactionsTable.category eq category
+                }
+                cond = cond and categoryCond
+            }
             if (hasCost == true) cond = cond and (TransactionsTable.transactionCost greater 0.0)
             if (hasCost == false) cond = cond and (TransactionsTable.transactionCost eq 0.0)
             cond
