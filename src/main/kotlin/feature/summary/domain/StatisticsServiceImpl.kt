@@ -396,28 +396,42 @@ class StatisticsServiceImpl(
                 }
             }
         } else {
-            // Fallback to: Top Spending Category + Transaction Cost
-            val topCategory = thisMonthTotals.entries
-                .filter { it.key != "Transaction Cost" }
-                .maxByOrNull { it.value }?.key
+            // Fallback to: Top Spending (Expense) + Top Income
+            val thisMonthExpenseTotals = statisticsRepository.getCategoryTotals(userId, thisMonthStart, now, accountId, isIncome = false)
+            val lastMonthExpenseTotals = statisticsRepository.getCategoryTotals(userId, lastMonthStart, lastMonthEnd, accountId, isIncome = false)
+            
+            val thisMonthIncomeTotals = statisticsRepository.getCategoryTotals(userId, thisMonthStart, now, accountId, isIncome = true)
+            val lastMonthIncomeTotals = statisticsRepository.getCategoryTotals(userId, lastMonthStart, lastMonthEnd, accountId, isIncome = true)
 
-            val topCategoryComparison = topCategory?.let { category ->
-                val monthCurrent = thisMonthTotals[category] ?: 0.0
-                val monthPrevious = lastMonthTotals[category] ?: 0.0
-                val weekCurrent = thisWeekTotals[category] ?: 0.0
-                val weekPrevious = lastWeekTotals[category] ?: 0.0
+            val topExpenseCategory = (thisMonthExpenseTotals.keys + lastMonthExpenseTotals.keys)
+                .filter { it != "Transaction Cost" }
+                .maxByOrNull { (thisMonthExpenseTotals[it] ?: 0.0).coerceAtLeast(lastMonthExpenseTotals[it] ?: 0.0) }
 
+            val topIncomeCategory = (thisMonthIncomeTotals.keys + lastMonthIncomeTotals.keys)
+                .maxByOrNull { (thisMonthIncomeTotals[it] ?: 0.0).coerceAtLeast(lastMonthIncomeTotals[it] ?: 0.0) }
+
+            listOfNotNull(topExpenseCategory, topIncomeCategory).distinct().take(2).map { category ->
+                val isInc = thisMonthIncomeTotals.containsKey(category) || lastMonthIncomeTotals.containsKey(category)
+                
+                val (currentTotals, previousTotals) = if (isInc) {
+                    thisMonthIncomeTotals to lastMonthIncomeTotals
+                } else {
+                    thisMonthExpenseTotals to lastMonthExpenseTotals
+                }
+                
+                val monthCurrent = currentTotals[category] ?: 0.0
+                val monthPrevious = previousTotals[category] ?: 0.0
+                
+                // For weekly context in fallback, we can fetch if needed, but for now we'll just show monthly
                 CategoryComparisonDto(
                     category = category,
                     currentTotal = monthCurrent,
                     previousTotal = monthPrevious,
                     changePercentage = if (monthPrevious != 0.0) (monthCurrent - monthPrevious) / monthPrevious * 100 else if (monthCurrent > 0) 100.0 else 0.0,
-                    weeklyCurrentTotal = weekCurrent,
-                    weeklyChangePercentage = if (weekPrevious != 0.0) (weekCurrent - weekPrevious) / weekPrevious * 100 else if (weekCurrent > 0) 100.0 else 0.0
+                    weeklyCurrentTotal = 0.0,
+                    weeklyChangePercentage = 0.0
                 )
             }
-
-            listOfNotNull(topCategoryComparison)
         }
 
         log.withContext(

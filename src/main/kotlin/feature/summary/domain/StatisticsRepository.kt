@@ -33,7 +33,8 @@ interface StatisticsRepository {
         userId: UUID,
         start: LocalDate?,
         end: LocalDate?,
-        accountId: UUID?
+        accountId: UUID?,
+        isIncome: Boolean? = null
     ): Map<String, Double>
 
     suspend fun getTransactionCounts(

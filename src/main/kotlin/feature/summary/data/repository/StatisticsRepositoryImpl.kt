@@ -122,7 +122,8 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         userId: UUID,
         start: LocalDate?,
         end: LocalDate?,
-        accountId: UUID?
+        accountId: UUID?,
+        isIncome: Boolean?
     ): Map<String, Double> =
         dbQuery {
             var query = TransactionsTable.selectAll()
@@ -130,6 +131,9 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
             if (accountId != null) query =
                 query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
+            if (isIncome != null) query =
+                query.andWhere { TransactionsTable.isIncome eq isIncome }
+            
             if (start != null) {
                 val startInstant = start.atStartOfDayIn(TimeZone.UTC)
                 query = query.andWhere { TransactionsTable.dateTime greaterEq startInstant }
@@ -146,6 +150,9 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                         val amt = it[TransactionsTable.amount]
                         val cost = it[TransactionsTable.transactionCost]
                         val isInc = it[TransactionsTable.isIncome]
+                        // If it's an income, amount - cost is the net gain.
+                        // If it's an expense, amount + cost is the total loss.
+                        // However, for trends we usually want absolute impact.
                         if (isInc) amt - cost else amt + cost
                     }
                 }
