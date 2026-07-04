@@ -120,6 +120,7 @@ Headers: Authorization: Bearer <your-jwt-token>
 - **Audit Logging**: Comprehensive request/response logging for security auditing.
 
 ### 📊 Financial Intelligence
+- **Recurring Bill Detection**: AI-powered detection of subscription and recurring payments based on transaction patterns and frequency.
 - **Advanced Analytics**: Category-wise distribution, period comparisons (Week/Month/Year), and spending trends.
 - **Bulk Operations**: High-performance bulk transaction creation for data imports/syncs.
 - **Budgeting Engine**: Real-time tracking of spending against category-specific limits.
