@@ -4,6 +4,7 @@ import com.fintrack.feature.transaction.data.model.DeleteResponse
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import feature.transaction.data.model.PaginatedTransactionDto
+import feature.transaction.data.model.RecurringBillDto
 import feature.transaction.data.model.TransactionDto
 import java.util.UUID
 
@@ -42,4 +43,6 @@ interface TransactionService {
         userId: UUID,
         requests: List<CreateTransactionRequest>
     ): List<TransactionDto>
+
+    suspend fun detectRecurringBills(userId: UUID): List<RecurringBillDto>
 }

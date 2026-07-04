@@ -6,16 +6,14 @@ import com.fintrack.feature.transaction.data.model.DeleteResponse
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
 import feature.transaction.data.model.PaginatedTransactionDto
+import feature.transaction.data.model.RecurringBillDto
 import feature.transaction.data.model.TransactionDto
 import feature.transaction.data.model.toDomain
 import feature.transaction.data.model.toDto
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.Instant
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atTime
-import kotlinx.datetime.toInstant
+import kotlinx.datetime.*
 import org.jetbrains.exposed.sql.SortOrder
 import java.util.UUID
+import kotlin.math.abs
 
 class TransactionServiceImpl(
     private val repo: TransactionRepository
@@ -182,5 +180,74 @@ class TransactionServiceImpl(
         ).info { "Bulk transactions created successfully" }
 
         return result.map { it.toDto() }
+    }
+
+    override suspend fun detectRecurringBills(userId: UUID): List<RecurringBillDto> {
+        log.withContext("userId" to userId).info { "Detecting recurring bills" }
+
+        // Fetch last 90 days of transactions for analysis
+        val now = Clock.System.now()
+        val analysisStart = now.minus(90, DateTimeUnit.DAY, TimeZone.UTC)
+        
+        val transactions = repo.getAllCursor(
+            userId = userId,
+            accountId = null,
+            isIncome = false,
+            categories = null,
+            start = analysisStart,
+            end = now,
+            sortBy = "date",
+            order = SortOrder.DESC,
+            limit = 1000,
+            afterDateTime = null,
+            afterId = null
+        )
+
+        // Group by normalized description and category
+        val groups = transactions.groupBy { 
+            val normalizedDesc = it.description?.split("(Ref:")?.get(0)?.trim()?.lowercase() ?: ""
+            "${it.category.lowercase()}|$normalizedDesc"
+        }
+
+        val recurringBills = mutableListOf<RecurringBillDto>()
+
+        groups.forEach { (key, txns) ->
+            if (txns.size >= 3) {
+                val sortedTxns = txns.sortedBy { it.dateTime }
+                
+                // Check for regular intervals (approx 30 days)
+                val intervals = mutableListOf<Long>()
+                for (i in 0 until sortedTxns.size - 1) {
+                    val days = sortedTxns[i].dateTime.until(sortedTxns[i + 1].dateTime, DateTimeUnit.DAY, TimeZone.UTC)
+                    intervals.add(days)
+                }
+
+                val avgInterval = intervals.average()
+                val isRegular = if (intervals.isEmpty()) false else intervals.all { abs(it - avgInterval) <= 3 } && avgInterval in 25.0..35.0
+
+                if (isRegular) {
+                    val lastTxn = sortedTxns.last()
+                    val avgAmount = sortedTxns.map { it.amount }.average()
+                    
+                    val name = lastTxn.description?.split("(Ref:")?.get(0)?.trim() ?: lastTxn.category
+                    val nextDueDate = lastTxn.dateTime.toLocalDateTime(TimeZone.UTC).date.plus(30, DateTimeUnit.DAY)
+
+                    recurringBills.add(
+                        RecurringBillDto(
+                            id = UUID.randomUUID().toString(),
+                            name = name,
+                            amount = avgAmount,
+                            category = lastTxn.category,
+                            frequency = "Monthly",
+                            nextDueDate = nextDueDate,
+                            isActive = true
+                        )
+                    )
+                }
+            }
+        }
+
+        log.withContext("userId" to userId, "detectedCount" to recurringBills.size).info { "Recurring bills detected" }
+        return recurringBills
     }
 }

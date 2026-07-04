@@ -39,6 +39,17 @@ fun Route.transactionRoutes(service: TransactionService) {
             call.respond(ApiResponse.Success(result))
         }
 
+        get("/recurring/detect") {
+            val userId = call.userIdOrThrow()
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "GET /transactions/recurring/detect"
+            ).info { "Detect recurring bills request received" }
+
+            val detected = service.detectRecurringBills(userId)
+            call.respond(ApiResponse.Success(detected))
+        }
+
         post("/bulk") {
             val userId = call.userIdOrThrow()
             val bulkRequest = call.receive<BulkCreateTransactionRequest>()
