@@ -149,17 +149,17 @@ class TransactionServiceImpl(
             .info { "Transaction deleted successfully" }
     }
 
-    override suspend fun clearAll(userId: UUID, accountId: UUID?): DeleteResponse {
-        log.withContext("userId" to userId, "accountId" to accountId)
+    override suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): DeleteResponse {
+        log.withContext("userId" to userId, "accountIds" to accountIds)
             .warn { "Clearing all transactions" }
 
-        val cleared = repo.clearAll(userId, accountId)
+        val cleared = repo.clearAll(userId, accountIds)
 
-        val message = if (accountId != null)
-            "All transactions cleared for account $accountId"
+        val message = if (!accountIds.isNullOrEmpty())
+            "All transactions cleared for accounts ${accountIds.joinToString()}"
         else "All transactions cleared for user $userId"
 
-        log.withContext("userId" to userId, "accountId" to accountId)
+        log.withContext("userId" to userId, "accountIds" to accountIds)
             .info { "All transactions cleared successfully" }
 
         return DeleteResponse(message, cleared)

@@ -27,16 +27,15 @@ fun Route.transactionRoutes(service: TransactionService) {
     route("/transactions") {
         delete("/clear") {
             val userId = call.userIdOrThrow()
-            val accountId: UUID? =
-                call.request.queryParameters["accountId"]?.toUUIDOrNull()
+            val accountIds = call.request.queryParameters.getAll("accountId")?.mapNotNull { it.toUUIDOrNull() }
 
             log.withContext(
                 "userId" to userId,
-                "accountId" to accountId,
+                "accountIds" to accountIds,
                 "endpoint" to "DELETE /transactions/clear"
-            ).warn { "Clear all transactions request received" }
+            ).warn { "Clear transactions request received" }
 
-            val result = service.clearAll(userId, accountId)
+            val result = service.clearAll(userId, accountIds)
             call.respond(ApiResponse.Success(result))
         }
 

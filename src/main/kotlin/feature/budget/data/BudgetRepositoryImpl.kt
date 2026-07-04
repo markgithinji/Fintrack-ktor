@@ -12,6 +12,7 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import java.util.*
 
 class BudgetRepositoryImpl : BudgetRepository {
@@ -141,10 +142,17 @@ class BudgetRepositoryImpl : BudgetRepository {
             } > 0
         }
 
-    override suspend fun deleteAllByUser(userId: UUID): Int =
+    override suspend fun deleteAllByUser(userId: UUID, accountIds: List<UUID>?): Int =
         dbQuery {
-            BudgetsTable.deleteWhere {
-                BudgetsTable.userId eq EntityID(userId, UsersTable)
+            if (!accountIds.isNullOrEmpty()) {
+                BudgetsTable.deleteWhere {
+                    (BudgetsTable.userId eq EntityID(userId, UsersTable)) and
+                            (BudgetsTable.accountId inList accountIds)
+                }
+            } else {
+                BudgetsTable.deleteWhere {
+                    BudgetsTable.userId eq EntityID(userId, UsersTable)
+                }
             }
         }
 

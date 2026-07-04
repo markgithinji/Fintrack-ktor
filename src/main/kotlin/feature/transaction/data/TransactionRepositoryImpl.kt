@@ -6,6 +6,7 @@ import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.Instant
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import java.util.*
 
 class TransactionRepositoryImpl : TransactionRepository {
@@ -133,11 +134,11 @@ class TransactionRepositoryImpl : TransactionRepository {
         true
     }
 
-    override suspend fun clearAll(userId: UUID, accountId: UUID?): Boolean = dbQuery {
-        val deleted = if (accountId != null) {
+    override suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): Boolean = dbQuery {
+        val deleted = if (!accountIds.isNullOrEmpty()) {
             TransactionsTable.deleteWhere {
                 (TransactionsTable.userId eq userId) and
-                        (TransactionsTable.accountId eq accountId)
+                        (TransactionsTable.accountId inList accountIds)
             }
         } else {
             TransactionsTable.deleteWhere { TransactionsTable.userId eq userId }

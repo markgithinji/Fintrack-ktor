@@ -145,22 +145,25 @@ class BudgetServiceImpl(
             .info { "Budget deleted successfully" }
     }
 
-    override suspend fun deleteAllBudgets(userId: UUID): DeleteResponse {
-        log.withContext("userId" to userId)
-            .info { "Deleting all budgets for user" }
+    override suspend fun deleteAllBudgets(userId: UUID, accountIds: List<UUID>?): DeleteResponse {
+        log.withContext("userId" to userId, "accountIds" to accountIds)
+            .info { "Deleting budgets" }
 
-        val deletedCount = budgetRepository.deleteAllByUser(userId)
+        val deletedCount = budgetRepository.deleteAllByUser(userId, accountIds)
 
         val result = DeleteResponse(
-            message = "Successfully deleted $deletedCount budgets",
+            message = if (!accountIds.isNullOrEmpty())
+                "Successfully deleted $deletedCount budgets for selected accounts"
+            else "Successfully deleted $deletedCount budgets",
             cleared = deletedCount > 0
         )
 
         log.withContext(
             "userId" to userId,
+            "accountIds" to accountIds,
             "deletedCount" to deletedCount,
             "cleared" to result.cleared
-        ).info { "All budgets deletion completed" }
+        ).info { "Budgets deletion completed" }
 
         return result
     }

@@ -36,7 +36,7 @@ interface TransactionService {
 
     suspend fun delete(userId: UUID, id: UUID)
 
-    suspend fun clearAll(userId: UUID, accountId: UUID?): DeleteResponse
+    suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): DeleteResponse
 
     suspend fun addBulk(
         userId: UUID,

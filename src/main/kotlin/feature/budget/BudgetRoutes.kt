@@ -2,6 +2,7 @@ package feature.transaction
 
 import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.logger
+import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
 import com.fintrack.feature.budget.data.model.BulkCreateBudgetRequest
@@ -88,13 +89,15 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
 
         delete("/clear") {
             val userId = call.userIdOrThrow()
+            val accountIds = call.request.queryParameters.getAll("accountId")?.mapNotNull { it.toUUIDOrNull() }
 
             log.withContext(
                 "userId" to userId,
+                "accountIds" to accountIds,
                 "endpoint" to "DELETE /budgets/clear"
-            ).info { "Delete all budgets request received" }
+            ).info { "Delete budgets request received" }
 
-            val result = budgetService.deleteAllBudgets(userId)
+            val result = budgetService.deleteAllBudgets(userId, accountIds)
             call.respond(ApiResponse.Success(result))
         }
 
