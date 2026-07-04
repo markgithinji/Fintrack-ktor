@@ -10,6 +10,7 @@ import feature.auth.data.model.RefreshRequest
 import feature.auth.domain.AuthService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
+import io.ktor.server.plugins.origin
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveNullable
 import io.ktor.server.response.respond
@@ -26,14 +27,22 @@ fun Route.authRoutes(authService: AuthService) {
         withAuthRateLimit {
             post("/register") {
                 val request = call.receive<AuthRequest>()
-                log.withContext("email" to request.email).info { "Registration request received" }
+                log.withContext(
+                    "email" to request.email,
+                    "ip" to call.request.origin.remoteHost,
+                    "userAgent" to call.request.headers["User-Agent"]
+                ).info { "Registration request received" }
                 val response = authService.register(request.email, request.password)
                 call.respond(HttpStatusCode.Created, response)
             }
 
             post("/login") {
                 val request = call.receive<AuthRequest>()
-                log.withContext("email" to request.email).info { "Login request received" }
+                log.withContext(
+                    "email" to request.email,
+                    "ip" to call.request.origin.remoteHost,
+                    "userAgent" to call.request.headers["User-Agent"]
+                ).info { "Login request received" }
                 val response = authService.login(request.email, request.password)
                 call.respond(HttpStatusCode.OK, response)
             }
@@ -77,7 +86,11 @@ fun Route.authRoutes(authService: AuthService) {
             post("/change-password") {
                 val userId = call.userIdOrThrow()
                 val request = call.receive<ChangePasswordRequest>()
-                log.withContext("userId" to userId).info { "Password change request received" }
+                log.withContext(
+                    "userId" to userId,
+                    "ip" to call.request.origin.remoteHost,
+                    "userAgent" to call.request.headers["User-Agent"]
+                ).info { "Password change request received" }
                 authService.changePassword(userId, request.currentPassword, request.newPassword)
                 call.respond(HttpStatusCode.OK, "Password changed successfully")
             }

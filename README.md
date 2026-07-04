@@ -117,7 +117,7 @@ Headers: Authorization: Bearer <your-jwt-token>
 - **Modern Hashing**: Migrated from BCrypt to **Argon2id** for superior resistance against GPU/ASIC cracking.
 - **Stateful Logout in Stateless Auth**: Uses Redis to blacklist JWTs upon logout, ensuring tokens cannot be reused.
 - **Granular Rate Limiting**: Per-endpoint and per-user limits to ensure API stability.
-- **Audit Logging**: Comprehensive request/response logging for security auditing.
+- **Audit Logging**: Structured logging of sensitive actions (registration, login, password changes) with IP and User-Agent tracking for security forensics.
 
 ### 📊 Financial Intelligence
 - **Recurring Bill Detection**: AI-powered detection of subscription and recurring payments based on transaction patterns and frequency.
