@@ -1,14 +1,14 @@
 package feature.summary.domain
 
-import com.fintrack.feature.summary.data.model.AvailableMonthsDto
-import com.fintrack.feature.summary.data.model.AvailableWeeksDto
-import com.fintrack.feature.summary.data.model.AvailableYearsDto
-import com.fintrack.feature.summary.data.model.CategoryComparisonDto
-import com.fintrack.feature.summary.data.model.DistributionSummaryDto
-import com.fintrack.feature.summary.data.model.TransactionCountSummaryDto
-import core.DaySummaryDto
-import core.OverviewSummaryDto
-import core.StatisticsSummaryDto
+import feature.summary.data.model.AvailableMonthsDto
+import feature.summary.data.model.AvailableWeeksDto
+import feature.summary.data.model.AvailableYearsDto
+import feature.summary.data.model.CategoryComparisonSummaryDto
+import feature.summary.data.model.DistributionSummaryDto
+import feature.summary.data.model.TransactionCountSummaryDto
+import feature.summary.data.model.DaySummaryDto
+import feature.summary.data.model.OverviewSummaryDto
+import feature.summary.data.model.StatisticsSummaryDto
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Instant
 import java.util.UUID
@@ -56,8 +56,9 @@ interface StatisticsService {
 
     suspend fun getCategoryComparisons(
         userId: UUID,
-        accountId: UUID?
-    ): List<CategoryComparisonDto>
+        accountId: UUID?,
+        period: String? = null
+    ): CategoryComparisonSummaryDto
 
     suspend fun getTransactionCountSummary(
         userId: UUID,

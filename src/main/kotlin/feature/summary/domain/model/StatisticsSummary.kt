@@ -1,5 +1,4 @@
-package feature.transaction
-// --------- Domain ---------
+package feature.summary.domain.model
 
 data class StatisticsSummary(
     val incomeHighlights: Highlights = Highlights(),
@@ -18,4 +17,3 @@ data class Highlight(
     val value: String = "",
     val amount: Double = 0.0
 )
-

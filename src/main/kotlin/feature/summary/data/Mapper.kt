@@ -1,32 +1,32 @@
-package com.fintrack.feature.summary.data
+package feature.summary.data
 
-import com.fintrack.feature.summary.data.model.AvailableMonthsDto
-import com.fintrack.feature.summary.data.model.AvailableWeeksDto
-import com.fintrack.feature.summary.data.model.AvailableYearsDto
-import com.fintrack.feature.summary.data.model.CategoryComparisonDto
-import com.fintrack.feature.summary.data.model.CategorySummaryDto
-import com.fintrack.feature.summary.data.model.DistributionSummaryDto
-import com.fintrack.feature.summary.domain.CategoryComparison
-import com.fintrack.feature.summary.domain.CategorySummary
-import com.fintrack.feature.summary.domain.DaySummary
-import com.fintrack.feature.summary.domain.DistributionSummary
-import com.fintrack.feature.summary.domain.OverviewSummary
-import core.AvailableMonths
-import core.AvailableWeeks
-import core.AvailableYears
-import core.DaySummaryDto
-import core.HighlightDto
-import core.HighlightsDto
-import core.OverviewSummaryDto
-import core.StatisticsSummaryDto
-import feature.transaction.Highlight
-import feature.transaction.Highlights
-import feature.transaction.StatisticsSummary
+import feature.summary.data.model.AvailableMonthsDto
+import feature.summary.data.model.AvailableWeeksDto
+import feature.summary.data.model.AvailableYearsDto
+import feature.summary.data.model.CategoryComparisonDto
+import feature.summary.data.model.CategorySummaryDto
+import feature.summary.data.model.DistributionSummaryDto
+import feature.summary.data.model.DaySummaryDto
+import feature.summary.data.model.HighlightDto
+import feature.summary.data.model.HighlightsDto
+import feature.summary.data.model.OverviewSummaryDto
+import feature.summary.data.model.StatisticsSummaryDto
+import feature.summary.domain.model.CategoryComparison
+import feature.summary.domain.model.CategorySummary
+import feature.summary.domain.model.DaySummary
+import feature.summary.domain.model.DistributionSummary
+import feature.summary.domain.model.OverviewSummary
+import feature.summary.domain.model.AvailableMonths
+import feature.summary.domain.model.AvailableWeeks
+import feature.summary.domain.model.AvailableYears
+import feature.summary.domain.model.Highlight
+import feature.summary.domain.model.Highlights
+import feature.summary.domain.model.StatisticsSummary
 
 // Highlights summary
 fun StatisticsSummary.toDto(): StatisticsSummaryDto = StatisticsSummaryDto(
     incomeHighlights = incomeHighlights.toDto(),
-    expenseHighlights = expenseHighlights.toDto()
+    expenseHighlights = expenseHighlights.toDto(),
 )
 
 fun Highlights.toDto(): HighlightsDto = HighlightsDto(

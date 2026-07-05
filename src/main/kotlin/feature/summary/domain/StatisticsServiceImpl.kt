@@ -2,18 +2,7 @@ package feature.summary.domain
 
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
-import com.fintrack.feature.summary.data.model.AvailableMonthsDto
-import com.fintrack.feature.summary.data.model.AvailableWeeksDto
-import com.fintrack.feature.summary.data.model.AvailableYearsDto
-import com.fintrack.feature.summary.data.model.CategoryComparisonDto
-import com.fintrack.feature.summary.data.model.CategorySummaryDto
-import com.fintrack.feature.summary.data.model.DistributionSummaryDto
-import com.fintrack.feature.summary.data.model.TransactionCountSummaryDto
-import core.DaySummaryDto
-import core.HighlightDto
-import core.HighlightsDto
-import core.OverviewSummaryDto
-import core.StatisticsSummaryDto
+import feature.summary.data.model.*
 import core.ValidationException
 import feature.transaction.domain.model.Transaction
 import feature.user.domain.UserRepository
@@ -89,13 +78,10 @@ class StatisticsServiceImpl(
         val incomeTxns = txnsForHighlights.filter { it.isIncome }
         val expenseTxns = txnsForHighlights.filter { !it.isIncome }
 
-        // ... existing highlight logic using incomeTxns/expenseTxns ...
         fun highestMonth(txns: List<Transaction>) =
             txns.groupBy {
                 val dt = it.dateTime.toLocalDateTime(TimeZone.UTC)
-                "${dt.year}-${
-                    dt.monthNumber.toString().padStart(2, '0')
-                }"
+                "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
             }
                 .mapValues { it.value.sumOf { t -> t.totalAmount } }
                 .maxByOrNull { it.value }
@@ -143,7 +129,7 @@ class StatisticsServiceImpl(
             averagePerDay = averagePerDay(expenseTxns)
         )
 
-        val summary = StatisticsSummaryDto(
+        return StatisticsSummaryDto(
             income = incomeTxns.sumOf { it.totalAmount },
             expense = expenseTxns.sumOf { it.totalAmount },
             balance = incomeTxns.sumOf { it.totalAmount } - expenseTxns.sumOf { it.totalAmount },
@@ -151,8 +137,6 @@ class StatisticsServiceImpl(
             expenseHighlights = expenseHighlights,
             totalTransactionCost = txnsForHighlights.sumOf { it.transactionCost }
         )
-
-        return summary
     }
 
     override suspend fun getDistributionSummary(
@@ -212,88 +196,35 @@ class StatisticsServiceImpl(
             }
         }
 
-        val incomeCategoriesFinal =
-            if (isIncome != false) categorySummary(incomeTxns) else emptyList()
-        val expenseCategoriesFinal =
-            if (isIncome != true) categorySummary(expenseTxns) else emptyList()
+        val incomeCategoriesFinal = if (isIncome != false) categorySummary(incomeTxns) else emptyList()
+        val expenseCategoriesFinal = if (isIncome != true) categorySummary(expenseTxns) else emptyList()
 
-        val distribution = DistributionSummaryDto(
+        return DistributionSummaryDto(
             period = period,
             totalTransactionCost = txnsInPeriod.sumOf { it.transactionCost },
             incomeCategories = incomeCategoriesFinal,
             expenseCategories = expenseCategoriesFinal
         )
-
-        log.withContext(
-            "userId" to userId,
-            "period" to period,
-            "incomeCategoryCount" to incomeCategoriesFinal.size,
-            "expenseCategoryCount" to expenseCategoriesFinal.size
-        ).debug { "Distribution summary calculated successfully" }
-
-        return distribution
     }
 
-    override suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeksDto {
-        log.withContext("userId" to userId, "accountId" to accountId)
-            .debug { "Fetching available weeks" }
+    override suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeksDto =
+        AvailableWeeksDto(statisticsRepository.getAvailablePeriods(userId, accountId, "weeks"))
 
-        val weeks = statisticsRepository.getAvailablePeriods(userId, accountId, "weeks")
+    override suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonthsDto =
+        AvailableMonthsDto(statisticsRepository.getAvailablePeriods(userId, accountId, "months"))
 
-        log.withContext("userId" to userId, "weekCount" to weeks.size)
-            .debug { "Available weeks retrieved" }
-        return AvailableWeeksDto(weeks)
-    }
-
-    override suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonthsDto {
-        log.withContext("userId" to userId, "accountId" to accountId)
-            .debug { "Fetching available months" }
-
-        val months = statisticsRepository.getAvailablePeriods(userId, accountId, "months")
-
-        log.withContext("userId" to userId, "monthCount" to months.size)
-            .debug { "Available months retrieved" }
-        return AvailableMonthsDto(months)
-    }
-
-    override suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYearsDto {
-        log.withContext("userId" to userId, "accountId" to accountId)
-            .debug { "Fetching available years" }
-
-        val years = statisticsRepository.getAvailablePeriods(userId, accountId, "years")
-
-        log.withContext("userId" to userId, "yearCount" to years.size)
-            .debug { "Available years retrieved" }
-        return AvailableYearsDto(years)
-    }
+    override suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYearsDto =
+        AvailableYearsDto(statisticsRepository.getAvailablePeriods(userId, accountId, "years"))
 
     override suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummaryDto {
-        log.withContext("userId" to userId, "accountId" to accountId)
-            .debug { "Calculating overview summary" }
-
         val today = Clock.System.now().toLocalDateTime(TimeZone.UTC).date
         val weeklyStart = today.minus(DatePeriod(days = 6))
         val monthlyStart = today.minus(DatePeriod(days = 29))
 
-        log.withContext(
-            "userId" to userId,
-            "weeklyStart" to weeklyStart,
-            "monthlyStart" to monthlyStart,
-            "today" to today
-        ).debug { "Date ranges calculated for overview" }
-
         val weekly = getDaySummaries(userId, weeklyStart, today, accountId)
         val monthly = getDaySummaries(userId, monthlyStart, today, accountId)
 
-        val overview = OverviewSummaryDto(weeklyOverview = weekly, monthlyOverview = monthly)
-
-        log.withContext(
-            "userId" to userId,
-            "weeklyDataPoints" to weekly.size,
-            "monthlyDataPoints" to monthly.size
-        ).debug { "Overview summary calculated successfully" }
-
-        return overview
+        return OverviewSummaryDto(weeklyOverview = weekly, monthlyOverview = monthly)
     }
 
     override suspend fun getDaySummaries(
@@ -302,282 +233,223 @@ class StatisticsServiceImpl(
         end: LocalDate,
         accountId: UUID?
     ): List<DaySummaryDto> {
-        log.withContext(
-            "userId" to userId,
-            "start" to start,
-            "end" to end,
-            "accountId" to accountId
-        ).debug { "Calculating day summaries" }
-
-        val transactions =
-            statisticsRepository.getTransactionsByDateRange(userId, start, end, accountId)
-
-        log.withContext(
-            "userId" to userId,
-            "transactionCount" to transactions.size
-        ).debug { "Retrieved transactions for day summaries" }
-
+        val transactions = statisticsRepository.getTransactionsByDateRange(userId, start, end, accountId)
         val dates = generateSequence(start) { current ->
             if (current < end) current.plus(DatePeriod(days = 1)) else null
         }.toList()
 
-        val summaries = dates.map { date ->
+        return dates.map { date ->
             val dayTxs = transactions.filter { it.dateTime.toLocalDateTime(TimeZone.UTC).date == date }
             val income = dayTxs.filter { it.isIncome }.sumOf { it.totalAmount }
             val expense = dayTxs.filter { !it.isIncome }.sumOf { it.totalAmount }
             DaySummaryDto(date = date, income = income, expense = expense)
         }
-
-        log.withContext(
-            "userId" to userId,
-            "dayCount" to summaries.size,
-            "dateRange" to "${start} to ${end}"
-        ).debug { "Day summaries calculated successfully" }
-
-        return summaries
     }
 
     override suspend fun getCategoryComparisons(
         userId: UUID,
-        accountId: UUID?
-    ): List<CategoryComparisonDto> {
-        log.withContext("userId" to userId, "accountId" to accountId)
-            .debug { "Calculating category comparisons" }
+        accountId: UUID?,
+        period: String?
+    ): CategoryComparisonSummaryDto {
+        log.withContext("userId" to userId, "accountId" to accountId, "period" to period)
+            .debug { "Calculating category comparisons with weekly data" }
 
+        val availableMonths = statisticsRepository.getAvailablePeriods(userId, accountId, "months")
         val now = Clock.System.now().toLocalDateTime(TimeZone.UTC).date
+        val currentMonthCode = "${now.year}-${now.monthNumber.toString().padStart(2, '0')}"
 
-        val thisWeekStart = now.minus(DatePeriod(days = 6))
+        val targetPeriod = period ?: availableMonths.firstOrNull() ?: currentMonthCode
+        val isCurrent = targetPeriod == currentMonthCode
+        val isBackupMonth = period == null && !isCurrent
+
+        // Parse target period to date ranges
+        val (year, month) = targetPeriod.split("-").map { it.toInt() }
+        val currentMonthStart = LocalDate(year, month, 1)
+        val currentMonthEnd = currentMonthStart.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
+        val previousMonthStart = currentMonthStart.minus(DatePeriod(months = 1))
+        val previousMonthEnd = currentMonthStart.minus(DatePeriod(days = 1))
+
+        // Weekly context: Latest 7 days within the target month (or just latest 7 days if it's current month)
+        val thisWeekEnd = if (isCurrent) now else currentMonthEnd
+        val thisWeekStart = thisWeekEnd.minus(DatePeriod(days = 6))
         val lastWeekStart = thisWeekStart.minus(DatePeriod(days = 7))
         val lastWeekEnd = thisWeekStart.minus(DatePeriod(days = 1))
 
-        val thisMonthStart = now.minus(DatePeriod(days = 29))
-        val lastMonthStart = thisMonthStart.minus(DatePeriod(days = 30))
-        val lastMonthEnd = thisMonthStart.minus(DatePeriod(days = 1))
+        val thisMonthExpenseTotals = statisticsRepository.getCategoryTotals(userId, currentMonthStart, currentMonthEnd, accountId, isIncome = false)
+        val lastMonthExpenseTotals = statisticsRepository.getCategoryTotals(userId, previousMonthStart, previousMonthEnd, accountId, isIncome = false)
+        val thisMonthIncomeTotals = statisticsRepository.getCategoryTotals(userId, currentMonthStart, currentMonthEnd, accountId, isIncome = true)
+        val lastMonthIncomeTotals = statisticsRepository.getCategoryTotals(userId, previousMonthStart, previousMonthEnd, accountId, isIncome = true)
 
-        log.withContext(
-            "userId" to userId,
-            "thisWeek" to "${thisWeekStart} to ${now}",
-            "lastWeek" to "${lastWeekStart} to ${lastWeekEnd}",
-            "thisMonth" to "${thisMonthStart} to ${now}",
-            "lastMonth" to "${lastMonthStart} to ${lastMonthEnd}"
-        ).debug { "Date ranges calculated for category comparisons" }
-
-        val thisWeekTotals =
-            statisticsRepository.getCategoryTotals(userId, thisWeekStart, now, accountId)
-        val lastWeekTotals =
-            statisticsRepository.getCategoryTotals(userId, lastWeekStart, lastWeekEnd, accountId)
-
-        val thisMonthTotals =
-            statisticsRepository.getCategoryTotals(userId, thisMonthStart, now, accountId)
-        val lastMonthTotals =
-            statisticsRepository.getCategoryTotals(userId, lastMonthStart, lastMonthEnd, accountId)
+        val thisWeekTotals = statisticsRepository.getCategoryTotals(userId, thisWeekStart, thisWeekEnd, accountId)
+        val lastWeekTotals = statisticsRepository.getCategoryTotals(userId, lastWeekStart, lastWeekEnd, accountId)
 
         val user = userRepository.findById(userId)
         val trackedCategories = user?.trackedCategories?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
 
-        val comparisons = if (trackedCategories.isNotEmpty()) {
+        // Fetch all-time income categories to correctly identify category type in tracked branch
+        val allTimeIncomeCategories = if (trackedCategories.isNotEmpty()) {
+            statisticsRepository.getCategoryTotals(userId, null, null, accountId, isIncome = true).keys
+        } else emptySet()
+
+        val comparisons = if (trackedCategories.isNotEmpty() && !isBackupMonth) {
             trackedCategories.map { category ->
                 if (category == "Transaction Cost") {
-                    calculateTransactionCostComparison(userId, accountId, thisWeekStart, now, lastWeekStart, lastWeekEnd, thisMonthStart, lastMonthStart, lastMonthEnd)
+                    calculateTransactionCostComparison(userId, accountId, currentMonthStart, currentMonthEnd, previousMonthStart, previousMonthEnd, thisWeekStart, thisWeekEnd, lastWeekStart, lastWeekEnd)
                 } else {
-                    val monthCurrent = thisMonthTotals[category] ?: 0.0
-                    val monthPrevious = lastMonthTotals[category] ?: 0.0
-                    val weekCurrent = thisWeekTotals[category] ?: 0.0
-                    val weekPrevious = lastWeekTotals[category] ?: 0.0
+                    val isInc = allTimeIncomeCategories.contains(category) || thisMonthIncomeTotals.containsKey(category)
+                    val currentTotals = if (isInc) thisMonthIncomeTotals else thisMonthExpenseTotals
+                    val previousTotals = if (isInc) lastMonthIncomeTotals else lastMonthExpenseTotals
+
+                    val cur = currentTotals[category] ?: 0.0
+                    val prev = previousTotals[category] ?: 0.0
+                    val weekCur = thisWeekTotals[category] ?: 0.0
+                    val weekPrev = lastWeekTotals[category] ?: 0.0
 
                     CategoryComparisonDto(
                         category = category,
-                        currentTotal = monthCurrent,
-                        previousTotal = monthPrevious,
-                        changePercentage = if (monthPrevious != 0.0) (monthCurrent - monthPrevious) / monthPrevious * 100 else if (monthCurrent > 0) 100.0 else 0.0,
-                        weeklyCurrentTotal = weekCurrent,
-                        weeklyChangePercentage = if (weekPrevious != 0.0) (weekCurrent - weekPrevious) / weekPrevious * 100 else if (weekCurrent > 0) 100.0 else 0.0
+                        currentTotal = cur,
+                        previousTotal = prev,
+                        changePercentage = calculateChange(cur, prev),
+                        isIncome = isInc,
+                        period = targetPeriod,
+                        weeklyCurrentTotal = weekCur,
+                        weeklyChangePercentage = calculateChange(weekCur, weekPrev)
                     )
                 }
             }
         } else {
-            // Fallback to: Top Spending (Expense) + Top Income
-            val thisMonthExpenseTotals = statisticsRepository.getCategoryTotals(userId, thisMonthStart, now, accountId, isIncome = false)
-            val lastMonthExpenseTotals = statisticsRepository.getCategoryTotals(userId, lastMonthStart, lastMonthEnd, accountId, isIncome = false)
+            // Fallback: Automatic Discovery strictly within targetMonth
+            val topExpenseCategory = thisMonthExpenseTotals.keys.filter { it != "Transaction Cost" }
+                .maxByOrNull { thisMonthExpenseTotals[it] ?: 0.0 }
+                ?: lastMonthExpenseTotals.keys.filter { it != "Transaction Cost" }
+                .maxByOrNull { lastMonthExpenseTotals[it] ?: 0.0 }
+
+            val topIncomeCategory = thisMonthIncomeTotals.keys
+                .maxByOrNull { thisMonthIncomeTotals[it] ?: 0.0 }
+                ?: lastMonthIncomeTotals.keys
+                .maxByOrNull { lastMonthIncomeTotals[it] ?: 0.0 }
+
+            val results = mutableListOf<CategoryComparisonDto>()
+
+            // Ensure an Income result is always present (Snapshot requirement)
+            val incomeCategory = topIncomeCategory ?: "Salary"
+            val curInc = thisMonthIncomeTotals[incomeCategory] ?: 0.0
+            val prevInc = lastMonthIncomeTotals[incomeCategory] ?: 0.0
+            val weekCurInc = thisWeekTotals[incomeCategory] ?: 0.0
+            val weekPrevInc = lastWeekTotals[incomeCategory] ?: 0.0
             
-            val thisMonthIncomeTotals = statisticsRepository.getCategoryTotals(userId, thisMonthStart, now, accountId, isIncome = true)
-            val lastMonthIncomeTotals = statisticsRepository.getCategoryTotals(userId, lastMonthStart, lastMonthEnd, accountId, isIncome = true)
+            results.add(CategoryComparisonDto(
+                category = incomeCategory,
+                currentTotal = curInc,
+                previousTotal = prevInc,
+                changePercentage = calculateChange(curInc, prevInc),
+                isIncome = true,
+                period = targetPeriod,
+                weeklyCurrentTotal = weekCurInc,
+                weeklyChangePercentage = calculateChange(weekCurInc, weekPrevInc)
+            ))
 
-            val topExpenseCategory = (thisMonthExpenseTotals.keys + lastMonthExpenseTotals.keys)
-                .filter { it != "Transaction Cost" }
-                .maxByOrNull { (thisMonthExpenseTotals[it] ?: 0.0).coerceAtLeast(lastMonthExpenseTotals[it] ?: 0.0) }
-
-            val topIncomeCategory = (thisMonthIncomeTotals.keys + lastMonthIncomeTotals.keys)
-                .maxByOrNull { (thisMonthIncomeTotals[it] ?: 0.0).coerceAtLeast(lastMonthIncomeTotals[it] ?: 0.0) }
-
-            listOfNotNull(topExpenseCategory, topIncomeCategory).distinct().take(2).map { category ->
-                val isInc = thisMonthIncomeTotals.containsKey(category) || lastMonthIncomeTotals.containsKey(category)
+            // Ensure an Expense/Cost result is always present
+            if (topExpenseCategory != null) {
+                val curExp = thisMonthExpenseTotals[topExpenseCategory] ?: 0.0
+                val prevExp = lastMonthExpenseTotals[topExpenseCategory] ?: 0.0
+                val weekCurExp = thisWeekTotals[topExpenseCategory] ?: 0.0
+                val weekPrevExp = lastWeekTotals[topExpenseCategory] ?: 0.0
                 
-                val (currentTotals, previousTotals) = if (isInc) {
-                    thisMonthIncomeTotals to lastMonthIncomeTotals
-                } else {
-                    thisMonthExpenseTotals to lastMonthExpenseTotals
-                }
-                
-                val monthCurrent = currentTotals[category] ?: 0.0
-                val monthPrevious = previousTotals[category] ?: 0.0
-                
-                // For weekly context in fallback, we can fetch if needed, but for now we'll just show monthly
-                CategoryComparisonDto(
-                    category = category,
-                    currentTotal = monthCurrent,
-                    previousTotal = monthPrevious,
-                    changePercentage = if (monthPrevious != 0.0) (monthCurrent - monthPrevious) / monthPrevious * 100 else if (monthCurrent > 0) 100.0 else 0.0,
-                    weeklyCurrentTotal = 0.0,
-                    weeklyChangePercentage = 0.0
-                )
+                results.add(CategoryComparisonDto(
+                    category = topExpenseCategory,
+                    currentTotal = curExp,
+                    previousTotal = prevExp,
+                    changePercentage = calculateChange(curExp, prevExp),
+                    isIncome = false,
+                    period = targetPeriod,
+                    weeklyCurrentTotal = weekCurExp,
+                    weeklyChangePercentage = calculateChange(weekCurExp, weekPrevExp)
+                ))
+            } else {
+                results.add(calculateTransactionCostComparison(
+                    userId, accountId, currentMonthStart, currentMonthEnd, previousMonthStart, previousMonthEnd, 
+                    thisWeekStart, thisWeekEnd, lastWeekStart, lastWeekEnd
+                ))
             }
+
+            results
         }
 
-        log.withContext(
-            "userId" to userId,
-            "comparisonCount" to comparisons.size,
-            "trackedCategories" to trackedCategories
-        ).debug { "Category comparisons calculated successfully" }
-
-        return comparisons.take(2)
+        return CategoryComparisonSummaryDto(
+            period = targetPeriod,
+            isCurrent = isCurrent,
+            data = comparisons
+        )
     }
+
+    private fun calculateChange(current: Double, previous: Double): Double =
+        if (previous != 0.0) (current - previous) / previous * 100 else if (current > 0) 100.0 else 0.0
 
     private suspend fun calculateTransactionCostComparison(
         userId: UUID,
         accountId: UUID?,
-        thisWeekStart: LocalDate,
-        now: LocalDate,
-        lastWeekStart: LocalDate,
-        lastWeekEnd: LocalDate,
-        thisMonthStart: LocalDate,
-        lastMonthStart: LocalDate,
-        lastMonthEnd: LocalDate
+        currentStart: LocalDate,
+        currentEnd: LocalDate,
+        previousStart: LocalDate,
+        previousEnd: LocalDate,
+        thisWeekStart: LocalDate? = null,
+        thisWeekEnd: LocalDate? = null,
+        lastWeekStart: LocalDate? = null,
+        lastWeekEnd: LocalDate? = null
     ): CategoryComparisonDto {
-        val thisWeekTxns = statisticsRepository.getTransactionsByDateRange(userId, thisWeekStart, now, accountId)
-        val lastWeekTxns = statisticsRepository.getTransactionsByDateRange(userId, lastWeekStart, lastWeekEnd, accountId)
-        val thisMonthTxns = statisticsRepository.getTransactionsByDateRange(userId, thisMonthStart, now, accountId)
-        val lastMonthTxns = statisticsRepository.getTransactionsByDateRange(userId, lastMonthStart, lastMonthEnd, accountId)
+        val curTxns = statisticsRepository.getTransactionsByDateRange(userId, currentStart, currentEnd, accountId)
+        val prevTxns = statisticsRepository.getTransactionsByDateRange(userId, previousStart, previousEnd, accountId)
 
-        val monthCostCurrent = thisMonthTxns.sumOf { it.transactionCost }
-        val monthCostPrevious = lastMonthTxns.sumOf { it.transactionCost }
-        val weekCostCurrent = thisWeekTxns.sumOf { it.transactionCost }
-        val weekCostPrevious = lastWeekTxns.sumOf { it.transactionCost }
+        val curCost = curTxns.sumOf { it.transactionCost }
+        val prevCost = prevTxns.sumOf { it.transactionCost }
+
+        var weekCurCost = 0.0
+        var weekPrevCost = 0.0
+        if (thisWeekStart != null && thisWeekEnd != null && lastWeekStart != null && lastWeekEnd != null) {
+            weekCurCost = statisticsRepository.getTransactionsByDateRange(userId, thisWeekStart, thisWeekEnd, accountId).sumOf { it.transactionCost }
+            weekPrevCost = statisticsRepository.getTransactionsByDateRange(userId, lastWeekStart, lastWeekEnd, accountId).sumOf { it.transactionCost }
+        }
 
         return CategoryComparisonDto(
             category = "Transaction Cost",
-            currentTotal = monthCostCurrent,
-            previousTotal = monthCostPrevious,
-            changePercentage = if (monthCostPrevious != 0.0) (monthCostCurrent - monthCostPrevious) / monthCostPrevious * 100 else if (monthCostCurrent > 0) 100.0 else 0.0,
-            weeklyCurrentTotal = weekCostCurrent,
-            weeklyChangePercentage = if (weekCostPrevious != 0.0) (weekCostCurrent - weekCostPrevious) / weekCostPrevious * 100 else if (weekCostCurrent > 0) 100.0 else 0.0
+            currentTotal = curCost,
+            previousTotal = prevCost,
+            changePercentage = calculateChange(curCost, prevCost),
+            isIncome = false,
+            period = currentStart.toString().substring(0, 7),
+            weeklyCurrentTotal = if (thisWeekStart != null) weekCurCost else null,
+            weeklyChangePercentage = if (thisWeekStart != null) calculateChange(weekCurCost, weekPrevCost) else null
         )
     }
 
     override suspend fun getTransactionCountSummary(
-        userId: UUID,
-        accountId: UUID?,
-        isIncome: Boolean?,
-        category: String?,
-        hasCost: Boolean?,
-        start: Instant?,
-        end: Instant?
+        userId: UUID, accountId: UUID?, isIncome: Boolean?, category: String?, hasCost: Boolean?, start: Instant?, end: Instant?
     ): TransactionCountSummaryDto {
         requireNotNull(accountId) { "Account ID is required" }
-
-        log.withContext(
-            "userId" to userId,
-            "accountId" to accountId,
-            "isIncome" to isIncome,
-            "category" to category,
-            "hasCost" to hasCost,
-            "start" to start,
-            "end" to end
-        ).debug { "Fetching transaction count summary" }
-
-        val counts = statisticsRepository.getTransactionCounts(
-            userId = userId,
-            accountId = accountId,
-            isIncome = isIncome,
-            category = category,
-            hasCost = hasCost,
-            start = start,
-            end = end
-        )
-
-        val result = TransactionCountSummaryDto(
-            totalIncomeTransactions = counts.incomeCount,
-            totalExpenseTransactions = counts.expenseCount,
-            totalTransactions = counts.totalCount,
-            totalTransactionCost = counts.totalTransactionCost
-        )
-
-        log.withContext(
-            "userId" to userId,
-            "accountId" to accountId,
-            "isIncome" to isIncome,
-            "totalTransactions" to counts.totalCount,
-            "incomeCount" to counts.incomeCount,
-            "expenseCount" to counts.expenseCount
-        ).debug { "Transaction count summary retrieved" }
-
-        return result
+        val counts = statisticsRepository.getTransactionCounts(userId, accountId, isIncome, category, hasCost, start, end)
+        return TransactionCountSummaryDto(counts.incomeCount, counts.expenseCount, counts.totalCount, counts.totalTransactionCost)
     }
 
     override suspend fun getDaySummariesByDateRange(
-        userId: UUID,
-        accountId: UUID?,
-        startParam: String?,
-        endParam: String?
+        userId: UUID, accountId: UUID?, startParam: String?, endParam: String?
     ): List<DaySummaryDto> {
-        requireNotNull(startParam) { "start parameter is required" }
-        requireNotNull(endParam) { "end parameter is required" }
-
         val range = parseDateRange(startParam, endParam)
-        val start = range.first ?: throw ValidationException("Invalid start date")
-        val end = range.second ?: throw ValidationException("Invalid end date")
-
-        val startDate = start.toLocalDateTime(TimeZone.UTC).date
-        val endDate = end.toLocalDateTime(TimeZone.UTC).date
-
-        return getDaySummaries(userId, startDate, endDate, accountId)
+        val start = range.first?.toLocalDateTime(TimeZone.UTC)?.date ?: throw ValidationException("Invalid start date")
+        val end = range.second?.toLocalDateTime(TimeZone.UTC)?.date ?: throw ValidationException("Invalid end date")
+        return getDaySummaries(userId, start, end, accountId)
     }
 
-    // ---- Helper methods for route parameter processing ----
-    override fun parseTypeFilter(typeFilter: String?): Boolean? {
-        log.withContext("typeFilter" to typeFilter).debug { "Parsing type filter" }
-        return when (typeFilter?.lowercase()) {
-            "income" -> true
-            "expense" -> false
-            "" -> null
-            null -> null
-            else -> throw ValidationException("Type filter must be 'income' or 'expense'")
-        }
+    override fun parseTypeFilter(typeFilter: String?): Boolean? = when (typeFilter?.lowercase()) {
+        "income" -> true
+        "expense" -> false
+        else -> null
     }
 
-    override fun parseDateRange(
-        startDate: String?,
-        endDate: String?
-    ): Pair<Instant?, Instant?> {
-        log.withContext("startDate" to startDate, "endDate" to endDate)
-            .debug { "Parsing date range" }
-
-        val start = startDate?.let {
-            LocalDate.parse(it).atTime(LocalTime(0, 0, 0)).toInstant(TimeZone.UTC)
-        }
-        val end = endDate?.let {
-            LocalDate.parse(it).atTime(LocalTime(23, 59, 59)).toInstant(TimeZone.UTC)
-        }
-
-        // Validate date range logic
-        if (start != null && end != null && start > end) {
-            log.withContext("start" to start, "end" to end)
-                .warn { "Invalid date range - start after end" }
-            throw ValidationException("Start date cannot be after end date")
-        }
-
-        log.withContext("parsedStart" to start, "parsedEnd" to end)
-            .debug { "Date range parsed successfully" }
+    override fun parseDateRange(startDate: String?, endDate: String?): Pair<Instant?, Instant?> {
+        val start = startDate?.let { LocalDate.parse(it).atTime(LocalTime(0, 0, 0)).toInstant(TimeZone.UTC) }
+        val end = endDate?.let { LocalDate.parse(it).atTime(LocalTime(23, 59, 59)).toInstant(TimeZone.UTC) }
+        if (start != null && end != null && start > end) throw ValidationException("Start date cannot be after end date")
         return start to end
     }
 }

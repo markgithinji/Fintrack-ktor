@@ -1,4 +1,4 @@
-package core
+package feature.summary.domain.model
 
 data class AvailableWeeks(val weeks: List<String>)
 data class AvailableMonths(val months: List<String>)

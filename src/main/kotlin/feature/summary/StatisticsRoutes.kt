@@ -163,15 +163,17 @@ fun Route.summaryRoutes(service: StatisticsService) {
         get("/category-comparison") {
             val userId = call.userIdOrThrow()
             val accountId: UUID? = call.request.queryParameters["accountId"]?.toUUIDOrNull()
+            val period = call.request.queryParameters["period"]
 
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/category-comparison",
-                "accountId" to accountId
+                "accountId" to accountId,
+                "period" to period
             ).info { "Category comparison request received" }
 
-            val comparisons = service.getCategoryComparisons(userId, accountId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(comparisons))
+            val summary = service.getCategoryComparisons(userId, accountId, period)
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
         }
 
         get("/counts") {

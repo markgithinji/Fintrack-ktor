@@ -1,4 +1,4 @@
-package com.fintrack.feature.summary.domain
+package feature.summary.domain.model
 
 import kotlinx.datetime.LocalDate
 

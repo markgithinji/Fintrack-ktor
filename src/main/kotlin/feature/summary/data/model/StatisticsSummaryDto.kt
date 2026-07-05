@@ -1,4 +1,4 @@
-package core
+package feature.summary.data.model
 
 import kotlinx.serialization.Serializable
 

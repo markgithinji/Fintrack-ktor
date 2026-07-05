@@ -14,6 +14,8 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import java.time.temporal.IsoFields
 import java.util.UUID
 
@@ -126,7 +128,14 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         isIncome: Boolean?
     ): Map<String, Double> =
         dbQuery {
-            var query = TransactionsTable.selectAll()
+            val netAmount = Case()
+                .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+                .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
+            
+            val totalSum = netAmount.sum()
+
+            var query = TransactionsTable
+                .select(TransactionsTable.category, totalSum)
                 .where { TransactionsTable.userId eq EntityID(userId, UsersTable) }
 
             if (accountId != null) query =
@@ -139,22 +148,14 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                 query = query.andWhere { TransactionsTable.dateTime greaterEq startInstant }
             }
             if (end != null) {
-                val endInstant = end.atTime(23, 59, 59).toInstant(TimeZone.UTC)
+                val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
                 query = query.andWhere { TransactionsTable.dateTime lessEq endInstant }
             }
 
             query
-                .groupBy { it[TransactionsTable.category] }
-                .mapValues { (_, rows) ->
-                    rows.sumOf {
-                        val amt = it[TransactionsTable.amount]
-                        val cost = it[TransactionsTable.transactionCost]
-                        val isInc = it[TransactionsTable.isIncome]
-                        // If it's an income, amount - cost is the net gain.
-                        // If it's an expense, amount + cost is the total loss.
-                        // However, for trends we usually want absolute impact.
-                        if (isInc) amt - cost else amt + cost
-                    }
+                .groupBy(TransactionsTable.category)
+                .associate { 
+                    it[TransactionsTable.category] to (it[totalSum] ?: 0.0)
                 }
         }
 

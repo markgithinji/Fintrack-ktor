@@ -1,4 +1,4 @@
-package com.fintrack.feature.summary.data.model
+package feature.summary.data.model
 
 import kotlinx.serialization.Serializable
 
@@ -8,6 +8,7 @@ data class CategoryComparisonDto(
     val currentTotal: Double,
     val previousTotal: Double,
     val changePercentage: Double,
+    val isIncome: Boolean = false,
     val period: String = "monthly",
     val weeklyChangePercentage: Double? = null,
     val weeklyCurrentTotal: Double? = null
