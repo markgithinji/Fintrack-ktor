@@ -52,6 +52,8 @@ fun CategorySummary.toDto(): CategorySummaryDto =
 
 // Overview summary
 fun OverviewSummary.toDto() = OverviewSummaryDto(
+    period = period,
+    isCurrent = isCurrent,
     weeklyOverview = weeklyOverview.map { it.toDto() },
     monthlyOverview = monthlyOverview.map { it.toDto() }
 )

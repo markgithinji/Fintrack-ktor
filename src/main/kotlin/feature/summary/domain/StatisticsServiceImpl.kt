@@ -217,14 +217,35 @@ class StatisticsServiceImpl(
         AvailableYearsDto(statisticsRepository.getAvailablePeriods(userId, accountId, "years"))
 
     override suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummaryDto {
-        val today = Clock.System.now().toLocalDateTime(TimeZone.UTC).date
-        val weeklyStart = today.minus(DatePeriod(days = 6))
-        val monthlyStart = today.minus(DatePeriod(days = 29))
+        val now = Clock.System.now().toLocalDateTime(TimeZone.UTC).date
+        val currentMonthCode = "${now.year}-${now.monthNumber.toString().padStart(2, '0')}"
 
-        val weekly = getDaySummaries(userId, weeklyStart, today, accountId)
-        val monthly = getDaySummaries(userId, monthlyStart, today, accountId)
+        val availableMonths = statisticsRepository.getAvailablePeriods(userId, accountId, "months")
+        val targetMonthCode = availableMonths.firstOrNull() ?: currentMonthCode
+        val isCurrent = targetMonthCode == currentMonthCode
 
-        return OverviewSummaryDto(weeklyOverview = weekly, monthlyOverview = monthly)
+        // Parse target period to date ranges
+        val parts = targetMonthCode.split("-")
+        val year = parts[0].toInt()
+        val month = parts[1].toInt()
+
+        val monthStart = LocalDate(year, month, 1)
+        val monthEnd = monthStart.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
+
+        // Determine ends for trends
+        val trendEnd = if (isCurrent) now else monthEnd
+        val weeklyStart = trendEnd.minus(DatePeriod(days = 6))
+        val monthlyStart = trendEnd.minus(DatePeriod(days = 29))
+
+        val weekly = getDaySummaries(userId, weeklyStart, trendEnd, accountId)
+        val monthly = getDaySummaries(userId, monthlyStart, trendEnd, accountId)
+
+        return OverviewSummaryDto(
+            period = targetMonthCode,
+            isCurrent = isCurrent,
+            weeklyOverview = weekly,
+            monthlyOverview = monthly
+        )
     }
 
     override suspend fun getDaySummaries(
