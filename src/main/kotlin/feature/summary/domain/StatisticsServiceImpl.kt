@@ -45,34 +45,51 @@ class StatisticsServiceImpl(
             "period" to period
         ).debug { "Calculating statistics summary" }
 
-        val filtered = statisticsRepository.getTransactions(userId, accountId, isIncome, start, end)
+        val allTransactions = statisticsRepository.getTransactions(userId, accountId, isIncome, start, end)
 
-        val txnsForHighlights = if (period != null) {
-            val weekMode = period.contains("W")
-            val yearMode = !weekMode && period.length == 4
-            val monthMode = !weekMode && !yearMode
+        var targetPeriod = period
+        var isCurrent = true
 
-            fun getPeriodString(dateTime: Instant): String {
-                val dt = dateTime.toLocalDateTime(TimeZone.UTC)
-                return when {
-                    weekMode -> {
-                        val javaDateTime = dt.toJavaLocalDateTime()
-                        val week = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
-                        "${javaDateTime.year}-W${week.toString().padStart(2, '0')}"
-                    }
-                    monthMode -> "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
-                    yearMode -> dt.year.toString()
-                    else -> ""
+        val weekMode = targetPeriod?.contains("W") == true
+        val yearMode = targetPeriod != null && !weekMode && targetPeriod.length == 4
+        val monthMode = targetPeriod != null && !weekMode && !yearMode
+
+        fun getPeriodString(dateTime: Instant): String {
+            val dt = dateTime.toLocalDateTime(TimeZone.UTC)
+            return when {
+                weekMode -> {
+                    val javaDateTime = dt.toJavaLocalDateTime()
+                    val week = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
+                    "${javaDateTime.year}-W${week.toString().padStart(2, '0')}"
                 }
+                monthMode -> "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
+                yearMode -> dt.year.toString()
+                else -> ""
             }
-            filtered.filter { getPeriodString(it.dateTime) == period }
+        }
+
+        var txnsForHighlights = if (targetPeriod != null) {
+            allTransactions.filter { getPeriodString(it.dateTime) == targetPeriod }
         } else {
-            filtered
+            allTransactions
+        }
+
+        // Look-back logic: if requested year is empty, find the most recent year with data
+        if (txnsForHighlights.isEmpty() && yearMode && targetPeriod != null) {
+            val availableYears = statisticsRepository.getAvailablePeriods(userId, accountId, "years")
+            val latestYear = availableYears.firstOrNull()
+            if (latestYear != null && latestYear != targetPeriod) {
+                targetPeriod = latestYear
+                isCurrent = false
+                txnsForHighlights = allTransactions.filter { getPeriodString(it.dateTime) == targetPeriod }
+            }
         }
 
         log.withContext(
             "userId" to userId,
-            "transactionCount" to txnsForHighlights.size
+            "transactionCount" to txnsForHighlights.size,
+            "targetPeriod" to targetPeriod,
+            "isCurrent" to isCurrent
         ).debug { "Retrieved transactions for statistics highlights" }
 
         val incomeTxns = txnsForHighlights.filter { it.isIncome }
@@ -130,6 +147,8 @@ class StatisticsServiceImpl(
         )
 
         return StatisticsSummaryDto(
+            period = targetPeriod ?: "",
+            isCurrent = isCurrent,
             income = incomeTxns.sumOf { it.totalAmount },
             expense = expenseTxns.sumOf { it.totalAmount },
             balance = incomeTxns.sumOf { it.totalAmount } - expenseTxns.sumOf { it.totalAmount },

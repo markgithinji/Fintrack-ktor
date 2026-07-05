@@ -25,6 +25,12 @@ import feature.summary.domain.model.StatisticsSummary
 
 // Highlights summary
 fun StatisticsSummary.toDto(): StatisticsSummaryDto = StatisticsSummaryDto(
+    period = period,
+    isCurrent = isCurrent,
+    income = income,
+    expense = expense,
+    balance = balance,
+    totalTransactionCost = totalTransactionCost,
     incomeHighlights = incomeHighlights.toDto(),
     expenseHighlights = expenseHighlights.toDto(),
 )

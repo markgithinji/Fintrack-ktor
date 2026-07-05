@@ -4,6 +4,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class StatisticsSummaryDto(
+    val period: String = "",
+    val isCurrent: Boolean = true,
     val income: Double = 0.0,
     val expense: Double = 0.0,
     val balance: Double = 0.0,
