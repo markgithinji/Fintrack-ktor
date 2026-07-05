@@ -120,6 +120,7 @@ Headers: Authorization: Bearer <your-jwt-token>
 - **Audit Logging**: Structured logging of sensitive actions (registration, login, password changes) with IP and User-Agent tracking for security forensics.
 
 ### 📊 Financial Intelligence
+- **Historical Look-back & Smart Discovery**: Intelligent fallback engine that detects the most recent period of activity when the current month is empty. It performs automated top-category discovery and strict snapshot comparisons to provide relevant financial context to the user.
 - **Recurring Bill Detection**: AI-powered detection of subscription and recurring payments based on transaction patterns and frequency.
 - **Advanced Analytics**: Category-wise distribution, period comparisons (Week/Month/Year), and spending trends.
 - **Bulk Operations**: High-performance bulk transaction creation for data imports/syncs.
