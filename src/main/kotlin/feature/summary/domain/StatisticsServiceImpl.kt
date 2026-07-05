@@ -74,14 +74,23 @@ class StatisticsServiceImpl(
             allTransactions
         }
 
-        // Look-back logic: if requested year is empty, find the most recent year with data
-        if (txnsForHighlights.isEmpty() && yearMode && targetPeriod != null) {
-            val availableYears = statisticsRepository.getAvailablePeriods(userId, accountId, "years")
-            val latestYear = availableYears.firstOrNull()
-            if (latestYear != null && latestYear != targetPeriod) {
-                targetPeriod = latestYear
-                isCurrent = false
-                txnsForHighlights = allTransactions.filter { getPeriodString(it.dateTime) == targetPeriod }
+        // Look-back logic: if requested period is empty, find the most recent period of the same type with data
+        if (txnsForHighlights.isEmpty() && targetPeriod != null) {
+            val periodType = when {
+                weekMode -> "weeks"
+                monthMode -> "months"
+                yearMode -> "years"
+                else -> null
+            }
+            
+            if (periodType != null) {
+                val availablePeriods = statisticsRepository.getAvailablePeriods(userId, accountId, periodType)
+                val latestPeriod = availablePeriods.firstOrNull()
+                if (latestPeriod != null && latestPeriod != targetPeriod) {
+                    targetPeriod = latestPeriod
+                    isCurrent = false
+                    txnsForHighlights = allTransactions.filter { getPeriodString(it.dateTime) == targetPeriod }
+                }
             }
         }
 
