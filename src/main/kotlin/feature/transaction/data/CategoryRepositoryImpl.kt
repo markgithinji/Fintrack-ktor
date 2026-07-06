@@ -7,6 +7,7 @@ import feature.transaction.domain.model.Category
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import kotlinx.datetime.Clock
 import java.util.UUID
 
 class CategoryRepositoryImpl : CategoryRepository {
@@ -24,19 +25,22 @@ class CategoryRepositoryImpl : CategoryRepository {
     }
 
     override suspend fun add(category: Category): Category = dbQuery {
+        val now = Clock.System.now()
         val inserted = CategoriesTable.insert { row ->
-            row[id] = EntityID(UUID.randomUUID(), CategoriesTable)
+            row[id] = EntityID(category.id, CategoriesTable)
             row[userId] = EntityID(category.userId, UsersTable)
             row[name] = category.name
             row[isExpense] = category.isExpense
             row[iconName] = category.iconName
             row[isDefault] = category.isDefault
+            row[createdAt] = category.createdAt ?: now
         }.resultedValues?.singleOrNull() ?: throw IllegalStateException("Failed to insert category")
 
         inserted.toCategory()
     }
 
     override suspend fun addAll(categories: List<Category>): List<Category> = dbQuery {
+        val now = Clock.System.now()
         CategoriesTable.batchInsert(categories) { category ->
             this[CategoriesTable.id] = EntityID(category.id, CategoriesTable)
             this[CategoriesTable.userId] = EntityID(category.userId, UsersTable)
@@ -44,6 +48,7 @@ class CategoryRepositoryImpl : CategoryRepository {
             this[CategoriesTable.isExpense] = category.isExpense
             this[CategoriesTable.iconName] = category.iconName
             this[CategoriesTable.isDefault] = category.isDefault
+            this[CategoriesTable.createdAt] = category.createdAt ?: now
         }.map { it.toCategory() }
     }
 
@@ -60,6 +65,7 @@ class CategoryRepositoryImpl : CategoryRepository {
         name = this[CategoriesTable.name],
         isExpense = this[CategoriesTable.isExpense],
         iconName = this[CategoriesTable.iconName],
-        isDefault = this[CategoriesTable.isDefault]
+        isDefault = this[CategoriesTable.isDefault],
+        createdAt = this[CategoriesTable.createdAt]
     )
 }

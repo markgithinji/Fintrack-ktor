@@ -1,5 +1,6 @@
 package feature.transaction.domain.model
 
+import kotlinx.datetime.Instant
 import java.util.UUID
 
 data class Category(
@@ -8,5 +9,6 @@ data class Category(
     val name: String,
     val isExpense: Boolean,
     val iconName: String? = null,
-    val isDefault: Boolean = false
+    val isDefault: Boolean = false,
+    val createdAt: Instant? = null
 )

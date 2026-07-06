@@ -3,13 +3,16 @@ package feature.transaction.domain
 import feature.transaction.data.model.CategoryDto
 import feature.transaction.data.model.CreateCategoryRequest
 import feature.transaction.domain.model.Category
+import kotlinx.datetime.Clock
 import java.util.UUID
 
 class CategoryServiceImpl(
     private val repository: CategoryRepository
 ) : CategoryService {
     override suspend fun getAll(userId: UUID): List<CategoryDto> {
-        return repository.getAll(userId).map { it.toDto() }
+        return repository.getAll(userId)
+            .sortedBy { it.createdAt ?: Clock.System.now() }
+            .map { it.toDto() }
     }
 
     override suspend fun add(userId: UUID, request: CreateCategoryRequest): CategoryDto {
@@ -39,6 +42,7 @@ class CategoryServiceImpl(
         name = name,
         isExpense = isExpense,
         iconName = iconName,
-        isDefault = isDefault
+        isDefault = isDefault,
+        createdAt = createdAt
     )
 }

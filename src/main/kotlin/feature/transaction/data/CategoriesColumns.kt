@@ -6,4 +6,5 @@ object CategoriesColumns {
     const val IS_EXPENSE = "is_expense"
     const val ICON_NAME = "icon_name"
     const val IS_DEFAULT = "is_default"
+    const val CREATED_AT = "created_at"
 }

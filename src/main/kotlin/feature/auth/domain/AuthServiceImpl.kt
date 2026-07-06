@@ -217,10 +217,12 @@ class AuthServiceImpl(
             "Misc" to "HelpOutline"
         )
 
+        val baseTime = Instant.parse("2024-01-01T00:00:00Z")
+        var offset = 0
         val categories = incomeCategories.map { (name, icon) ->
-            Category(UUID.randomUUID(), userId, name, isExpense = false, iconName = icon, isDefault = true)
+            Category(UUID.randomUUID(), userId, name, isExpense = false, iconName = icon, isDefault = true, createdAt = baseTime.plus(kotlin.time.Duration.parse("${offset++}s")))
         } + expenseCategories.map { (name, icon) ->
-            Category(UUID.randomUUID(), userId, name, isExpense = true, iconName = icon, isDefault = true)
+            Category(UUID.randomUUID(), userId, name, isExpense = true, iconName = icon, isDefault = true, createdAt = baseTime.plus(kotlin.time.Duration.parse("${offset++}s")))
         }
 
         categoryRepository.addAll(categories)

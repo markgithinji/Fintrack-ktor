@@ -1,5 +1,6 @@
 package feature.transaction.data.model
 
+import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -8,5 +9,6 @@ data class CategoryDto(
     val name: String,
     val isExpense: Boolean,
     val iconName: String? = null,
-    val isDefault: Boolean = false
+    val isDefault: Boolean = false,
+    val createdAt: Instant? = null
 )
