@@ -14,6 +14,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
+import kotlinx.datetime.Clock
 import java.util.UUID
 
 class AccountsRepositoryImpl : AccountsRepository {
@@ -33,24 +34,29 @@ class AccountsRepositoryImpl : AccountsRepository {
 
     override suspend fun addAccount(account: Account): Account =
         dbQuery {
+            val now = Clock.System.now()
             val insertStatement = AccountsTable.insert { row ->
                 // UUIDTable automatically handles the ID, so we don't need to set it
                 row[AccountsTable.userId] = EntityID(account.userId, UsersTable)
                 row[AccountsTable.name] = account.name
                 row[AccountsTable.isDefault] = account.isDefault
                 row[AccountsTable.isMpesa] = account.isMpesa
+                row[AccountsTable.createdAt] = account.createdAt ?: now
             }
             val id = insertStatement[AccountsTable.id].value
-            account.copy(id = id)
+            val createdAt = insertStatement[AccountsTable.createdAt]
+            account.copy(id = id, createdAt = createdAt)
         }
 
     override suspend fun addAll(accounts: List<Account>): List<Account> =
         dbQuery {
+            val now = Clock.System.now()
             AccountsTable.batchInsert(accounts) { account ->
                 this[AccountsTable.userId] = EntityID(account.userId, UsersTable)
                 this[AccountsTable.name] = account.name
                 this[AccountsTable.isDefault] = account.isDefault
                 this[AccountsTable.isMpesa] = account.isMpesa
+                this[AccountsTable.createdAt] = account.createdAt ?: now
             }.map { toAccount(it) }
         }
 
@@ -111,6 +117,7 @@ class AccountsRepositoryImpl : AccountsRepository {
         userId = row[AccountsTable.userId].value,
         name = row[AccountsTable.name],
         isDefault = row[AccountsTable.isDefault],
-        isMpesa = row[AccountsTable.isMpesa]
+        isMpesa = row[AccountsTable.isMpesa],
+        createdAt = row[AccountsTable.createdAt]
     )
 }

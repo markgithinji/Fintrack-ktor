@@ -9,6 +9,7 @@ import com.fintrack.feature.summary.data.model.AccountAggregates
 import core.UnauthorizedAccessException
 import feature.accounts.data.toDomain
 import feature.accounts.data.toDto
+import kotlinx.datetime.Clock
 import java.util.UUID
 
 class AccountServiceImpl(
@@ -58,23 +59,13 @@ class AccountServiceImpl(
             )
         }
 
-        // Apply weighted sorting: M-Pesa (0), Bank (1), Other (2), Cash (3)
+        // Sort by creation date (ASC) so default accounts (with early timestamps) appear first
         val sortedResult = result.sortedWith { a, b ->
-            val weightA = when {
-                a.isMpesa == true || a.name.contains("mpesa", ignoreCase = true) -> 0
-                a.name.contains("bank", ignoreCase = true) -> 1
-                a.name.contains("cash", ignoreCase = true) -> 3
-                else -> 2
-            }
-            val weightB = when {
-                b.isMpesa == true || b.name.contains("mpesa", ignoreCase = true) -> 0
-                b.name.contains("bank", ignoreCase = true) -> 1
-                b.name.contains("cash", ignoreCase = true) -> 3
-                else -> 2
-            }
-
-            if (weightA != weightB) {
-                weightA.compareTo(weightB)
+            val timeA = a.createdAt ?: Clock.System.now()
+            val timeB = b.createdAt ?: Clock.System.now()
+            
+            if (timeA != timeB) {
+                timeA.compareTo(timeB)
             } else {
                 a.name.compareTo(b.name, ignoreCase = true)
             }

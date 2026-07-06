@@ -172,11 +172,11 @@ class AuthServiceImpl(
 
     private suspend fun createDefaultAccounts(userId: UUID) {
         val defaultAccounts = listOf(
-            Account(userId = userId, name = "Bank", isDefault = true),
-            Account(userId = userId, name = "Wallet", isDefault = true),
-            Account(userId = userId, name = "Cash", isDefault = true),
-            Account(userId = userId, name = "Savings", isDefault = true),
-            Account(userId = userId, name = "Mpesa", isDefault = true, isMpesa = true)
+            Account(userId = userId, name = "Mpesa", isDefault = true, isMpesa = true, createdAt = Instant.parse("2024-01-01T00:00:00Z")),
+            Account(userId = userId, name = "Bank", isDefault = true, createdAt = Instant.parse("2024-01-01T00:00:01Z")),
+            Account(userId = userId, name = "Wallet", isDefault = true, createdAt = Instant.parse("2024-01-01T00:00:02Z")),
+            Account(userId = userId, name = "Savings", isDefault = true, createdAt = Instant.parse("2024-01-01T00:00:03Z")),
+            Account(userId = userId, name = "Cash", isDefault = true, createdAt = Instant.parse("2024-01-01T00:00:04Z"))
         )
         accountsRepository.addAll(defaultAccounts)
     }

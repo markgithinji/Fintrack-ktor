@@ -1,5 +1,6 @@
 package com.fintrack.feature.accounts.data.model
 
+import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -10,5 +11,6 @@ data class AccountDto(
     val expense: Double,
     val balance: Double,
     val isDefault: Boolean = false,
-    val isMpesa: Boolean = false
+    val isMpesa: Boolean = false,
+    val createdAt: Instant? = null
 )

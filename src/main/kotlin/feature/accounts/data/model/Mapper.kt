@@ -13,7 +13,8 @@ fun Account.toDto(id: String, income: Double, expense: Double, balance: Double):
     expense = expense,
     balance = balance,
     isDefault = isDefault,
-    isMpesa = isMpesa
+    isMpesa = isMpesa,
+    createdAt = createdAt
 )
 
 fun CreateAccountRequest.toDomain(userId: UUID): Account = Account(
