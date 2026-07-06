@@ -1,11 +1,15 @@
 package feature.auth.di
 
 import feature.auth.data.ExposedRefreshTokenRepository
+import feature.auth.data.ExposedEmailVerificationRepository
 import feature.auth.data.RedisTokenBlacklistService
 import feature.auth.domain.TokenBlacklistService
 import feature.auth.domain.AuthService
 import feature.auth.domain.AuthServiceImpl
 import feature.auth.domain.RefreshTokenRepository
+import feature.auth.domain.EmailVerificationRepository
+import com.fintrack.core.EmailService
+import com.fintrack.core.LogEmailService
 import org.koin.dsl.module
 import redis.clients.jedis.JedisPool
 import redis.clients.jedis.JedisPoolConfig
@@ -25,5 +29,7 @@ val authModule = module {
     
     single<TokenBlacklistService> { RedisTokenBlacklistService(get()) }
     single<RefreshTokenRepository> { ExposedRefreshTokenRepository() }
+    single<EmailVerificationRepository> { ExposedEmailVerificationRepository() }
+    single<EmailService> { LogEmailService() }
     single<AuthService> { AuthServiceImpl(get(), get(), get(), get(), get()) }
 }

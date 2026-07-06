@@ -4,10 +4,12 @@ import com.fintrack.core.info
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.core.userIdOrThrow
+import com.fintrack.core.domain.ApiResponse
 import com.fintrack.feature.auth.domain.AuthValidationResponse
 import feature.auth.data.model.ChangePasswordRequest
 import feature.auth.data.model.RefreshRequest
 import feature.auth.domain.AuthService
+import feature.user.domain.UserService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.plugins.origin
@@ -20,10 +22,19 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import com.fintrack.plugins.withAuthRateLimit
 
-fun Route.authRoutes(authService: AuthService) {
+fun Route.authRoutes(authService: AuthService, userService: UserService) {
     val log = logger("AuthRoutes")
 
     route("/auth") {
+        get("/verify-email-change") {
+            val token = call.request.queryParameters["token"]
+                ?: throw IllegalArgumentException("Token is required")
+
+            userService.verifyEmailChange(token)
+
+            call.respond(HttpStatusCode.OK, ApiResponse.Success("Email verified and updated successfully"))
+        }
+
         withAuthRateLimit {
             post("/register") {
                 val request = call.receive<AuthRequest>()

@@ -9,12 +9,19 @@ import com.fintrack.feature.user.domain.User
 import feature.user.data.model.CreateUserRequest
 import feature.user.data.model.UpdateUserRequest
 import feature.user.data.model.UserDto
+import com.fintrack.core.EmailService
+import feature.auth.domain.EmailVerificationRepository
+import feature.auth.domain.EmailVerificationToken
+import kotlinx.datetime.Clock
+import kotlin.time.Duration.Companion.hours
 import org.mindrot.jbcrypt.BCrypt
 import java.util.UUID
 
 class UserServiceImpl(
     private val userRepository: UserRepository,
-    private val accountsRepository: AccountsRepository
+    private val accountsRepository: AccountsRepository,
+    private val emailService: EmailService,
+    private val emailVerificationRepository: EmailVerificationRepository
 ) : UserService {
 
     private val log = logger<UserServiceImpl>()
@@ -48,7 +55,7 @@ class UserServiceImpl(
         }
 
         // Check if email is taken
-        if (request.email != null && request.email != existingUser.email) {
+        val updated = if (request.email != null && request.email != existingUser.email) {
             if (userRepository.userExists(request.email)) {
                 log.withContext(
                     "userId" to userId,
@@ -57,9 +64,27 @@ class UserServiceImpl(
                 ).warn { "User update failed - email already taken" }
                 throw IllegalArgumentException("Email '${request.email}' is already taken")
             }
-        }
 
-        val updated = userRepository.updateUser(userId, request.name, request.email, request.password)
+            // Handle email verification flow
+            val verificationToken = UUID.randomUUID().toString()
+            val token = EmailVerificationToken(
+                userId = userId,
+                newEmail = request.email,
+                token = verificationToken,
+                expiresAt = Clock.System.now().plus(24.hours)
+            )
+
+            emailVerificationRepository.deleteByUserId(userId) // Revoke any pending ones
+            emailVerificationRepository.saveToken(token)
+            emailService.sendVerificationEmail(request.email, verificationToken)
+
+            log.withContext("userId" to userId, "newEmail" to request.email).info { "Email change verification requested" }
+
+            // Continue with other updates but DON'T update email yet
+            userRepository.updateUser(userId, request.name, null, request.password)
+        } else {
+            userRepository.updateUser(userId, request.name, request.email, request.password)
+        }
 
         if (!updated) {
             log.withContext("userId" to userId).warn { "User update failed" }
@@ -85,6 +110,30 @@ class UserServiceImpl(
         }
 
         return getUserProfile(userId)
+    }
+
+    override suspend fun verifyEmailChange(token: String): UserDto {
+        val verificationToken = emailVerificationRepository.findByToken(token)
+            ?: throw IllegalArgumentException("Invalid or expired verification token")
+
+        if (verificationToken.expiresAt < Clock.System.now()) {
+            emailVerificationRepository.deleteByToken(token)
+            throw IllegalArgumentException("Verification token has expired")
+        }
+
+        // Check if email is still available
+        if (userRepository.userExists(verificationToken.newEmail)) {
+            emailVerificationRepository.deleteByUserId(verificationToken.userId)
+            throw IllegalArgumentException("Email '${verificationToken.newEmail}' is no longer available")
+        }
+
+        userRepository.updateEmail(verificationToken.userId, verificationToken.newEmail)
+        emailVerificationRepository.deleteByUserId(verificationToken.userId)
+
+        log.withContext("userId" to verificationToken.userId, "newEmail" to verificationToken.newEmail)
+            .info { "Email verified and updated successfully" }
+
+        return getUserProfile(verificationToken.userId)
     }
 
     override suspend fun deleteUser(userId: UUID) {

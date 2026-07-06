@@ -40,7 +40,7 @@ fun Application.configureRouting() {
         monitoringRoutes(healthService)
 
         // Authentication endpoints
-        authenticationRoutes(authService)
+        authenticationRoutes(authService, userService)
 
         // Business API endpoints
         apiRoutes(accountService, transactionService, categoryService, statisticsService, budgetService, userService)
@@ -54,8 +54,8 @@ fun Routing.monitoringRoutes(healthService: HealthService) {
     }
 }
 
-fun Routing.authenticationRoutes(authService: AuthService) {
-    authRoutes(authService)
+fun Routing.authenticationRoutes(authService: AuthService, userService: UserService) {
+    authRoutes(authService, userService)
 }
 
 fun Routing.apiRoutes(

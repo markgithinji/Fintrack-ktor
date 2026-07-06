@@ -38,7 +38,8 @@ class UserRepositoryImpl : UserRepository {
                         email = it[UsersTable.email],
                         name = it[UsersTable.name],
                         passwordHash = it[UsersTable.passwordHash],
-                        trackedCategories = it[UsersTable.trackedCategories]
+                        trackedCategories = it[UsersTable.trackedCategories],
+                        isEmailVerified = it[UsersTable.isEmailVerified]
                     )
                 }
         }
@@ -53,7 +54,8 @@ class UserRepositoryImpl : UserRepository {
                         email = it[UsersTable.email],
                         name = it[UsersTable.name],
                         passwordHash = it[UsersTable.passwordHash],
-                        trackedCategories = it[UsersTable.trackedCategories]
+                        trackedCategories = it[UsersTable.trackedCategories],
+                        isEmailVerified = it[UsersTable.isEmailVerified]
                     )
                 }
         }
@@ -82,6 +84,21 @@ class UserRepositoryImpl : UserRepository {
             val hashed = PasswordHasher.hash(newPassword)
             UsersTable.update({ UsersTable.id eq EntityID(userId, UsersTable) }) {
                 it[UsersTable.passwordHash] = hashed
+            } > 0
+        }
+
+    override suspend fun updateEmail(userId: UUID, newEmail: String): Boolean =
+        dbQuery {
+            UsersTable.update({ UsersTable.id eq EntityID(userId, UsersTable) }) {
+                it[UsersTable.email] = newEmail
+                it[UsersTable.isEmailVerified] = true
+            } > 0
+        }
+
+    override suspend fun updateEmailVerificationStatus(userId: UUID, isVerified: Boolean): Boolean =
+        dbQuery {
+            UsersTable.update({ UsersTable.id eq EntityID(userId, UsersTable) }) {
+                it[UsersTable.isEmailVerified] = isVerified
             } > 0
         }
 

@@ -11,6 +11,8 @@ interface UserRepository {
     suspend fun updateUser(userId: UUID, name: String?, email: String?, password: String?): Boolean
     suspend fun updateTrackedCategories(userId: UUID, categories: List<String>): Boolean
     suspend fun updatePassword(userId: UUID, newPassword: String): Boolean
+    suspend fun updateEmail(userId: UUID, newEmail: String): Boolean
+    suspend fun updateEmailVerificationStatus(userId: UUID, isVerified: Boolean): Boolean
     suspend fun deleteUser(userId: UUID): Boolean
     suspend fun userExists(email: String): Boolean
 }

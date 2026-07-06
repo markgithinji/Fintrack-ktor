@@ -9,4 +9,5 @@ object UsersTable : UUIDTable(TableNames.USERS) {
     val name = varchar(UsersColumns.NAME, 100)
     val passwordHash = varchar(UsersColumns.PASSWORD_HASH, 255)
     val trackedCategories = text("tracked_categories").nullable()
+    val isEmailVerified = bool("is_email_verified").default(false)
 }
