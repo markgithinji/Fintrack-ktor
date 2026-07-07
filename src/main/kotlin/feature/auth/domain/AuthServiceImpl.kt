@@ -214,6 +214,7 @@ class AuthServiceImpl(
             "Pets" to "Pets",
             "Fitness" to "FitnessCenter",
             "Maintenance" to "Build",
+            "Transaction Fees" to "Receipt",
             "Misc" to "HelpOutline"
         )
 

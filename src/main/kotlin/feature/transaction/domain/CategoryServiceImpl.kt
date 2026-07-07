@@ -16,10 +16,21 @@ class CategoryServiceImpl(
     }
 
     override suspend fun add(userId: UUID, request: CreateCategoryRequest): CategoryDto {
+        val trimmedName = request.name.trim()
+
+        // Prevent duplicate names (case-insensitive) for the same user and type
+        val existing = repository.getAll(userId).find {
+            it.name.equals(trimmedName, ignoreCase = true) && it.isExpense == request.isExpense
+        }
+
+        if (existing != null) {
+            return existing.toDto()
+        }
+
         val category = Category(
             id = UUID.randomUUID(),
             userId = userId,
-            name = request.name,
+            name = trimmedName,
             isExpense = request.isExpense,
             iconName = request.iconName
         )

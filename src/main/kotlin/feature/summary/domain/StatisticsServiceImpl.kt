@@ -342,7 +342,7 @@ class StatisticsServiceImpl(
 
         val comparisons = if (trackedCategories.isNotEmpty() && !isBackupMonth) {
             trackedCategories.map { category ->
-                if (category == "Transaction Cost") {
+                if (category == "Transaction Fees" || category == "Transaction Cost") {
                     calculateTransactionCostComparison(userId, accountId, currentMonthStart, currentMonthEnd, previousMonthStart, previousMonthEnd, thisWeekStart, thisWeekEnd, lastWeekStart, lastWeekEnd)
                 } else {
                     val isInc = allTimeIncomeCategories.contains(category) || thisMonthIncomeTotals.containsKey(category)
@@ -368,9 +368,9 @@ class StatisticsServiceImpl(
             }
         } else {
             // Fallback: Automatic Discovery strictly within targetMonth
-            val topExpenseCategory = thisMonthExpenseTotals.keys.filter { it != "Transaction Cost" }
+            val topExpenseCategory = thisMonthExpenseTotals.keys.filter { it != "Transaction Fees" && it != "Transaction Cost" }
                 .maxByOrNull { thisMonthExpenseTotals[it] ?: 0.0 }
-                ?: lastMonthExpenseTotals.keys.filter { it != "Transaction Cost" }
+                ?: lastMonthExpenseTotals.keys.filter { it != "Transaction Fees" && it != "Transaction Cost" }
                 .maxByOrNull { lastMonthExpenseTotals[it] ?: 0.0 }
 
             val topIncomeCategory = thisMonthIncomeTotals.keys
@@ -461,7 +461,7 @@ class StatisticsServiceImpl(
         }
 
         return CategoryComparisonDto(
-            category = "Transaction Cost",
+            category = "Transaction Fees",
             currentTotal = curCost,
             previousTotal = prevCost,
             changePercentage = calculateChange(curCost, prevCost),
