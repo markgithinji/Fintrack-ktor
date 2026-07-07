@@ -15,11 +15,14 @@ data class Highlights(
     val highestMonth: Highlight? = null,
     val highestCategory: Highlight? = null,
     val highestDay: Highlight? = null,
-    val averagePerDay: Double = 0.0
+    val averagePerDay: Double = 0.0,
+    val ytdChangePercentage: Double? = null,
+    val projectedTotal: Double? = null
 )
 
 data class Highlight(
     val label: String = "",
     val value: String = "",
-    val amount: Double = 0.0
+    val amount: Double = 0.0,
+    val volatilityPercentage: Double? = null
 )

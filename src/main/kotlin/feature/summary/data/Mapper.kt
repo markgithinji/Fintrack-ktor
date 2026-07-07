@@ -39,11 +39,18 @@ fun Highlights.toDto(): HighlightsDto = HighlightsDto(
     highestMonth = highestMonth?.toDto(),
     highestCategory = highestCategory?.toDto(),
     highestDay = highestDay?.toDto(),
-    averagePerDay = averagePerDay
+    averagePerDay = averagePerDay,
+    ytdChangePercentage = ytdChangePercentage,
+    projectedTotal = projectedTotal
 )
 
 fun Highlight.toDto(): HighlightDto =
-    HighlightDto(label = label, value = value, amount = amount)
+    HighlightDto(
+        label = label,
+        value = value,
+        amount = amount,
+        volatilityPercentage = volatilityPercentage
+    )
 
 
 // Distribution summary

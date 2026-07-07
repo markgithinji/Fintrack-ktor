@@ -50,26 +50,26 @@ class StatisticsServiceImpl(
         var targetPeriod = period
         var isCurrent = true
 
-        val weekMode = targetPeriod?.contains("W") == true
-        val yearMode = targetPeriod != null && !weekMode && targetPeriod.length == 4
-        val monthMode = targetPeriod != null && !weekMode && !yearMode
+        val initialWeekMode = targetPeriod?.contains("W") == true
+        val initialYearMode = targetPeriod != null && !initialWeekMode && targetPeriod.length == 4
+        val initialMonthMode = targetPeriod != null && !initialWeekMode && !initialYearMode
 
-        fun getPeriodString(dateTime: Instant): String {
+        fun getPeriodString(dateTime: Instant, week: Boolean, month: Boolean, year: Boolean): String {
             val dt = dateTime.toLocalDateTime(TimeZone.UTC)
             return when {
-                weekMode -> {
+                week -> {
                     val javaDateTime = dt.toJavaLocalDateTime()
-                    val week = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
-                    "${javaDateTime.year}-W${week.toString().padStart(2, '0')}"
+                    val w = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
+                    "${javaDateTime.year}-W${w.toString().padStart(2, '0')}"
                 }
-                monthMode -> "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
-                yearMode -> dt.year.toString()
+                month -> "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
+                year -> dt.year.toString()
                 else -> ""
             }
         }
 
         var txnsForHighlights = if (targetPeriod != null) {
-            allTransactions.filter { getPeriodString(it.dateTime) == targetPeriod }
+            allTransactions.filter { getPeriodString(it.dateTime, initialWeekMode, initialMonthMode, initialYearMode) == targetPeriod }
         } else {
             allTransactions
         }
@@ -77,9 +77,9 @@ class StatisticsServiceImpl(
         // Look-back logic: if requested period is empty, find the most recent period of the same type with data
         if (txnsForHighlights.isEmpty() && targetPeriod != null) {
             val periodType = when {
-                weekMode -> "weeks"
-                monthMode -> "months"
-                yearMode -> "years"
+                initialWeekMode -> "weeks"
+                initialMonthMode -> "months"
+                initialYearMode -> "years"
                 else -> null
             }
             
@@ -89,17 +89,77 @@ class StatisticsServiceImpl(
                 if (latestPeriod != null && latestPeriod != targetPeriod) {
                     targetPeriod = latestPeriod
                     isCurrent = false
-                    txnsForHighlights = allTransactions.filter { getPeriodString(it.dateTime) == targetPeriod }
+                    // Filter using the same mode but the new target period
+                    txnsForHighlights = allTransactions.filter { 
+                        getPeriodString(it.dateTime, initialWeekMode, initialMonthMode, initialYearMode) == targetPeriod 
+                    }
                 }
             }
         }
+
+        // Final mode determination based on whatever targetPeriod ended up being
+        val weekMode = targetPeriod?.contains("W") == true
+        val yearMode = targetPeriod != null && !weekMode && targetPeriod.length == 4
+        val monthMode = targetPeriod != null && !weekMode && !yearMode
 
         log.withContext(
             "userId" to userId,
             "transactionCount" to txnsForHighlights.size,
             "targetPeriod" to targetPeriod,
-            "isCurrent" to isCurrent
+            "isCurrent" to isCurrent,
+            "yearMode" to yearMode
         ).debug { "Retrieved transactions for statistics highlights" }
+
+        var ytdIncomeChange: Double? = null
+        var ytdExpenseChange: Double? = null
+        var incomeProjectedTotal: Double? = null
+        var expenseProjectedTotal: Double? = null
+        var prevIncomeByCat: Map<String, Double>? = null
+        var prevExpenseByCat: Map<String, Double>? = null
+
+        if (yearMode && targetPeriod != null) {
+            val requestedYear = targetPeriod.toIntOrNull()
+            if (requestedYear != null) {
+                val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+                val isCurrentYear = requestedYear == now.year
+                val lastYear = requestedYear - 1
+
+                val (currentStart, currentEnd) = if (isCurrentYear) {
+                    LocalDate(requestedYear, 1, 1) to now.date
+                } else {
+                    LocalDate(requestedYear, 1, 1) to LocalDate(requestedYear, 12, 31)
+                }
+
+                val (prevStart, prevEnd) = if (isCurrentYear) {
+                    val month = now.monthNumber
+                    val day = now.dayOfMonth
+                    val lastYearDay = if (month == 2 && day == 29) 28 else day
+                    LocalDate(lastYear, 1, 1) to LocalDate(lastYear, month, lastYearDay)
+                } else {
+                    LocalDate(lastYear, 1, 1) to LocalDate(lastYear, 12, 31)
+                }
+
+                val currentIncomeByCat = statisticsRepository.getCategoryTotals(userId, currentStart, currentEnd, accountId, true)
+                val currentExpenseByCat = statisticsRepository.getCategoryTotals(userId, currentStart, currentEnd, accountId, false)
+
+                prevIncomeByCat = statisticsRepository.getCategoryTotals(userId, prevStart, prevEnd, accountId, true)
+                prevExpenseByCat = statisticsRepository.getCategoryTotals(userId, prevStart, prevEnd, accountId, false)
+
+                val currentIncomeTotal = currentIncomeByCat.values.sum()
+                val currentExpenseTotal = currentExpenseByCat.values.sum()
+                val prevIncomeTotal = prevIncomeByCat.values.sum()
+                val prevExpenseTotal = prevExpenseByCat.values.sum()
+
+                ytdIncomeChange = calculateChange(currentIncomeTotal, prevIncomeTotal)
+                ytdExpenseChange = calculateChange(currentExpenseTotal, prevExpenseTotal)
+
+                if (isCurrentYear) {
+                    val monthNumber = now.monthNumber.coerceAtLeast(1)
+                    incomeProjectedTotal = (currentIncomeTotal / monthNumber) * 12
+                    expenseProjectedTotal = (currentExpenseTotal / monthNumber) * 12
+                }
+            }
+        }
 
         val incomeTxns = txnsForHighlights.filter { it.isIncome }
         val expenseTxns = txnsForHighlights.filter { !it.isIncome }
@@ -113,7 +173,7 @@ class StatisticsServiceImpl(
                 .maxByOrNull { it.value }
                 ?.let { HighlightDto(label = it.key, value = it.key, amount = it.value) }
 
-        fun highestCategory(txns: List<Transaction>) =
+        fun highestCategory(txns: List<Transaction>, prevTotals: Map<String, Double>?) =
             txns.groupBy { it.category.trim().lowercase() }
                 .mapValues { it.value.sumOf { t -> t.totalAmount } }
                 .maxByOrNull { it.value }
@@ -121,7 +181,18 @@ class StatisticsServiceImpl(
                     val displayName =
                         txns.firstOrNull { it.category.trim().lowercase() == entry.key }?.category
                             ?: entry.key
-                    HighlightDto(label = displayName, value = displayName, amount = entry.value)
+                    
+                    val volatility = prevTotals?.let { totals ->
+                        val prevAmount = totals.entries.find { it.key.trim().lowercase() == entry.key }?.value ?: 0.0
+                        calculateChange(entry.value, prevAmount)
+                    }
+
+                    HighlightDto(
+                        label = displayName,
+                        value = displayName,
+                        amount = entry.value,
+                        volatilityPercentage = volatility
+                    )
                 }
 
         fun highestDay(txns: List<Transaction>) =
@@ -144,15 +215,19 @@ class StatisticsServiceImpl(
 
         val incomeHighlights = HighlightsDto(
             highestMonth = highestMonth(incomeTxns),
-            highestCategory = highestCategory(incomeTxns),
+            highestCategory = highestCategory(incomeTxns, prevIncomeByCat),
             highestDay = highestDay(incomeTxns),
-            averagePerDay = averagePerDay(incomeTxns)
+            averagePerDay = averagePerDay(incomeTxns),
+            ytdChangePercentage = ytdIncomeChange,
+            projectedTotal = incomeProjectedTotal
         )
         val expenseHighlights = HighlightsDto(
             highestMonth = highestMonth(expenseTxns),
-            highestCategory = highestCategory(expenseTxns),
+            highestCategory = highestCategory(expenseTxns, prevExpenseByCat),
             highestDay = highestDay(expenseTxns),
-            averagePerDay = averagePerDay(expenseTxns)
+            averagePerDay = averagePerDay(expenseTxns),
+            ytdChangePercentage = ytdExpenseChange,
+            projectedTotal = expenseProjectedTotal
         )
 
         return StatisticsSummaryDto(
