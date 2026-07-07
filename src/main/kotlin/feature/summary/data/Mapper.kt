@@ -5,6 +5,7 @@ import feature.summary.data.model.AvailableWeeksDto
 import feature.summary.data.model.AvailableYearsDto
 import feature.summary.data.model.CategoryComparisonDto
 import feature.summary.data.model.CategorySummaryDto
+import feature.summary.data.model.CorrelationDto
 import feature.summary.data.model.DistributionSummaryDto
 import feature.summary.data.model.DaySummaryDto
 import feature.summary.data.model.HighlightDto
@@ -13,6 +14,7 @@ import feature.summary.data.model.OverviewSummaryDto
 import feature.summary.data.model.StatisticsSummaryDto
 import feature.summary.domain.model.CategoryComparison
 import feature.summary.domain.model.CategorySummary
+import feature.summary.domain.model.Correlation
 import feature.summary.domain.model.DaySummary
 import feature.summary.domain.model.DistributionSummary
 import feature.summary.domain.model.OverviewSummary
@@ -41,7 +43,17 @@ fun Highlights.toDto(): HighlightsDto = HighlightsDto(
     highestDay = highestDay?.toDto(),
     averagePerDay = averagePerDay,
     ytdChangePercentage = ytdChangePercentage,
-    projectedTotal = projectedTotal
+    projectedTotal = projectedTotal,
+    savingsRate = savingsRate,
+    essentialSpendRatio = essentialSpendRatio,
+    projectedExceedMonth = projectedExceedMonth,
+    correlations = correlations?.map { it.toDto() }
+)
+
+fun Correlation.toDto(): CorrelationDto = CorrelationDto(
+    source = source,
+    target = target,
+    insight = insight
 )
 
 fun Highlight.toDto(): HighlightDto =
@@ -57,11 +69,20 @@ fun Highlight.toDto(): HighlightDto =
 fun DistributionSummary.toDto(): DistributionSummaryDto = DistributionSummaryDto(
     period = period,
     incomeCategories = incomeCategories.map { it.toDto() },
-    expenseCategories = expenseCategories.map { it.toDto() }
+    expenseCategories = expenseCategories.map { it.toDto() },
+    othersInsightSummary = othersInsightSummary
 )
 
 fun CategorySummary.toDto(): CategorySummaryDto =
-    CategorySummaryDto(category = category, total = total, percentage = percentage)
+    CategorySummaryDto(
+        category = category,
+        total = total,
+        percentage = percentage,
+        transactionCount = transactionCount,
+        averageTransactionCount = averageTransactionCount,
+        momentumTrend = momentumTrend,
+        topDescriptionInsights = topDescriptionInsights
+    )
 
 // Overview summary
 fun OverviewSummary.toDto() = OverviewSummaryDto(

@@ -1,7 +1,6 @@
 package feature.summary.data.model
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerialName
 
 @Serializable
 data class StatisticsSummaryDto(
@@ -21,8 +20,19 @@ data class HighlightsDto(
     val highestCategory: HighlightDto? = null,
     val highestDay: HighlightDto? = null,
     val averagePerDay: Double = 0.0,
-    @SerialName("ytd_change_percentage") val ytdChangePercentage: Double? = null,
-    @SerialName("projected_total") val projectedTotal: Double? = null
+    val ytdChangePercentage: Double? = null,
+    val projectedTotal: Double? = null,
+    val savingsRate: Double? = null,
+    val essentialSpendRatio: Double? = null,
+    val projectedExceedMonth: String? = null,
+    val correlations: List<CorrelationDto>? = null
+)
+
+@Serializable
+data class CorrelationDto(
+    val source: String,
+    val target: String,
+    val insight: String
 )
 
 @Serializable
@@ -30,5 +40,5 @@ data class HighlightDto(
     val label: String = "",
     val value: String = "",
     val amount: Double = 0.0,
-    @SerialName("volatility_percentage") val volatilityPercentage: Double? = null
+    val volatilityPercentage: Double? = null
 )

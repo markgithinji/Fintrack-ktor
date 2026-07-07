@@ -17,7 +17,17 @@ data class Highlights(
     val highestDay: Highlight? = null,
     val averagePerDay: Double = 0.0,
     val ytdChangePercentage: Double? = null,
-    val projectedTotal: Double? = null
+    val projectedTotal: Double? = null,
+    val savingsRate: Double? = null,
+    val essentialSpendRatio: Double? = null,
+    val projectedExceedMonth: String? = null,
+    val correlations: List<Correlation>? = null
+)
+
+data class Correlation(
+    val source: String,
+    val target: String,
+    val insight: String
 )
 
 data class Highlight(

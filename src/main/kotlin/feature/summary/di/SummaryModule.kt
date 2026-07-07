@@ -8,5 +8,5 @@ import org.koin.dsl.module
 
 val summaryModule = module {
     single<StatisticsRepository> { StatisticsRepositoryImpl() }
-    single<StatisticsService> { StatisticsServiceImpl(get(), get()) }
+    single<StatisticsService> { StatisticsServiceImpl(get(), get(), get()) }
 }
