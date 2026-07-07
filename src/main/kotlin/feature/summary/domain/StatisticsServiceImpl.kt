@@ -4,7 +4,6 @@ import com.fintrack.core.*
 import feature.summary.data.model.*
 import core.ValidationException
 import feature.budget.domain.BudgetRepository
-import feature.transaction.Budget
 import feature.transaction.domain.model.Transaction
 import feature.user.domain.UserRepository
 import kotlinx.datetime.Clock
@@ -86,7 +85,6 @@ class StatisticsServiceImpl(
             allTransactions
         }
 
-        // Look-back logic: if requested period is empty, find the most recent period of the same type with data
         if (txnsForHighlights.isEmpty() && targetPeriod != null) {
             val periodType = when {
                 initialWeekMode -> "weeks"
@@ -101,7 +99,6 @@ class StatisticsServiceImpl(
                 if (latestPeriod != null && latestPeriod != targetPeriod) {
                     targetPeriod = latestPeriod
                     isCurrent = false
-                    // Filter using the same mode but the new target period
                     txnsForHighlights = allTransactions.filter { 
                         getPeriodString(it.dateTime, initialWeekMode, initialMonthMode, initialYearMode) == targetPeriod 
                     }
@@ -109,7 +106,6 @@ class StatisticsServiceImpl(
             }
         }
 
-        // Final mode determination based on whatever targetPeriod ended up being
         val weekMode = targetPeriod?.contains("W") == true
         val yearMode = targetPeriod != null && !weekMode && targetPeriod.length == 4
         val monthMode = targetPeriod != null && !weekMode && !yearMode
@@ -237,7 +233,7 @@ class StatisticsServiceImpl(
 
         var projectedExceedMonth: String? = null
         if (yearMode && expenseProjectedTotal != null && targetPeriod != null) {
-            val budgets = budgetRepository.getAllByUser(userId, accountId).filter { !it.isExpense }
+            val budgets = budgetRepository.getAllByUser(userId, accountId).filter { it.isExpense }
             val totalMonthlyLimit = budgets.sumOf { it.limit }
             val yearlyLimit = totalMonthlyLimit * 12
 
@@ -306,7 +302,6 @@ class StatisticsServiceImpl(
                             val currExp = currMonth.second[cat] ?: 0.0
                             val nextExp = nextMonth?.second?.get(cat) ?: 0.0
 
-                            // Check same month
                             if (prevExp > 0 && (currExp - prevExp) / prevExp > 0.15) {
                                 val incPct = (incomeIncrease * 100).toInt()
                                 val expPct = (((currExp - prevExp) / prevExp) * 100).toInt()
@@ -318,7 +313,6 @@ class StatisticsServiceImpl(
                                     )
                                 )
                             }
-                            // Check following month
                             else if (currExp > 0 && nextExp > 0 && (nextExp - currExp) / currExp > 0.15) {
                                 val incPct = (incomeIncrease * 100).toInt()
                                 val expPct = (((nextExp - currExp) / currExp) * 100).toInt()
@@ -456,14 +450,13 @@ class StatisticsServiceImpl(
             }.sortedByDescending { it.third }
 
             val topCategories = sortedCategories.take(5)
-            log.debug { "Top categories: ${topCategories.map { it.first }}" }
             val otherCategories = sortedCategories.drop(5)
 
             if (otherCategories.isNotEmpty()) {
                 val othersTxns = otherCategories.flatMap { it.second }
-                othersInsight = othersTxns.mapNotNull { it.description }
-                    .filter { it.isNotBlank() }
-                    .groupBy { it.trim() }
+                othersInsight = othersTxns
+                    .mapNotNull { if (isDescriptionMeaningful(it.description, it.category)) cleanMerchantName(it.description!!) else null }
+                    .groupBy { it }
                     .maxByOrNull { it.value.size }
                     ?.key
             }
@@ -482,9 +475,9 @@ class StatisticsServiceImpl(
                     }
                 } else null
 
-                val insights = list.mapNotNull { it.description }
-                    .filter { it.isNotBlank() }
-                    .groupBy { it.trim() }
+                val insights = list
+                    .mapNotNull { if (isDescriptionMeaningful(it.description, displayName)) cleanMerchantName(it.description!!) else null }
+                    .groupBy { it }
                     .mapValues { it.value.size }
                     .entries
                     .sortedByDescending { it.value }
@@ -533,7 +526,6 @@ class StatisticsServiceImpl(
         val targetMonthCode = availableMonths.firstOrNull() ?: currentMonthCode
         val isCurrent = targetMonthCode == currentMonthCode
 
-        // Parse target period to date ranges
         val parts = targetMonthCode.split("-")
         val year = parts[0].toInt()
         val month = parts[1].toInt()
@@ -541,7 +533,6 @@ class StatisticsServiceImpl(
         val monthStart = LocalDate(year, month, 1)
         val monthEnd = monthStart.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
 
-        // Determine ends for trends
         val trendEnd = if (isCurrent) now else monthEnd
         val weeklyStart = trendEnd.minus(DatePeriod(days = 6))
         val monthlyStart = trendEnd.minus(DatePeriod(days = 29))
@@ -592,14 +583,12 @@ class StatisticsServiceImpl(
         val isCurrent = targetPeriod == currentMonthCode
         val isBackupMonth = period == null && !isCurrent
 
-        // Parse target period to date ranges
         val (year, month) = targetPeriod.split("-").map { it.toInt() }
         val currentMonthStart = LocalDate(year, month, 1)
         val currentMonthEnd = currentMonthStart.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
         val previousMonthStart = currentMonthStart.minus(DatePeriod(months = 1))
         val previousMonthEnd = currentMonthStart.minus(DatePeriod(days = 1))
 
-        // Weekly context: Latest 7 days within the target month (or just latest 7 days if it's current month)
         val thisWeekEnd = if (isCurrent) now else currentMonthEnd
         val thisWeekStart = thisWeekEnd.minus(DatePeriod(days = 6))
         val lastWeekStart = thisWeekStart.minus(DatePeriod(days = 7))
@@ -616,7 +605,6 @@ class StatisticsServiceImpl(
         val user = userRepository.findById(userId)
         val trackedCategories = user?.trackedCategories?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
 
-        // Fetch all-time income categories to correctly identify category type in tracked branch
         val allTimeIncomeCategories = if (trackedCategories.isNotEmpty()) {
             statisticsRepository.getCategoryTotals(userId, null, null, accountId, isIncome = true).keys
         } else emptySet()
@@ -648,7 +636,6 @@ class StatisticsServiceImpl(
                 }
             }
         } else {
-            // Fallback: Automatic Discovery strictly within targetMonth
             val topExpenseCategory = thisMonthExpenseTotals.keys.filter { it != "Transaction Fees" && it != "Transaction Cost" }
                 .maxByOrNull { thisMonthExpenseTotals[it] ?: 0.0 }
                 ?: lastMonthExpenseTotals.keys.filter { it != "Transaction Fees" && it != "Transaction Cost" }
@@ -661,7 +648,6 @@ class StatisticsServiceImpl(
 
             val results = mutableListOf<CategoryComparisonDto>()
 
-            // Ensure an Income result is always present (Snapshot requirement)
             val incomeCategory = topIncomeCategory ?: "Salary"
             val curInc = thisMonthIncomeTotals[incomeCategory] ?: 0.0
             val prevInc = lastMonthIncomeTotals[incomeCategory] ?: 0.0
@@ -679,7 +665,6 @@ class StatisticsServiceImpl(
                 weeklyChangePercentage = calculateChange(weekCurInc, weekPrevInc)
             ))
 
-            // Ensure an Expense/Cost result is always present
             if (topExpenseCategory != null) {
                 val curExp = thisMonthExpenseTotals[topExpenseCategory] ?: 0.0
                 val prevExp = lastMonthExpenseTotals[topExpenseCategory] ?: 0.0
@@ -781,5 +766,52 @@ class StatisticsServiceImpl(
         val end = endDate?.let { LocalDate.parse(it).atTime(LocalTime(23, 59, 59)).toInstant(TimeZone.UTC) }
         if (start != null && end != null && start > end) throw ValidationException("Start date cannot be after end date")
         return start to end
+    }
+
+    private fun isDescriptionMeaningful(description: String?, categoryName: String): Boolean {
+        if (description.isNullOrBlank()) return false
+        val cleaned = cleanMerchantName(description)
+
+        if (cleaned.length < 3) return false
+
+        if (cleaned.all { it.isDigit() || it == '-' || it == '.' || it == ':' || it == '#' || it == '/' || it == ' ' }) return false
+
+        val normalizedCategory = categoryName.lowercase().replace(" ", "").replace("-", "")
+        val normalizedDesc = cleaned.lowercase().replace(" ", "").replace("-", "")
+
+        if (normalizedDesc == normalizedCategory) return false
+
+        if (normalizedDesc.contains(normalizedCategory) || normalizedCategory.contains(normalizedDesc)) {
+            val lengthDiff = kotlin.math.abs(normalizedDesc.length - normalizedCategory.length)
+            if (lengthDiff <= 3) return false
+        }
+
+        return true
+    }
+
+    private fun cleanMerchantName(description: String): String {
+        // 1. Remove common reference labels like "Ref:", "Reference:", etc.
+        var cleaned = description.replace(Regex("(?i)\\b(Ref|Reference|Ref No|Ref#|Ref ID)[:.]?\\s*"), "").trim()
+
+        // 2. Remove transaction codes (e.g., OAG8123456), potentially in parentheses
+        cleaned = cleaned.replace(Regex("\\(?\\s*[A-Z0-9]{10}\\s*\\)?"), "").trim()
+        
+        // 3. Remove common boilerplate words
+        val noiseWords = listOf("Confirmed", "Ksh", "Paid to", "Sent to", "on", "at")
+        noiseWords.forEach { word ->
+            cleaned = cleaned.replace(Regex("(?i)\\b$word\\b"), "")
+        }
+
+        // 4. Remove trailing numbers/IDs (e.g., UBER *1234 -> UBER)
+        cleaned = cleaned.split("*", "#", " - ").first().trim()
+
+        // 5. Final numeric cleanup (remove 4+ digit codes)
+        cleaned = cleaned.replace(Regex("[0-9]{4,}"), "").trim()
+
+        // 6. Remove empty parentheses ()
+        cleaned = cleaned.replace(Regex("\\(\\s*\\)"), "").trim()
+
+        // 7. Final strip of leading/trailing parentheses if they wrap the name
+        return cleaned.removePrefix("(").removeSuffix(")").trim()
     }
 }
