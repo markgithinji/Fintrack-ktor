@@ -455,9 +455,14 @@ class StatisticsServiceImpl(
             if (otherCategories.isNotEmpty()) {
                 val othersTxns = otherCategories.flatMap { it.second }
                 othersInsight = othersTxns
-                    .mapNotNull { if (isDescriptionMeaningful(it.description, it.category)) cleanMerchantName(it.description!!) else null }
-                    .groupBy { it }
-                    .maxByOrNull { it.value.size }
+                    .mapNotNull { txn ->
+                        if (isDescriptionMeaningful(txn.description, txn.category)) {
+                            cleanMerchantName(txn.description!!) to txn.totalAmount
+                        } else null
+                    }
+                    .groupBy({ it.first }, { it.second })
+                    .mapValues { it.value.sum() }
+                    .maxByOrNull { it.value }
                     ?.key
             }
 
@@ -476,9 +481,13 @@ class StatisticsServiceImpl(
                 } else null
 
                 val insights = list
-                    .mapNotNull { if (isDescriptionMeaningful(it.description, displayName)) cleanMerchantName(it.description!!) else null }
-                    .groupBy { it }
-                    .mapValues { it.value.size }
+                    .mapNotNull { txn ->
+                        if (isDescriptionMeaningful(txn.description, displayName)) {
+                            cleanMerchantName(txn.description!!) to txn.totalAmount
+                        } else null
+                    }
+                    .groupBy({ it.first }, { it.second })
+                    .mapValues { it.value.sum() }
                     .entries
                     .sortedByDescending { it.value }
                     .take(3)
