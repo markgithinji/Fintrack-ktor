@@ -41,6 +41,8 @@ class AccountsRepositoryImpl : AccountsRepository {
                 row[AccountsTable.name] = account.name
                 row[AccountsTable.isDefault] = account.isDefault
                 row[AccountsTable.isMpesa] = account.isMpesa
+                row[AccountsTable.isEquity] = account.isEquity
+                row[AccountsTable.balance] = account.balance
                 row[AccountsTable.createdAt] = account.createdAt ?: now
             }
             val id = insertStatement[AccountsTable.id].value
@@ -56,6 +58,8 @@ class AccountsRepositoryImpl : AccountsRepository {
                 this[AccountsTable.name] = account.name
                 this[AccountsTable.isDefault] = account.isDefault
                 this[AccountsTable.isMpesa] = account.isMpesa
+                this[AccountsTable.isEquity] = account.isEquity
+                this[AccountsTable.balance] = account.balance
                 this[AccountsTable.createdAt] = account.createdAt ?: now
             }.map { toAccount(it) }
         }
@@ -66,6 +70,7 @@ class AccountsRepositoryImpl : AccountsRepository {
             AccountsTable.update({ AccountsTable.id eq EntityID(account.id, AccountsTable) }) {
                 it[AccountsTable.name] = account.name
                 it[AccountsTable.isMpesa] = account.isMpesa
+                it[AccountsTable.isEquity] = account.isEquity
             }
             account
         }
@@ -112,12 +117,21 @@ class AccountsRepositoryImpl : AccountsRepository {
                 .singleOrNull()
         }
 
+    override suspend fun updateBalance(accountId: UUID, balance: Double): Unit =
+        dbQuery {
+            AccountsTable.update({ AccountsTable.id eq EntityID(accountId, AccountsTable) }) {
+                it[AccountsTable.balance] = balance
+            }
+        }
+
     private fun toAccount(row: ResultRow): Account = Account(
         id = row[AccountsTable.id].value,
         userId = row[AccountsTable.userId].value,
         name = row[AccountsTable.name],
         isDefault = row[AccountsTable.isDefault],
         isMpesa = row[AccountsTable.isMpesa],
+        isEquity = row[AccountsTable.isEquity],
+        balance = row[AccountsTable.balance],
         createdAt = row[AccountsTable.createdAt]
     )
 }

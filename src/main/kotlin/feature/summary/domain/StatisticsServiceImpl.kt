@@ -125,7 +125,7 @@ class StatisticsServiceImpl(
         var prevIncomeByCat: Map<String, Double>? = null
         var prevExpenseByCat: Map<String, Double>? = null
 
-        if (yearMode && targetPeriod != null) {
+        if (yearMode) {
             val requestedYear = targetPeriod.toIntOrNull()
             if (requestedYear != null) {
                 val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
@@ -232,7 +232,7 @@ class StatisticsServiceImpl(
         val essentialSpendRatio = if (totalExpense > 0) (essentialSpend / totalExpense) * 100 else null
 
         var projectedExceedMonth: String? = null
-        if (yearMode && expenseProjectedTotal != null && targetPeriod != null) {
+        if (yearMode && expenseProjectedTotal != null) {
             val budgets = budgetRepository.getAllByUser(userId, accountId).filter { it.isExpense }
             val totalMonthlyLimit = budgets.sumOf { it.limit }
             val yearlyLimit = totalMonthlyLimit * 12

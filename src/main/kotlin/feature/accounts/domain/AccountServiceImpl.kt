@@ -7,8 +7,8 @@ import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.summary.data.model.AccountAggregates
 import core.UnauthorizedAccessException
-import feature.accounts.data.toDomain
-import feature.accounts.data.toDto
+import feature.accounts.data.model.toDomain
+import feature.accounts.data.model.toDto
 import kotlinx.datetime.Clock
 import java.util.UUID
 
@@ -28,7 +28,7 @@ class AccountServiceImpl(
         val incomeSum = income.sumOf { it.first }
         val expenseSum = expense.sumOf { it.first }
 
-        // Use the latest balance from transactions if available (e.g., for M-Pesa),
+        // Use the latest balance from transactions if available (e.g., for M-Pesa or Equity),
         // otherwise fall back to the calculated balance.
         val latestBalance = accountsRepository.getLatestBalance(userId, accountId)
         val balance = latestBalance ?: (incomeSum - expenseSum)
@@ -142,7 +142,8 @@ class AccountServiceImpl(
 
         val account = existingAccount.copy(
             name = request.name,
-            isMpesa = request.isMpesa
+            isMpesa = request.isMpesa,
+            isEquity = request.isEquity
         )
         val updatedAccount = accountsRepository.updateAccount(account)
         val aggregates = getAccountAggregates(userId, updatedAccount.id)

@@ -5,5 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UpdateAccountRequest(
     val name: String,
-    val isMpesa: Boolean = false
+    val isMpesa: Boolean = false,
+    val isEquity: Boolean = false
 )

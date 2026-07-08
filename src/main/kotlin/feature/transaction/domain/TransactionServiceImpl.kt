@@ -5,6 +5,7 @@ import com.fintrack.core.withContext
 import com.fintrack.feature.transaction.data.model.DeleteResponse
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
+import com.fintrack.feature.accounts.domain.AccountsRepository
 import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.RecurringBillDto
 import feature.transaction.data.model.TransactionDto
@@ -16,7 +17,8 @@ import java.util.UUID
 import kotlin.math.abs
 
 class TransactionServiceImpl(
-    private val repo: TransactionRepository
+    private val repo: TransactionRepository,
+    private val accountsRepository: AccountsRepository
 ) : TransactionService {
 
     private val log = logger<TransactionServiceImpl>()
@@ -178,6 +180,47 @@ class TransactionServiceImpl(
             "requestedCount" to requests.size,
             "createdCount" to result.size
         ).info { "Bulk transactions created successfully" }
+
+        return result.map { it.toDto() }
+    }
+
+    override suspend fun syncEquityTransactions(
+        userId: UUID,
+        requests: List<CreateTransactionRequest>
+    ): List<TransactionDto> {
+        log.withContext("userId" to userId, "bulkCount" to requests.size)
+            .info { "Syncing Equity Bank transactions" }
+
+        if (requests.isEmpty()) return emptyList()
+
+        // 1. Convert to domain objects
+        val transactions = requests.map { it.toDomain(userId) }
+
+        // 2. Deduplication is handled by repo.addBulk (using ignore = true and uniqueIndex(externalId, userId))
+        val result = repo.addBulk(transactions)
+
+        // 3. Account Balance Update
+        // Identify the most recent transaction (by dateTime) that has a balance field
+        val mostRecentWithBalance = requests
+            .filter { it.balance != null }
+            .maxByOrNull { it.dateTime }
+
+        if (mostRecentWithBalance != null) {
+            val accountId = UUID.fromString(mostRecentWithBalance.accountId)
+            log.withContext(
+                "userId" to userId,
+                "accountId" to accountId,
+                "newBalance" to mostRecentWithBalance.balance
+            ).info { "Updating account balance from Equity transaction" }
+            
+            accountsRepository.updateBalance(accountId, mostRecentWithBalance.balance!!)
+        }
+
+        log.withContext(
+            "userId" to userId,
+            "requestedCount" to requests.size,
+            "createdCount" to result.size
+        ).info { "Equity transactions synced successfully" }
 
         return result.map { it.toDto() }
     }

@@ -44,5 +44,10 @@ interface TransactionService {
         requests: List<CreateTransactionRequest>
     ): List<TransactionDto>
 
+    suspend fun syncEquityTransactions(
+        userId: UUID,
+        requests: List<CreateTransactionRequest>
+    ): List<TransactionDto>
+
     suspend fun detectRecurringBills(userId: UUID): List<RecurringBillDto>
 }

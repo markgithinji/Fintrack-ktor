@@ -12,5 +12,6 @@ data class AccountDto(
     val balance: Double,
     val isDefault: Boolean = false,
     val isMpesa: Boolean = false,
+    val isEquity: Boolean = false,
     val createdAt: Instant? = null
 )

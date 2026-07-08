@@ -92,6 +92,20 @@ fun Route.transactionRoutes(service: TransactionService) {
             call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
         }
 
+        post("/equity") {
+            val userId = call.userIdOrThrow()
+            val requests = call.receive<List<CreateTransactionRequest>>()
+
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "POST /transactions/equity",
+                "transactionCount" to requests.size
+            ).info { "Equity batch transaction creation request received" }
+
+            val saved = service.syncEquityTransactions(userId, requests)
+            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+        }
+
         get {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.toUUIDOrNull()

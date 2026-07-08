@@ -1,4 +1,4 @@
-package feature.accounts.data
+package feature.accounts.data.model
 
 import com.fintrack.feature.accounts.data.model.AccountDto
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
@@ -14,18 +14,21 @@ fun Account.toDto(id: String, income: Double, expense: Double, balance: Double):
     balance = balance,
     isDefault = isDefault,
     isMpesa = isMpesa,
+    isEquity = isEquity,
     createdAt = createdAt
 )
 
 fun CreateAccountRequest.toDomain(userId: UUID): Account = Account(
     userId = userId,
     name = name,
-    isMpesa = isMpesa
+    isMpesa = isMpesa,
+    isEquity = isEquity
 )
 
 fun UpdateAccountRequest.toDomain(userId: UUID, accountId: UUID): Account = Account(
     id = accountId,
     userId = userId,
     name = name,
-    isMpesa = isMpesa
+    isMpesa = isMpesa,
+    isEquity = isEquity
 )
