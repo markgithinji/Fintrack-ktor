@@ -5,6 +5,9 @@ import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.domain.ApiResponse
+import com.fintrack.core.domain.Result
+import com.fintrack.core.domain.toHttpStatusCode
+import com.fintrack.core.domain.ErrorResponse
 import com.fintrack.feature.auth.domain.AuthValidationResponse
 import feature.auth.data.model.ChangePasswordRequest
 import feature.auth.data.model.RefreshRequest
@@ -43,8 +46,14 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
                     "ip" to call.request.origin.remoteHost,
                     "userAgent" to call.request.headers["User-Agent"]
                 ).info { "Registration request received" }
-                val response = authService.register(request.email, request.password)
-                call.respond(HttpStatusCode.Created, response)
+                
+                when (val result = authService.register(request.email, request.password)) {
+                    is Result.Success -> call.respond(HttpStatusCode.Created, result.value)
+                    is Result.Failure -> call.respond(
+                        result.error.toHttpStatusCode(),
+                        ErrorResponse(result.error.message, result.error.errorCode)
+                    )
+                }
             }
 
             post("/login") {
@@ -54,15 +63,27 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
                     "ip" to call.request.origin.remoteHost,
                     "userAgent" to call.request.headers["User-Agent"]
                 ).info { "Login request received" }
-                val response = authService.login(request.email, request.password)
-                call.respond(HttpStatusCode.OK, response)
+
+                when (val result = authService.login(request.email, request.password)) {
+                    is Result.Success -> call.respond(HttpStatusCode.OK, result.value)
+                    is Result.Failure -> call.respond(
+                        result.error.toHttpStatusCode(),
+                        ErrorResponse(result.error.message, result.error.errorCode)
+                    )
+                }
             }
 
             post("/refresh") {
                 val request = call.receive<RefreshRequest>()
                 log.info { "Token refresh request received" }
-                val response = authService.refreshToken(request.refreshToken)
-                call.respond(HttpStatusCode.OK, response)
+                
+                when (val result = authService.refreshToken(request.refreshToken)) {
+                    is Result.Success -> call.respond(HttpStatusCode.OK, result.value)
+                    is Result.Failure -> call.respond(
+                        result.error.toHttpStatusCode(),
+                        ErrorResponse(result.error.message, result.error.errorCode)
+                    )
+                }
             }
         }
 
@@ -102,8 +123,14 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
                     "ip" to call.request.origin.remoteHost,
                     "userAgent" to call.request.headers["User-Agent"]
                 ).info { "Password change request received" }
-                authService.changePassword(userId, request.currentPassword, request.newPassword)
-                call.respond(HttpStatusCode.OK, "Password changed successfully")
+                
+                when (val result = authService.changePassword(userId, request.currentPassword, request.newPassword)) {
+                    is Result.Success -> call.respond(HttpStatusCode.OK, "Password changed successfully")
+                    is Result.Failure -> call.respond(
+                        result.error.toHttpStatusCode(),
+                        ErrorResponse(result.error.message, result.error.errorCode)
+                    )
+                }
             }
         }
     }

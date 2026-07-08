@@ -9,7 +9,8 @@ import com.fintrack.feature.auth.JwtConfig
 import com.fintrack.feature.auth.domain.AuthValidationResponse
 import feature.transaction.domain.CategoryRepository
 import feature.transaction.domain.model.Category
-import core.AuthenticationException
+import com.fintrack.core.domain.Result
+import com.fintrack.core.domain.AppError
 import core.dbQuery
 import feature.auth.data.model.AuthResponse
 import feature.user.domain.UserRepository
@@ -30,12 +31,12 @@ class AuthServiceImpl(
 
     private val log = logger<AuthServiceImpl>()
 
-    override suspend fun register(email: String, password: String): AuthResponse = dbQuery {
+    override suspend fun register(email: String, password: String): Result<AuthResponse> = dbQuery {
         log.info { "Registration attempt for $email" }
 
         if (userRepository.userExists(email)) {
             log.warn { "Registration failed - user already exists: $email" }
-            throw AuthenticationException("User with email '$email' already exists", "USER_ALREADY_EXISTS")
+            return@dbQuery Result.Failure(AppError.Authentication("User with email '$email' already exists", "USER_ALREADY_EXISTS"))
         }
 
         val name = email.substringBefore("@")
@@ -43,20 +44,20 @@ class AuthServiceImpl(
         createDefaultAccounts(userId)
         createDefaultCategories(userId)
 
-        generateAuthResponse(userId)
+        Result.Success(generateAuthResponse(userId))
     }
 
-    override suspend fun login(email: String, password: String): AuthResponse {
+    override suspend fun login(email: String, password: String): Result<AuthResponse> {
         log.info { "Login attempt for $email" }
 
         val user = userRepository.findByEmail(email) ?: run {
             log.warn { "Login failed - user not found: $email" }
-            throw AuthenticationException("No account found with this email", "USER_NOT_FOUND")
+            return Result.Failure(AppError.Authentication("No account found with this email", "USER_NOT_FOUND"))
         }
 
         if (!PasswordHasher.verify(password, user.passwordHash)) {
             log.warn { "Login failed - invalid password for: $email" }
-            throw AuthenticationException("The password you entered is incorrect", "INVALID_PASSWORD")
+            return Result.Failure(AppError.Authentication("The password you entered is incorrect", "INVALID_PASSWORD"))
         }
 
         // Migration: If legacy BCrypt hash, update to Argon2
@@ -65,7 +66,7 @@ class AuthServiceImpl(
             userRepository.updatePassword(user.id, password)
         }
 
-        return generateAuthResponse(user.id)
+        return Result.Success(generateAuthResponse(user.id))
     }
 
     override suspend fun validateToken(token: String): AuthValidationResponse {
@@ -114,32 +115,32 @@ class AuthServiceImpl(
         }
     }
 
-    override suspend fun refreshToken(refreshToken: String): AuthResponse {
+    override suspend fun refreshToken(refreshToken: String): Result<AuthResponse> {
         val storedToken = refreshTokenRepository.findByToken(refreshToken)
-            ?: throw AuthenticationException("Invalid refresh token", "INVALID_REFRESH_TOKEN")
+            ?: return Result.Failure(AppError.Authentication("Invalid refresh token", "INVALID_REFRESH_TOKEN"))
 
         if (storedToken.expiresAt < Clock.System.now()) {
             refreshTokenRepository.deleteByToken(refreshToken)
-            throw AuthenticationException("Refresh token expired", "REFRESH_TOKEN_EXPIRED")
+            return Result.Failure(AppError.Authentication("Refresh token expired", "REFRESH_TOKEN_EXPIRED"))
         }
 
         // Optional: Revoke old refresh token (Token Rotation)
         refreshTokenRepository.deleteByToken(refreshToken)
 
-        return generateAuthResponse(storedToken.userId)
+        return Result.Success(generateAuthResponse(storedToken.userId))
     }
 
-    override suspend fun changePassword(userId: UUID, currentPassword: String, newPassword: String) {
+    override suspend fun changePassword(userId: UUID, currentPassword: String, newPassword: String): Result<Unit> {
         log.info { "Password change attempt for userId: $userId" }
 
         val user = userRepository.findById(userId) ?: run {
             log.warn { "Password change failed - user not found: $userId" }
-            throw AuthenticationException("User not found", "USER_NOT_FOUND")
+            return Result.Failure(AppError.Authentication("User not found", "USER_NOT_FOUND"))
         }
 
         if (!PasswordHasher.verify(currentPassword, user.passwordHash)) {
             log.warn { "Password change failed - invalid current password for userId: $userId" }
-            throw AuthenticationException("Invalid current password", "INVALID_CREDENTIALS")
+            return Result.Failure(AppError.Authentication("Invalid current password", "INVALID_CREDENTIALS"))
         }
 
         userRepository.updatePassword(userId, newPassword)
@@ -148,6 +149,7 @@ class AuthServiceImpl(
         refreshTokenRepository.deleteByUserId(userId)
         
         log.info { "Password changed successfully for userId: $userId. All refresh tokens revoked." }
+        return Result.Success(Unit)
     }
 
     private suspend fun generateAuthResponse(userId: UUID): AuthResponse {
