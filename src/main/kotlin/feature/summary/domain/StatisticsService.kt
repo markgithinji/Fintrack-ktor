@@ -9,6 +9,7 @@ import feature.summary.data.model.TransactionCountSummaryDto
 import feature.summary.data.model.DaySummaryDto
 import feature.summary.data.model.OverviewSummaryDto
 import feature.summary.data.model.StatisticsSummaryDto
+import feature.summary.data.model.ProfileMetricsDto
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Instant
 import java.util.UUID
@@ -69,6 +70,8 @@ interface StatisticsService {
         start: Instant? = null,
         end: Instant? = null
     ): TransactionCountSummaryDto
+
+    suspend fun getProfileMetrics(userId: UUID): ProfileMetricsDto
 
     // Helper methods for route parameter processing
     fun parseTypeFilter(typeFilter: String?): Boolean?

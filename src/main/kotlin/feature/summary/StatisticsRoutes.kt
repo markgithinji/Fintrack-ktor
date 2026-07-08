@@ -6,6 +6,7 @@ import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
 import core.ValidationException
+import feature.summary.data.model.ProfileMetricsDto
 import feature.summary.domain.StatisticsService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
@@ -33,7 +34,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "typeFilter" to typeFilter,
                 "startDate" to startDate,
                 "endDate" to endDate,
-                "period" to period
+                "period" to period,
             ).info { "Highlights request received" }
 
             val (start, end) = service.parseDateRange(startDate, endDate)
@@ -45,7 +46,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 isIncome = isIncomeFilter,
                 start = start,
                 end = end,
-                period = period
+                period = period,
             )
 
             call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
@@ -68,7 +69,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "accountId" to accountId,
                 "typeFilter" to typeFilter,
                 "startDate" to startDate,
-                "endDate" to endDate
+                "endDate" to endDate,
             ).info { "Distribution request received" }
 
             val (start, end) = service.parseDateRange(startDate, endDate)
@@ -80,7 +81,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 period = period,
                 isIncome = isIncomeFilter,
                 start = start,
-                end = end
+                end = end,
             )
 
             call.respond(HttpStatusCode.OK, ApiResponse.Success(distribution))
@@ -93,7 +94,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/available-weeks",
-                "accountId" to accountId
+                "accountId" to accountId,
             ).info { "Available weeks request received" }
 
             val result = service.getAvailableWeeks(userId, accountId)
@@ -107,7 +108,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/available-months",
-                "accountId" to accountId
+                "accountId" to accountId,
             ).info { "Available months request received" }
 
             val result = service.getAvailableMonths(userId, accountId)
@@ -121,7 +122,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/available-years",
-                "accountId" to accountId
+                "accountId" to accountId,
             ).info { "Available years request received" }
 
             val result = service.getAvailableYears(userId, accountId)
@@ -135,7 +136,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
             log.withContext(
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/overview",
-                "accountId" to accountId
+                "accountId" to accountId,
             ).info { "Overview request received" }
 
             val overview = service.getOverviewSummary(userId, accountId)
@@ -153,7 +154,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "endpoint" to "GET /transactions/summary/overview/range",
                 "accountId" to accountId,
                 "startParam" to startParam,
-                "endParam" to endParam
+                "endParam" to endParam,
             ).info { "Overview range request received" }
 
             val days = service.getDaySummariesByDateRange(userId, accountId, startParam, endParam)
@@ -169,7 +170,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "userId" to userId,
                 "endpoint" to "GET /transactions/summary/category-comparison",
                 "accountId" to accountId,
-                "period" to period
+                "period" to period,
             ).info { "Category comparison request received" }
 
             val summary = service.getCategoryComparisons(userId, accountId, period)
@@ -193,7 +194,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 "category" to category,
                 "hasCost" to hasCost,
                 "startDate" to startDate,
-                "endDate" to endDate
+                "endDate" to endDate,
             ).info { "Transaction counts request received" }
 
             val (start, end) = service.parseDateRange(startDate, endDate)
@@ -204,9 +205,20 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 category = category,
                 hasCost = hasCost,
                 start = start,
-                end = end
+                end = end,
             )
             call.respond(HttpStatusCode.OK, ApiResponse.Success(summary))
+        }
+
+        get("/profile-metrics") {
+            val userId = call.userIdOrThrow()
+            log.withContext(
+                "userId" to userId,
+                "endpoint" to "GET /transactions/summary/profile-metrics",
+            ).info { "Profile metrics request received" }
+
+            val metrics: ProfileMetricsDto = service.getProfileMetrics(userId)
+            call.respond(HttpStatusCode.OK, ApiResponse.Success(metrics))
         }
     }
 }

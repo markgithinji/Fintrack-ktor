@@ -25,7 +25,8 @@ import java.util.UUID
 class StatisticsServiceImpl(
     private val statisticsRepository: StatisticsRepository,
     private val userRepository: UserRepository,
-    private val budgetRepository: BudgetRepository
+    private val budgetRepository: BudgetRepository,
+    private val accountService: com.fintrack.feature.accounts.domain.AccountService
 ) : StatisticsService {
 
     private val log = logger<StatisticsServiceImpl>()
@@ -753,6 +754,36 @@ class StatisticsServiceImpl(
         requireNotNull(accountId) { "Account ID is required" }
         val counts = statisticsRepository.getTransactionCounts(userId, accountId, isIncome, category, hasCost, start, end)
         return TransactionCountSummaryDto(counts.incomeCount, counts.expenseCount, counts.totalCount, counts.totalTransactionCost)
+    }
+
+    override suspend fun getProfileMetrics(userId: UUID): ProfileMetricsDto {
+        val user = userRepository.findById(userId) ?: throw ValidationException("User not found")
+        val accounts = accountService.getAllAccounts(userId)
+        val netWorth = accounts.sumOf { it.balance }
+
+        // Use global highlights (period = null) logic to get overall savings/essential ratios
+        val allTransactions = statisticsRepository.getTransactions(userId, null, null, null, null)
+
+        val incomeTxns = allTransactions.filter { it.isIncome }
+        val expenseTxns = allTransactions.filter { !it.isIncome }
+
+        val totalIncome = incomeTxns.sumOf { it.totalAmount }
+        val totalExpense = expenseTxns.sumOf { it.totalAmount }
+
+        val savingsRate = if (totalIncome > 0) ((totalIncome - totalExpense) / totalIncome) * 100 else null
+
+        val essentialSpend = expenseTxns
+            .filter { txn -> essentialCategories.any { it.equals(txn.category.trim(), ignoreCase = true) } }
+            .sumOf { it.totalAmount }
+        val essentialSpendRatio = if (totalExpense > 0) (essentialSpend / totalExpense) * 100 else null
+
+        return ProfileMetricsDto(
+            name = user.name,
+            email = user.email,
+            netWorth = netWorth,
+            savingsRate = savingsRate,
+            essentialSpendRatio = essentialSpendRatio
+        )
     }
 
     override suspend fun getDaySummariesByDateRange(

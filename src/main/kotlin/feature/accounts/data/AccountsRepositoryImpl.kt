@@ -69,8 +69,10 @@ class AccountsRepositoryImpl : AccountsRepository {
             requireNotNull(account.id) { "Account ID must not be null for update" }
             AccountsTable.update({ AccountsTable.id eq EntityID(account.id, AccountsTable) }) {
                 it[AccountsTable.name] = account.name
+                it[AccountsTable.isDefault] = account.isDefault
                 it[AccountsTable.isMpesa] = account.isMpesa
                 it[AccountsTable.isEquity] = account.isEquity
+                it[AccountsTable.balance] = account.balance ?: 0.0
             }
             account
         }
