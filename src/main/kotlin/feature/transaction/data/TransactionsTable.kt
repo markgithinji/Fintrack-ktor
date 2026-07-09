@@ -3,7 +3,7 @@ package feature.transaction.data
 import com.fintrack.core.data.TableNames
 import com.fintrack.feature.transaction.data.TransactionsColumns
 import com.fintrack.feature.user.UsersTable
-import feature.accounts.data.AccountsTable
+import com.fintrack.feature.accounts.data.table.AccountsTable
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.kotlin.datetime.timestamp

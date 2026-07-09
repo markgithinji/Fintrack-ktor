@@ -3,6 +3,7 @@ package feature.summary.domain
 import com.fintrack.core.*
 import feature.summary.data.model.*
 import core.ValidationException
+import com.fintrack.feature.accounts.domain.AccountService
 import feature.budget.domain.BudgetRepository
 import feature.transaction.domain.model.Transaction
 import feature.user.domain.UserRepository
@@ -26,7 +27,7 @@ class StatisticsServiceImpl(
     private val statisticsRepository: StatisticsRepository,
     private val userRepository: UserRepository,
     private val budgetRepository: BudgetRepository,
-    private val accountService: com.fintrack.feature.accounts.domain.AccountService
+    private val accountService: AccountService
 ) : StatisticsService {
 
     private val log = logger<StatisticsServiceImpl>()

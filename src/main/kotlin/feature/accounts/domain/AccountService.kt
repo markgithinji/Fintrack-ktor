@@ -4,7 +4,6 @@ import com.fintrack.feature.accounts.data.model.AccountDto
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.summary.data.model.AccountAggregates
-
 import java.util.UUID
 
 interface AccountService {

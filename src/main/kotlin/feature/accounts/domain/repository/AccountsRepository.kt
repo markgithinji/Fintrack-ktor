@@ -1,7 +1,7 @@
-package com.fintrack.feature.accounts.domain
+package com.fintrack.feature.accounts.domain.repository
 
-import com.fintrack.feature.accounts.domain.Account
-
+import com.fintrack.feature.accounts.domain.model.Account
+import com.fintrack.feature.accounts.domain.model.TransactionSummary
 import java.util.UUID
 
 interface AccountsRepository {
@@ -16,5 +16,3 @@ interface AccountsRepository {
     suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double?
     suspend fun updateBalance(accountId: UUID, balance: Double)
 }
-
-data class TransactionSummary(val income: Double, val expense: Double)

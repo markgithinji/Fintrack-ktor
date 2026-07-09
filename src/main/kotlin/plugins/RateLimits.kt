@@ -1,17 +1,17 @@
 package com.fintrack.plugins
 
+import feature.auth.data.model.AuthRequest
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.ratelimit.*
+import io.ktor.server.request.receiveNullable
 import io.ktor.server.routing.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import org.koin.ktor.ext.inject
 import redis.clients.jedis.JedisPool
-import com.fintrack.feature.auth.AuthRequest
-import io.ktor.server.request.receiveNullable
 import kotlinx.datetime.Clock
 
 class RateLimitConfig {

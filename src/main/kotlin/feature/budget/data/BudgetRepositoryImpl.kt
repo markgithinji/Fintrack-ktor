@@ -2,7 +2,7 @@ package feature.budget.data
 
 import com.fintrack.feature.user.UsersTable
 import core.dbQuery
-import feature.accounts.data.AccountsTable
+import com.fintrack.feature.accounts.data.table.AccountsTable
 import feature.budget.domain.BudgetRepository
 import feature.transaction.Budget
 import feature.transaction.BudgetsTable

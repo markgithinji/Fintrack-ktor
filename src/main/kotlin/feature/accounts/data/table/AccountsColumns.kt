@@ -1,4 +1,4 @@
-package com.fintrack.feature.accounts.data
+package com.fintrack.feature.accounts.data.table
 
 object AccountsColumns {
     const val USER_ID = "user_id"

@@ -2,19 +2,21 @@ package com.fintrack.feature.accounts.domain
 
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
-import com.fintrack.feature.accounts.data.model.AccountDto
-import com.fintrack.feature.accounts.data.model.CreateAccountRequest
-import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
+import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import com.fintrack.feature.summary.data.model.AccountAggregates
 import core.UnauthorizedAccessException
 import core.ValidationException
-import feature.accounts.data.model.toDomain
-import feature.accounts.data.model.toDto
+import com.fintrack.feature.accounts.data.model.AccountDto
+import com.fintrack.feature.accounts.data.model.CreateAccountRequest
+import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
+import com.fintrack.feature.accounts.data.model.toDomain
+import com.fintrack.feature.accounts.data.model.toDto
+import com.fintrack.feature.accounts.domain.model.TransactionSummary
 import kotlinx.datetime.Clock
 import java.util.UUID
 
 class AccountServiceImpl(
-    private val accountsRepository: AccountsRepository
+    private val accountsRepository: AccountsRepository,
 ) : AccountService {
 
     private val log = logger<AccountServiceImpl>()
@@ -49,7 +51,7 @@ class AccountServiceImpl(
 
         val accounts = accountsRepository.getAllAccounts(userId)
         val summaries = accountsRepository.getTransactionSummaries(userId)
-        
+
         val now = Clock.System.now()
 
         val result = accounts.map { account ->
@@ -66,7 +68,7 @@ class AccountServiceImpl(
         val sortedResult = result.sortedWith { a, b ->
             val timeA = a.createdAt ?: now
             val timeB = b.createdAt ?: now
-            
+
             if (timeA != timeB) {
                 timeA.compareTo(timeB)
             } else {

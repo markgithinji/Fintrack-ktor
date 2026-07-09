@@ -3,10 +3,10 @@ package com.fintrack.feature.accounts
 import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
+import core.ValidationException
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.accounts.domain.AccountService
-import core.ValidationException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond

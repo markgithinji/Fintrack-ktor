@@ -3,13 +3,12 @@ package feature.auth.domain
 import com.fintrack.core.info
 import com.fintrack.core.logger
 import com.fintrack.core.warn
-import com.fintrack.feature.accounts.domain.Account
-import com.fintrack.feature.accounts.domain.AccountType
-import com.fintrack.feature.accounts.domain.AccountsRepository
+import com.fintrack.feature.accounts.domain.model.Account
+import com.fintrack.feature.accounts.domain.model.AccountType
+import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import com.fintrack.feature.auth.JwtConfig
 import feature.auth.domain.model.AuthValidationResponse
 import feature.auth.domain.model.RefreshToken
-import feature.auth.domain.repository.EmailVerificationRepository
 import feature.auth.domain.repository.RefreshTokenRepository
 import feature.auth.domain.repository.TokenBlacklistRepository
 import feature.transaction.domain.CategoryRepository

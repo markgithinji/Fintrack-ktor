@@ -1,21 +1,19 @@
-package feature.accounts.data.model
+package com.fintrack.feature.accounts.data.model
 
-import com.fintrack.feature.accounts.data.model.AccountDto
-import com.fintrack.feature.accounts.data.model.CreateAccountRequest
-import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
-import com.fintrack.feature.accounts.domain.Account
+import com.fintrack.feature.accounts.domain.model.Account
 import java.util.UUID
 
-fun Account.toDto(id: String, income: Double, expense: Double, balance: Double): AccountDto = AccountDto(
-    id = id,
-    name = name,
-    income = income,
-    expense = expense,
-    balance = balance,
-    isDefault = isDefault,
-    type = type,
-    createdAt = createdAt
-)
+fun Account.toDto(id: String, income: Double, expense: Double, balance: Double): AccountDto =
+    AccountDto(
+        id = id,
+        name = name,
+        income = income,
+        expense = expense,
+        balance = balance,
+        isDefault = isDefault,
+        type = type,
+        createdAt = createdAt
+    )
 
 fun CreateAccountRequest.toDomain(userId: UUID): Account = Account(
     userId = userId,

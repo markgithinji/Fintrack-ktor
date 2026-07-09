@@ -2,16 +2,14 @@ package feature.user.domain
 
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
-import com.fintrack.feature.accounts.domain.Account
-import com.fintrack.feature.accounts.domain.AccountsRepository
+import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import com.fintrack.feature.user.data.model.toDto
 import com.fintrack.feature.user.domain.User
-import feature.user.data.model.CreateUserRequest
 import feature.user.data.model.UpdateUserRequest
 import feature.user.data.model.UserDto
 import com.fintrack.core.EmailService
-import feature.auth.domain.EmailVerificationRepository
-import feature.auth.domain.EmailVerificationToken
+import feature.auth.domain.repository.EmailVerificationRepository
+import feature.auth.domain.model.EmailVerificationToken
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.hours
 import org.mindrot.jbcrypt.BCrypt

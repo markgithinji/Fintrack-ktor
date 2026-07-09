@@ -1,6 +1,6 @@
 package com.fintrack.feature.accounts.data.model
 
-import com.fintrack.feature.accounts.domain.AccountType
+import com.fintrack.feature.accounts.domain.model.AccountType
 import kotlinx.serialization.Serializable
 
 @Serializable

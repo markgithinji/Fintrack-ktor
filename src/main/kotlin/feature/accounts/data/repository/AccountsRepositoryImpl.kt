@@ -1,23 +1,26 @@
-package feature.accounts.data
+package com.fintrack.feature.accounts.data.repository
 
-import com.fintrack.feature.accounts.domain.Account
-import com.fintrack.feature.accounts.domain.AccountsRepository
-import com.fintrack.feature.accounts.domain.TransactionSummary
 import com.fintrack.feature.user.UsersTable
 import core.dbQuery
+import com.fintrack.feature.accounts.data.table.AccountsTable
+import com.fintrack.feature.accounts.domain.model.Account
+import com.fintrack.feature.accounts.domain.model.TransactionSummary
+import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import feature.transaction.data.TransactionsTable
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.update
-import kotlinx.datetime.Clock
 import java.util.UUID
 
 class AccountsRepositoryImpl : AccountsRepository {
@@ -59,13 +62,18 @@ class AccountsRepositoryImpl : AccountsRepository {
     override suspend fun updateAccount(account: Account): Account =
         dbQuery {
             requireNotNull(account.id) { "Account ID must not be null for update" }
-            AccountsTable.update({ AccountsTable.id eq EntityID(account.id, AccountsTable) }) { row ->
+            AccountsTable.update({
+                AccountsTable.id eq EntityID(
+                    account.id,
+                    AccountsTable
+                )
+            }) { row ->
                 fillRow(row, account, Clock.System.now())
             }
             account
         }
 
-    private fun fillRow(row: UpdateBuilder<*>, account: Account, now: kotlinx.datetime.Instant) {
+    private fun fillRow(row: UpdateBuilder<*>, account: Account, now: Instant) {
         row[AccountsTable.name] = account.name
         row[AccountsTable.isDefault] = account.isDefault
         row[AccountsTable.type] = account.type
@@ -135,8 +143,8 @@ class AccountsRepositoryImpl : AccountsRepository {
             } ?: query
 
             filteredQuery
-                .orderBy(TransactionsTable.dateTime to org.jetbrains.exposed.sql.SortOrder.DESC)
-                .orderBy(TransactionsTable.id to org.jetbrains.exposed.sql.SortOrder.DESC)
+                .orderBy(TransactionsTable.dateTime to SortOrder.DESC)
+                .orderBy(TransactionsTable.id to SortOrder.DESC)
                 .limit(1)
                 .map { it[TransactionsTable.balance] }
                 .singleOrNull()

@@ -5,7 +5,7 @@ import com.fintrack.core.withContext
 import com.fintrack.feature.transaction.data.model.DeleteResponse
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
-import com.fintrack.feature.accounts.domain.AccountsRepository
+import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.RecurringBillDto
 import feature.transaction.data.model.TransactionDto

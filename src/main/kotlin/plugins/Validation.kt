@@ -1,6 +1,6 @@
 package plugins
 
-import feature.accounts.domain.configureAccountValidation
+import com.fintrack.feature.accounts.domain.configureAccountValidation
 import feature.auth.domain.configureAuthValidation
 import feature.budget.domain.configureBudgetValidation
 import feature.transaction.configureTransactionValidation

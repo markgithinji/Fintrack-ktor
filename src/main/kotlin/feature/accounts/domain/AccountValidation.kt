@@ -1,8 +1,9 @@
-package feature.accounts.domain
+package com.fintrack.feature.accounts.domain
 
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
-import io.ktor.server.plugins.requestvalidation.*
+import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
+import io.ktor.server.plugins.requestvalidation.ValidationResult
 
 fun RequestValidationConfig.configureAccountValidation() {
     validate<CreateAccountRequest> { request ->
@@ -11,6 +12,7 @@ fun RequestValidationConfig.configureAccountValidation() {
             request.name.length > 50 -> ValidationResult.Invalid("Account name cannot exceed 50 characters")
             !request.name.matches(Regex("^[a-zA-Z0-9\\s]+$")) ->
                 ValidationResult.Invalid("Account name can only contain letters, numbers, and spaces")
+
             else -> ValidationResult.Valid
         }
     }
@@ -21,6 +23,7 @@ fun RequestValidationConfig.configureAccountValidation() {
             request.name.length > 50 -> ValidationResult.Invalid("Account name cannot exceed 50 characters")
             !request.name.matches(Regex("^[a-zA-Z0-9\\s]+$")) ->
                 ValidationResult.Invalid("Account name can only contain letters, numbers, and spaces")
+
             else -> ValidationResult.Valid
         }
     }

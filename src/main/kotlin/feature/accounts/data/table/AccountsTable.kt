@@ -1,9 +1,8 @@
-package feature.accounts.data
+package com.fintrack.feature.accounts.data.table
 
 import com.fintrack.core.data.TableNames
-import com.fintrack.feature.accounts.data.AccountsColumns
-import com.fintrack.feature.accounts.domain.AccountType
 import com.fintrack.feature.user.UsersTable
+import com.fintrack.feature.accounts.domain.model.AccountType
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.kotlin.datetime.timestamp
