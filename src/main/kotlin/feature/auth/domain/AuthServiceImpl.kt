@@ -4,6 +4,7 @@ import com.fintrack.core.info
 import com.fintrack.core.logger
 import com.fintrack.core.warn
 import com.fintrack.feature.accounts.domain.Account
+import com.fintrack.feature.accounts.domain.AccountType
 import com.fintrack.feature.accounts.domain.AccountsRepository
 import com.fintrack.feature.auth.JwtConfig
 import com.fintrack.feature.auth.domain.AuthValidationResponse
@@ -174,7 +175,7 @@ class AuthServiceImpl(
 
     private suspend fun createDefaultAccounts(userId: UUID) {
         val defaultAccounts = listOf(
-            Account(userId = userId, name = "Mpesa", isDefault = true, isMpesa = true, createdAt = Instant.parse("2024-01-01T00:00:00Z")),
+            Account(userId = userId, name = "Mpesa", isDefault = true, type = AccountType.MPESA, createdAt = Instant.parse("2024-01-01T00:00:00Z")),
             Account(userId = userId, name = "Bank", isDefault = true, createdAt = Instant.parse("2024-01-01T00:00:01Z")),
             Account(userId = userId, name = "Wallet", isDefault = true, createdAt = Instant.parse("2024-01-01T00:00:02Z")),
             Account(userId = userId, name = "Savings", isDefault = true, createdAt = Instant.parse("2024-01-01T00:00:03Z")),

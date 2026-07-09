@@ -13,22 +13,19 @@ fun Account.toDto(id: String, income: Double, expense: Double, balance: Double):
     expense = expense,
     balance = balance,
     isDefault = isDefault,
-    isMpesa = isMpesa,
-    isEquity = isEquity,
+    type = type,
     createdAt = createdAt
 )
 
 fun CreateAccountRequest.toDomain(userId: UUID): Account = Account(
     userId = userId,
     name = name,
-    isMpesa = isMpesa,
-    isEquity = isEquity
+    type = type
 )
 
 fun UpdateAccountRequest.toDomain(userId: UUID, accountId: UUID): Account = Account(
     id = accountId,
     userId = userId,
     name = name,
-    isMpesa = isMpesa,
-    isEquity = isEquity
+    type = type
 )

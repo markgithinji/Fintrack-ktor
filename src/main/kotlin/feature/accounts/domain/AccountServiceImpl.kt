@@ -142,8 +142,7 @@ class AccountServiceImpl(
 
         val account = existingAccount.copy(
             name = request.name,
-            isMpesa = request.isMpesa,
-            isEquity = request.isEquity
+            type = request.type
         )
         val updatedAccount = accountsRepository.updateAccount(account)
         val aggregates = getAccountAggregates(userId, updatedAccount.id)

@@ -40,8 +40,7 @@ class AccountsRepositoryImpl : AccountsRepository {
                 row[AccountsTable.userId] = EntityID(account.userId, UsersTable)
                 row[AccountsTable.name] = account.name
                 row[AccountsTable.isDefault] = account.isDefault
-                row[AccountsTable.isMpesa] = account.isMpesa
-                row[AccountsTable.isEquity] = account.isEquity
+                row[AccountsTable.type] = account.type
                 row[AccountsTable.balance] = account.balance
                 row[AccountsTable.createdAt] = account.createdAt ?: now
             }
@@ -57,8 +56,7 @@ class AccountsRepositoryImpl : AccountsRepository {
                 this[AccountsTable.userId] = EntityID(account.userId, UsersTable)
                 this[AccountsTable.name] = account.name
                 this[AccountsTable.isDefault] = account.isDefault
-                this[AccountsTable.isMpesa] = account.isMpesa
-                this[AccountsTable.isEquity] = account.isEquity
+                this[AccountsTable.type] = account.type
                 this[AccountsTable.balance] = account.balance
                 this[AccountsTable.createdAt] = account.createdAt ?: now
             }.map { toAccount(it) }
@@ -70,8 +68,7 @@ class AccountsRepositoryImpl : AccountsRepository {
             AccountsTable.update({ AccountsTable.id eq EntityID(account.id, AccountsTable) }) {
                 it[AccountsTable.name] = account.name
                 it[AccountsTable.isDefault] = account.isDefault
-                it[AccountsTable.isMpesa] = account.isMpesa
-                it[AccountsTable.isEquity] = account.isEquity
+                it[AccountsTable.type] = account.type
                 it[AccountsTable.balance] = account.balance ?: 0.0
             }
             account
@@ -131,8 +128,7 @@ class AccountsRepositoryImpl : AccountsRepository {
         userId = row[AccountsTable.userId].value,
         name = row[AccountsTable.name],
         isDefault = row[AccountsTable.isDefault],
-        isMpesa = row[AccountsTable.isMpesa],
-        isEquity = row[AccountsTable.isEquity],
+        type = row[AccountsTable.type],
         balance = row[AccountsTable.balance],
         createdAt = row[AccountsTable.createdAt]
     )
