@@ -1,49 +1,41 @@
 package com.fintrack.feature.auth
 
-import com.fintrack.core.info
-import com.fintrack.core.logger
-import com.fintrack.core.withContext
-import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.domain.*
-import com.fintrack.feature.auth.domain.model.AuthValidationResponse
+import com.fintrack.core.userIdOrThrow
 import com.fintrack.feature.auth.data.model.AuthRequest
 import com.fintrack.feature.auth.data.model.ChangePasswordRequest
 import com.fintrack.feature.auth.data.model.RefreshRequest
 import com.fintrack.feature.auth.domain.AuthService
 import com.fintrack.feature.user.domain.UserService
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.authenticate
-import io.ktor.server.plugins.origin
-import io.ktor.server.request.receive
-import io.ktor.server.request.receiveNullable
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
 import com.fintrack.plugins.withAuthRateLimit
+import io.ktor.http.*
+import io.ktor.server.auth.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun Route.authRoutes(authService: AuthService, userService: UserService) {
-    val log = logger("AuthRoutes")
-
     route("/auth") {
         get("/verify-email-change") {
             val token = call.request.queryParameters["token"]
-                ?: throw IllegalArgumentException("Token is required")
+            
+            if (token == null) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Token is required", "MISSING_TOKEN"))
+                return@get
+            }
 
-            userService.verifyEmailChange(token)
-
-            call.respond(HttpStatusCode.OK, ApiResponse.Success("Email verified and updated successfully"))
+            when (val result = userService.verifyEmailChange(token)) {
+                is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success("Email verified and updated successfully"))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         withAuthRateLimit {
             post("/register") {
                 val request = call.receive<AuthRequest>()
-                log.withContext(
-                    "email" to request.email,
-                    "ip" to call.request.origin.remoteHost,
-                    "userAgent" to call.request.headers["User-Agent"]
-                ).info { "Registration request received" }
                 
                 when (val result = authService.register(request.email, request.password)) {
                     is Result.Success -> call.respond(HttpStatusCode.Created, result.value)
@@ -56,11 +48,6 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
 
             post("/login") {
                 val request = call.receive<AuthRequest>()
-                log.withContext(
-                    "email" to request.email,
-                    "ip" to call.request.origin.remoteHost,
-                    "userAgent" to call.request.headers["User-Agent"]
-                ).info { "Login request received" }
 
                 when (val result = authService.login(request.email, request.password)) {
                     is Result.Success -> call.respond(HttpStatusCode.OK, result.value)
@@ -73,7 +60,6 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
 
             post("/refresh") {
                 val request = call.receive<RefreshRequest>()
-                log.info { "Token refresh request received" }
                 
                 when (val result = authService.refreshToken(request.refreshToken)) {
                     is Result.Success -> call.respond(HttpStatusCode.OK, result.value)
@@ -88,15 +74,17 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
         get("/validate") {
             val authHeader = call.request.headers["Authorization"]
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                call.respond(HttpStatusCode.Unauthorized, AuthValidationResponse(false, null, "Missing or invalid header"))
+                call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Missing or invalid header", "MISSING_HEADER"))
                 return@get
             }
             val token = authHeader.removePrefix("Bearer ").trim()
-            val response = authService.validateToken(token)
-            if (response.isValid) {
-                call.respond(HttpStatusCode.OK, response)
-            } else {
-                call.respond(HttpStatusCode.Unauthorized, response)
+            
+            when (val result = authService.validateToken(token)) {
+                is Result.Success -> call.respond(HttpStatusCode.OK, result.value)
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
             }
         }
 
@@ -106,21 +94,22 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
             val refreshRequest = call.receiveNullable<RefreshRequest>()
 
             if (accessToken != null) {
-                authService.logout(accessToken, refreshRequest?.refreshToken)
+                when (val result = authService.logout(accessToken, refreshRequest?.refreshToken)) {
+                    is Result.Success -> call.respond(HttpStatusCode.OK)
+                    is Result.Failure -> call.respond(
+                        result.error.toHttpStatusCode(),
+                        ErrorResponse(result.error.message, result.error.errorCode)
+                    )
+                }
+            } else {
+                call.respond(HttpStatusCode.OK)
             }
-
-            call.respond(HttpStatusCode.OK)
         }
 
         authenticate("auth-jwt") {
             post("/change-password") {
                 val userId = call.userIdOrThrow()
                 val request = call.receive<ChangePasswordRequest>()
-                log.withContext(
-                    "userId" to userId,
-                    "ip" to call.request.origin.remoteHost,
-                    "userAgent" to call.request.headers["User-Agent"]
-                ).info { "Password change request received" }
                 
                 when (val result = authService.changePassword(userId, request.currentPassword, request.newPassword)) {
                     is Result.Success -> call.respond(HttpStatusCode.OK, "Password changed successfully")

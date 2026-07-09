@@ -6,14 +6,13 @@ import com.fintrack.core.domain.Result
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
-import com.fintrack.feature.user.data.model.toDto
-import com.fintrack.feature.user.domain.User
 import com.fintrack.feature.auth.domain.model.EmailVerificationToken
 import com.fintrack.feature.auth.domain.repository.EmailVerificationRepository
 import com.fintrack.feature.user.data.model.UpdateUserRequest
 import com.fintrack.feature.user.data.model.UserDto
+import com.fintrack.feature.user.data.model.toDto
+import core.PasswordHasher
 import kotlinx.datetime.Clock
-import org.mindrot.jbcrypt.BCrypt
 import java.util.UUID
 import kotlin.time.Duration.Companion.hours
 
@@ -159,7 +158,7 @@ class UserServiceImpl(
             return null
         }
 
-        val isValid = BCrypt.checkpw(password, user.passwordHash)
+        val isValid = PasswordHasher.verify(password, user.passwordHash)
 
         if (isValid) {
             log.withContext("userId" to user.id, "email" to email)

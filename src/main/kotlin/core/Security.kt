@@ -1,7 +1,6 @@
 package core
 
 import de.mkammerer.argon2.Argon2Factory
-import org.mindrot.jbcrypt.BCrypt
 
 object PasswordHasher {
     private val argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id)
@@ -24,16 +23,13 @@ object PasswordHasher {
     }
 
     /**
-     * Verifies a password against a hash.
-     * Supports both Argon2id (new) and BCrypt (legacy).
+     * Verifies a password against an Argon2id hash.
      */
     fun verify(password: String, hash: String): Boolean {
         val chars = password.toCharArray()
         return try {
             if (isArgon2Hash(hash)) {
                 argon2.verify(hash, chars)
-            } else if (isBCryptHash(hash)) {
-                BCrypt.checkpw(password, hash)
             } else {
                 false
             }
@@ -42,18 +38,7 @@ object PasswordHasher {
         }
     }
 
-    /**
-     * Checks if a hash is a legacy BCrypt hash that should be updated.
-     */
-    fun isLegacyHash(hash: String): Boolean {
-        return isBCryptHash(hash)
-    }
-
     private fun isArgon2Hash(hash: String): Boolean {
         return hash.startsWith("\$argon2id")
-    }
-
-    private fun isBCryptHash(hash: String): Boolean {
-        return hash.startsWith("\$2a\$") || hash.startsWith("\$2b\$") || hash.startsWith("\$2y\$")
     }
 }

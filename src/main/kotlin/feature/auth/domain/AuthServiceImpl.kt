@@ -1,5 +1,8 @@
 package com.fintrack.feature.auth.domain
 
+import com.auth0.jwt.JWT
+import com.fintrack.core.domain.AppError
+import com.fintrack.core.domain.Result
 import com.fintrack.core.info
 import com.fintrack.core.logger
 import com.fintrack.core.warn
@@ -7,22 +10,19 @@ import com.fintrack.feature.accounts.domain.model.Account
 import com.fintrack.feature.accounts.domain.model.AccountType
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import com.fintrack.feature.auth.JwtConfig
+import com.fintrack.feature.auth.data.model.AuthResponse
 import com.fintrack.feature.auth.domain.model.AuthValidationResponse
 import com.fintrack.feature.auth.domain.model.RefreshToken
 import com.fintrack.feature.auth.domain.repository.RefreshTokenRepository
 import com.fintrack.feature.auth.domain.repository.TokenBlacklistRepository
+import com.fintrack.feature.user.domain.UserRepository
 import feature.transaction.domain.CategoryRepository
 import feature.transaction.domain.model.Category
-import com.fintrack.core.domain.Result
-import com.fintrack.core.domain.AppError
-import core.dbQuery
-import com.fintrack.feature.auth.data.model.AuthResponse
-import feature.user.domain.UserRepository
 import core.PasswordHasher
-import java.util.UUID
-import com.auth0.jwt.JWT
+import core.dbQuery
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import java.util.*
 import kotlin.time.Duration.Companion.milliseconds
 
 class AuthServiceImpl(
@@ -48,6 +48,7 @@ class AuthServiceImpl(
         createDefaultAccounts(userId)
         createDefaultCategories(userId)
 
+        log.info { "User registered successfully: $email (userId: $userId)" }
         Result.Success(generateAuthResponse(userId))
     }
 
@@ -64,18 +65,14 @@ class AuthServiceImpl(
             return Result.Failure(AppError.Authentication("The password you entered is incorrect", "INVALID_PASSWORD"))
         }
 
-        // Migration: If legacy BCrypt hash, update to Argon2
-        if (PasswordHasher.isLegacyHash(user.passwordHash)) {
-            log.info { "Upgrading legacy password hash for $email" }
-            userRepository.updatePassword(user.id, password)
-        }
-
+        log.info { "Login successful for $email (userId: ${user.id})" }
         return Result.Success(generateAuthResponse(user.id))
     }
 
-    override suspend fun validateToken(token: String): AuthValidationResponse {
+    override suspend fun validateToken(token: String): Result<AuthValidationResponse> {
         if (tokenBlacklistRepository.isTokenBlacklisted(token)) {
-            return AuthValidationResponse(false, null, "Token has been revoked")
+            log.warn { "Token validation failed - token is blacklisted" }
+            return Result.Failure(AppError.Authentication("Token has been revoked", "TOKEN_REVOKED"))
         }
 
         return try {
@@ -87,20 +84,23 @@ class AuthServiceImpl(
                 val userId = UUID.fromString(userIdString)
                 val user = userRepository.findById(userId)
                 if (user != null) {
-                    AuthValidationResponse(true, userId, "Token is valid")
+                    Result.Success(AuthValidationResponse(true, userId, "Token is valid"))
                 } else {
-                    AuthValidationResponse(false, null, "User no longer exists")
+                    log.warn { "Token validation failed - user $userId no longer exists" }
+                    Result.Failure(AppError.NotFound("User no longer exists"))
                 }
             } else {
-                AuthValidationResponse(false, null, "Invalid token: missing userId claim")
+                log.warn { "Token validation failed - missing userId claim" }
+                Result.Failure(AppError.Authentication("Invalid token: missing userId claim", "INVALID_TOKEN"))
             }
         } catch (e: Exception) {
-            AuthValidationResponse(false, null, "Invalid token: ${e.message}")
+            log.warn { "Token validation failed - ${e.message}" }
+            Result.Failure(AppError.Authentication("Invalid token: ${e.message}", "INVALID_TOKEN"))
         }
     }
 
-    override suspend fun logout(accessToken: String, refreshToken: String?) {
-        log.info { "User logging out" }
+    override suspend fun logout(accessToken: String, refreshToken: String?): Result<Unit> {
+        log.info { "Logout request received" }
         
         // 1. Blacklist Access Token
         try {
@@ -108,6 +108,7 @@ class AuthServiceImpl(
             val timeLeft = decodedJWT.expiresAt.time - System.currentTimeMillis()
             if (timeLeft > 0) {
                 tokenBlacklistRepository.blacklistToken(accessToken, timeLeft)
+                log.info { "Access token blacklisted for the remaining ${timeLeft}ms" }
             }
         } catch (e: Exception) {
             log.warn { "Failed to blacklist access token: ${e.message}" }
@@ -116,20 +117,29 @@ class AuthServiceImpl(
         // 2. Delete Refresh Token
         refreshToken?.let {
             refreshTokenRepository.deleteByToken(it)
+            log.info { "Refresh token deleted" }
         }
+        
+        return Result.Success(Unit)
     }
 
     override suspend fun refreshToken(refreshToken: String): Result<AuthResponse> {
-        val storedToken = refreshTokenRepository.findByToken(refreshToken)
-            ?: return Result.Failure(AppError.Authentication("Invalid refresh token", "INVALID_REFRESH_TOKEN"))
+        log.info { "Token refresh requested" }
+
+        val storedToken = refreshTokenRepository.findByToken(refreshToken) ?: run {
+            log.warn { "Refresh failed - token not found" }
+            return Result.Failure(AppError.Authentication("Invalid refresh token", "INVALID_REFRESH_TOKEN"))
+        }
 
         if (storedToken.expiresAt < Clock.System.now()) {
+            log.warn { "Refresh failed - token expired for user ${storedToken.userId}" }
             refreshTokenRepository.deleteByToken(refreshToken)
             return Result.Failure(AppError.Authentication("Refresh token expired", "REFRESH_TOKEN_EXPIRED"))
         }
 
-        // Optional: Revoke old refresh token (Token Rotation)
+        // Revoke old refresh token (Token Rotation)
         refreshTokenRepository.deleteByToken(refreshToken)
+        log.info { "Old refresh token rotated for user ${storedToken.userId}" }
 
         return Result.Success(generateAuthResponse(storedToken.userId))
     }

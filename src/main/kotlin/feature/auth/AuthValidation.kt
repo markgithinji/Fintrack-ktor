@@ -1,7 +1,8 @@
 package com.fintrack.feature.auth
 
-import feature.auth.data.model.AuthRequest
-import io.ktor.server.plugins.requestvalidation.*
+import com.fintrack.feature.auth.data.model.AuthRequest
+import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
+import io.ktor.server.plugins.requestvalidation.ValidationResult
 
 fun RequestValidationConfig.configureAuthValidation() {
     validate<AuthRequest> { request ->

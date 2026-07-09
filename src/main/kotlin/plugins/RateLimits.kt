@@ -1,6 +1,6 @@
 package com.fintrack.plugins
 
-import feature.auth.data.model.AuthRequest
+import com.fintrack.feature.auth.data.model.AuthRequest
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.*

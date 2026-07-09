@@ -25,7 +25,6 @@ postgresql = { module = "org.postgresql:postgresql", version = "42.7.3" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.4.1" }
 ktor-server-auth = { module = "io.ktor:ktor-server-auth", version.ref = "ktor" }
 ktor-server-auth-jwt = { module = "io.ktor:ktor-server-auth-jwt", version.ref = "ktor" }
-jbcrypt = { module = "org.mindrot:jbcrypt", version = "0.4" }
 argon2 = { module = "de.mkammerer:argon2-jvm", version = "2.11" }
 koin-core = { module = "io.insert-koin:koin-core", version = "3.4.3" }
 koin-ktor = { module = "io.insert-koin:koin-ktor", version = "3.4.3" }
