@@ -8,7 +8,8 @@ import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.domain.Result
 import com.fintrack.core.domain.toHttpStatusCode
 import com.fintrack.core.domain.ErrorResponse
-import com.fintrack.feature.auth.domain.AuthValidationResponse
+import feature.auth.domain.model.AuthValidationResponse
+import feature.auth.data.model.AuthRequest
 import feature.auth.data.model.ChangePasswordRequest
 import feature.auth.data.model.RefreshRequest
 import feature.auth.domain.AuthService

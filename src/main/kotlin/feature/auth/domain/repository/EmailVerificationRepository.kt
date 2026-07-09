@@ -1,5 +1,6 @@
-package feature.auth.domain
+package feature.auth.domain.repository
 
+import feature.auth.domain.model.EmailVerificationToken
 import java.util.UUID
 
 interface EmailVerificationRepository {

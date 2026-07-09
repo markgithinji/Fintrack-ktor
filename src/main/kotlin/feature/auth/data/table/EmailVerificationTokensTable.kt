@@ -1,4 +1,4 @@
-package feature.auth.data
+package feature.auth.data.table
 
 import com.fintrack.core.data.TableNames
 import com.fintrack.feature.user.UsersTable

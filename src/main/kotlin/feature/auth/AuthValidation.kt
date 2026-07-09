@@ -1,6 +1,6 @@
 package feature.auth.domain
 
-import com.fintrack.feature.auth.AuthRequest
+import feature.auth.data.model.AuthRequest
 import io.ktor.server.plugins.requestvalidation.*
 
 fun RequestValidationConfig.configureAuthValidation() {

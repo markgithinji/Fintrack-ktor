@@ -1,10 +1,10 @@
-package feature.auth.data
+package feature.auth.data.repository
 
-import feature.auth.domain.RefreshToken
-import feature.auth.domain.RefreshTokenRepository
+import feature.auth.data.table.RefreshTokensTable
+import feature.auth.domain.model.RefreshToken
+import feature.auth.domain.repository.RefreshTokenRepository
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.UUID
 

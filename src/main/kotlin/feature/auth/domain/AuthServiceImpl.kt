@@ -7,7 +7,11 @@ import com.fintrack.feature.accounts.domain.Account
 import com.fintrack.feature.accounts.domain.AccountType
 import com.fintrack.feature.accounts.domain.AccountsRepository
 import com.fintrack.feature.auth.JwtConfig
-import com.fintrack.feature.auth.domain.AuthValidationResponse
+import feature.auth.domain.model.AuthValidationResponse
+import feature.auth.domain.model.RefreshToken
+import feature.auth.domain.repository.EmailVerificationRepository
+import feature.auth.domain.repository.RefreshTokenRepository
+import feature.auth.domain.repository.TokenBlacklistRepository
 import feature.transaction.domain.CategoryRepository
 import feature.transaction.domain.model.Category
 import com.fintrack.core.domain.Result
@@ -26,7 +30,7 @@ class AuthServiceImpl(
     private val userRepository: UserRepository,
     private val accountsRepository: AccountsRepository,
     private val categoryRepository: CategoryRepository,
-    private val tokenBlacklistService: TokenBlacklistService,
+    private val tokenBlacklistRepository: TokenBlacklistRepository,
     private val refreshTokenRepository: RefreshTokenRepository
 ) : AuthService {
 
@@ -71,7 +75,7 @@ class AuthServiceImpl(
     }
 
     override suspend fun validateToken(token: String): AuthValidationResponse {
-        if (tokenBlacklistService.isTokenBlacklisted(token)) {
+        if (tokenBlacklistRepository.isTokenBlacklisted(token)) {
             return AuthValidationResponse(false, null, "Token has been revoked")
         }
 
@@ -104,7 +108,7 @@ class AuthServiceImpl(
             val decodedJWT = JWT.decode(accessToken)
             val timeLeft = decodedJWT.expiresAt.time - System.currentTimeMillis()
             if (timeLeft > 0) {
-                tokenBlacklistService.blacklistToken(accessToken, timeLeft)
+                tokenBlacklistRepository.blacklistToken(accessToken, timeLeft)
             }
         } catch (e: Exception) {
             log.warn { "Failed to blacklist access token: ${e.message}" }

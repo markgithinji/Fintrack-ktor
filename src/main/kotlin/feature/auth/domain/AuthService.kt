@@ -1,7 +1,7 @@
 package feature.auth.domain
 
 import com.fintrack.core.domain.Result
-import com.fintrack.feature.auth.domain.AuthValidationResponse
+import feature.auth.domain.model.AuthValidationResponse
 import feature.auth.data.model.AuthResponse
 import java.util.UUID
 

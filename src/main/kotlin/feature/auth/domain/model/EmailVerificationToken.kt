@@ -1,4 +1,4 @@
-package feature.auth.domain
+package feature.auth.domain.model
 
 import kotlinx.datetime.Instant
 import java.util.UUID

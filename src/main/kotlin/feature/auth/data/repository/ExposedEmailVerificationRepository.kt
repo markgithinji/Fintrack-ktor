@@ -1,7 +1,8 @@
-package feature.auth.data
+package feature.auth.data.repository
 
-import feature.auth.domain.EmailVerificationToken
-import feature.auth.domain.EmailVerificationRepository
+import feature.auth.data.table.EmailVerificationTokensTable
+import feature.auth.domain.model.EmailVerificationToken
+import feature.auth.domain.repository.EmailVerificationRepository
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction

@@ -1,6 +1,6 @@
-package feature.auth.domain
+package feature.auth.domain.repository
 
-interface TokenBlacklistService {
+interface TokenBlacklistRepository {
     suspend fun blacklistToken(token: String, expirationTimeMillis: Long)
     suspend fun isTokenBlacklisted(token: String): Boolean
 }

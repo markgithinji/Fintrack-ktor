@@ -1,7 +1,7 @@
 package com.fintrack.plugins
 
 import com.fintrack.feature.auth.JwtConfig
-import feature.auth.domain.TokenBlacklistService
+import feature.auth.domain.repository.TokenBlacklistRepository
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
@@ -11,7 +11,7 @@ import org.koin.ktor.ext.inject
 import java.util.UUID
 
 fun Application.configureAuth() {
-    val tokenBlacklistService by inject<TokenBlacklistService>()
+    val tokenBlacklistRepository by inject<TokenBlacklistRepository>()
 
     install(Authentication) {
         jwt("auth-jwt") {
@@ -21,7 +21,7 @@ fun Application.configureAuth() {
                 val authHeader = this.request.headers["Authorization"]
                 val token = authHeader?.removePrefix("Bearer ")?.trim()
                 
-                if (token != null && tokenBlacklistService.isTokenBlacklisted(token)) {
+                if (token != null && tokenBlacklistRepository.isTokenBlacklisted(token)) {
                     return@validate null
                 }
                 val userIdString = credential.payload.getClaim("userId").asString()
