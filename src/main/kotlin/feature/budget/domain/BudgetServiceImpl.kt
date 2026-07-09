@@ -1,6 +1,7 @@
 package feature.budget.domain
 
-
+import com.fintrack.core.domain.AppError
+import com.fintrack.core.domain.Result
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.feature.budget.data.BudgetWithStatusDto
@@ -11,16 +12,8 @@ import com.fintrack.feature.budget.data.toDto
 import com.fintrack.feature.budget.domain.BudgetStatus
 import com.fintrack.feature.budget.domain.BudgetWithStatus
 import com.fintrack.feature.transaction.data.model.DeleteResponse
-import core.ResourceNotFoundException
 import feature.transaction.Budget
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atTime
-import kotlinx.datetime.plus
-import kotlinx.datetime.toInstant
+import kotlinx.datetime.*
 import java.util.UUID
 
 class BudgetServiceImpl(
@@ -29,7 +22,7 @@ class BudgetServiceImpl(
 
     private val log = logger<BudgetServiceImpl>()
 
-    override suspend fun getAllBudgets(userId: UUID, accountId: UUID?): List<BudgetWithStatusDto> {
+    override suspend fun getAllBudgets(userId: UUID, accountId: UUID?): Result<List<BudgetWithStatusDto>> {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching all budgets" }
 
@@ -43,15 +36,15 @@ class BudgetServiceImpl(
 
         log.withContext("userId" to userId, "budgetCount" to result.size)
             .debug { "Budgets retrieved successfully" }
-        return result
+        return Result.Success(result)
     }
 
-    override suspend fun getBudgetById(userId: UUID, id: UUID): BudgetWithStatusDto {
+    override suspend fun getBudgetById(userId: UUID, id: UUID): Result<BudgetWithStatusDto> {
         log.withContext("userId" to userId, "budgetId" to id)
             .debug { "Fetching budget by ID" }
 
         val budget = budgetRepository.getById(userId, id)
-            ?: throw ResourceNotFoundException("Budget $id not found")
+            ?: return Result.Failure(AppError.NotFound("Budget $id not found"))
 
         val budgetWithStatus = BudgetWithStatus(
             budget = budget,
@@ -60,13 +53,13 @@ class BudgetServiceImpl(
 
         log.withContext("userId" to userId, "budgetId" to id)
             .debug { "Budget retrieved successfully" }
-        return budgetWithStatus
+        return Result.Success(budgetWithStatus)
     }
 
     override suspend fun createBudget(
         userId: UUID,
         request: CreateBudgetRequest
-    ): BudgetWithStatusDto {
+    ): Result<BudgetWithStatusDto> {
         log.withContext(
             "userId" to userId,
             "budgetName" to request.name,
@@ -82,13 +75,13 @@ class BudgetServiceImpl(
 
         log.withContext("userId" to userId, "budgetId" to budget.id)
             .info { "Budget created successfully" }
-        return budgetWithStatus
+        return Result.Success(budgetWithStatus)
     }
 
     override suspend fun createBudgets(
         userId: UUID,
         requests: List<CreateBudgetRequest>
-    ): List<BudgetWithStatusDto> {
+    ): Result<List<BudgetWithStatusDto>> {
         log.withContext("userId" to userId, "budgetCount" to requests.size)
             .info { "Creating multiple budgets" }
 
@@ -102,22 +95,22 @@ class BudgetServiceImpl(
 
         log.withContext("userId" to userId, "createdCount" to result.size)
             .info { "Multiple budgets created successfully" }
-        return result
+        return Result.Success(result)
     }
 
     override suspend fun updateBudget(
         userId: UUID,
         id: UUID,
         request: UpdateBudgetRequest
-    ): BudgetWithStatusDto {
+    ): Result<BudgetWithStatusDto> {
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Updating budget" }
 
-        val existingBudget = budgetRepository.getById(userId, id)
-            ?: throw ResourceNotFoundException("Budget $id not found")
+        budgetRepository.getById(userId, id)
+            ?: return Result.Failure(AppError.NotFound("Budget $id not found"))
 
         val updatedBudget = budgetRepository.update(userId, id, request.toDomain(id))
-            ?: throw IllegalStateException("Failed to update budget $id")
+            ?: return Result.Failure(AppError.Internal("Failed to update budget $id"))
 
         val budgetWithStatus = BudgetWithStatus(
             budget = updatedBudget,
@@ -126,10 +119,10 @@ class BudgetServiceImpl(
 
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Budget updated successfully" }
-        return budgetWithStatus
+        return Result.Success(budgetWithStatus)
     }
 
-    override suspend fun deleteBudget(userId: UUID, id: UUID) {
+    override suspend fun deleteBudget(userId: UUID, id: UUID): Result<Unit> {
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Deleting budget" }
 
@@ -138,14 +131,15 @@ class BudgetServiceImpl(
         if (!deleted) {
             log.withContext("userId" to userId, "budgetId" to id)
                 .warn { "Budget deletion failed - not found" }
-            throw ResourceNotFoundException("Budget $id not found")
+            return Result.Failure(AppError.NotFound("Budget $id not found"))
         }
 
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Budget deleted successfully" }
+        return Result.Success(Unit)
     }
 
-    override suspend fun deleteAllBudgets(userId: UUID, accountIds: List<UUID>?): DeleteResponse {
+    override suspend fun deleteAllBudgets(userId: UUID, accountIds: List<UUID>?): Result<DeleteResponse> {
         log.withContext("userId" to userId, "accountIds" to accountIds)
             .info { "Deleting budgets" }
 
@@ -165,7 +159,7 @@ class BudgetServiceImpl(
             "cleared" to result.cleared
         ).info { "Budgets deletion completed" }
 
-        return result
+        return Result.Success(result)
     }
 
     private suspend fun calculateBudgetStatus(budget: Budget): BudgetStatus {

@@ -1,4 +1,4 @@
-package feature.budget.domain
+package com.fintrack.feature.budget
 
 import com.fintrack.feature.budget.data.model.BulkCreateBudgetRequest
 import com.fintrack.feature.budget.data.model.CreateBudgetRequest

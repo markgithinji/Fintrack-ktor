@@ -8,6 +8,9 @@ import feature.auth.domain.AuthService
 import feature.auth.domain.AuthServiceImpl
 import feature.auth.domain.repository.RefreshTokenRepository
 import feature.auth.domain.repository.EmailVerificationRepository
+import feature.user.domain.UserRepository
+import com.fintrack.feature.accounts.domain.repository.AccountsRepository
+import feature.transaction.domain.CategoryRepository
 import com.fintrack.core.EmailService
 import com.fintrack.core.LogEmailService
 import org.koin.dsl.module
@@ -27,9 +30,17 @@ val authModule = module {
         }
     }
     
-    single<TokenBlacklistRepository> { RedisTokenBlacklistRepository(get()) }
+    single<TokenBlacklistRepository> { RedisTokenBlacklistRepository(jedisPool = get()) }
     single<RefreshTokenRepository> { ExposedRefreshTokenRepository() }
     single<EmailVerificationRepository> { ExposedEmailVerificationRepository() }
     single<EmailService> { LogEmailService() }
-    single<AuthService> { AuthServiceImpl(get(), get(), get(), get(), get()) }
+    single<AuthService> {
+        AuthServiceImpl(
+            userRepository = get<UserRepository>(),
+            accountsRepository = get<AccountsRepository>(),
+            categoryRepository = get<CategoryRepository>(),
+            tokenBlacklistRepository = get<TokenBlacklistRepository>(),
+            refreshTokenRepository = get<RefreshTokenRepository>()
+        )
+    }
 }

@@ -1,4 +1,4 @@
-package feature.user.domain
+package com.fintrack.feature.user
 
 
 import feature.user.data.model.CreateUserRequest

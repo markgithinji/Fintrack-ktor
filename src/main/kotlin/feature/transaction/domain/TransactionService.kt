@@ -1,5 +1,6 @@
 package feature.transaction.domain
 
+import com.fintrack.core.domain.Result
 import com.fintrack.feature.transaction.data.model.DeleteResponse
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
@@ -23,31 +24,31 @@ interface TransactionService {
         afterDateTime: String?,
         afterId: UUID?,
         hasTransactionCost: Boolean? = null
-    ): PaginatedTransactionDto
+    ): Result<PaginatedTransactionDto>
 
-    suspend fun getById(userId: UUID, id: UUID): TransactionDto
+    suspend fun getById(userId: UUID, id: UUID): Result<TransactionDto>
 
-    suspend fun add(userId: UUID, request: CreateTransactionRequest): TransactionDto
+    suspend fun add(userId: UUID, request: CreateTransactionRequest): Result<TransactionDto>
 
     suspend fun update(
         userId: UUID,
         id: UUID,
         request: UpdateTransactionRequest
-    ): TransactionDto
+    ): Result<TransactionDto>
 
-    suspend fun delete(userId: UUID, id: UUID)
+    suspend fun delete(userId: UUID, id: UUID): Result<Unit>
 
-    suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): DeleteResponse
+    suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): Result<DeleteResponse>
 
     suspend fun addBulk(
         userId: UUID,
         requests: List<CreateTransactionRequest>
-    ): List<TransactionDto>
+    ): Result<List<TransactionDto>>
 
     suspend fun syncEquityTransactions(
         userId: UUID,
         requests: List<CreateTransactionRequest>
-    ): List<TransactionDto>
+    ): Result<List<TransactionDto>>
 
-    suspend fun detectRecurringBills(userId: UUID): List<RecurringBillDto>
+    suspend fun detectRecurringBills(userId: UUID): Result<List<RecurringBillDto>>
 }

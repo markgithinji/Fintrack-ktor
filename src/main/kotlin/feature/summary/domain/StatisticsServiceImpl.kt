@@ -1,25 +1,14 @@
 package feature.summary.domain
 
 import com.fintrack.core.*
-import feature.summary.data.model.*
-import core.ValidationException
+import com.fintrack.core.domain.AppError
+import com.fintrack.core.domain.Result
 import com.fintrack.feature.accounts.domain.AccountService
 import feature.budget.domain.BudgetRepository
+import feature.summary.data.model.*
 import feature.transaction.domain.model.Transaction
 import feature.user.domain.UserRepository
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DatePeriod
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.atTime
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
-import kotlinx.datetime.toInstant
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.*
 import java.time.temporal.WeekFields
 import java.util.UUID
 
@@ -48,7 +37,7 @@ class StatisticsServiceImpl(
         start: Instant?,
         end: Instant?,
         period: String?
-    ): StatisticsSummaryDto {
+    ): Result<StatisticsSummaryDto> {
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
@@ -344,7 +333,7 @@ class StatisticsServiceImpl(
             correlations = correlationInsights.distinctBy { it.target }.take(3)
         )
 
-        return StatisticsSummaryDto(
+        return Result.Success(StatisticsSummaryDto(
             period = targetPeriod ?: "",
             isCurrent = isCurrent,
             income = incomeTxns.sumOf { it.totalAmount },
@@ -353,7 +342,7 @@ class StatisticsServiceImpl(
             incomeHighlights = incomeHighlights,
             expenseHighlights = expenseHighlights,
             totalTransactionCost = txnsForHighlights.sumOf { it.transactionCost }
-        )
+        ))
     }
 
     override suspend fun getDistributionSummary(
@@ -363,9 +352,9 @@ class StatisticsServiceImpl(
         isIncome: Boolean?,
         start: Instant?,
         end: Instant?
-    ): DistributionSummaryDto {
+    ): Result<DistributionSummaryDto> {
         if (!period.matches(Regex("^(\\d{4}-W\\d{2}|\\d{4}-\\d{2}|\\d{4})$"))) {
-            throw ValidationException("Period must be in format: YYYY-Www, YYYY-MM, or YYYY")
+            return Result.Failure(AppError.Validation("Period must be in format: YYYY-Www, YYYY-MM, or YYYY"))
         }
 
         log.withContext(
@@ -511,25 +500,25 @@ class StatisticsServiceImpl(
         val incomeCategoriesFinal = if (isIncome != false) categorySummary(incomeTxns) else emptyList()
         val expenseCategoriesFinal = if (isIncome != true) categorySummary(expenseTxns) else emptyList()
 
-        return DistributionSummaryDto(
+        return Result.Success(DistributionSummaryDto(
             period = period,
             totalTransactionCost = txnsInPeriod.sumOf { it.transactionCost },
             incomeCategories = incomeCategoriesFinal,
             expenseCategories = expenseCategoriesFinal,
             othersInsightSummary = othersInsight
-        )
+        ))
     }
 
-    override suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeksDto =
-        AvailableWeeksDto(statisticsRepository.getAvailablePeriods(userId, accountId, "weeks"))
+    override suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): Result<AvailableWeeksDto> =
+        Result.Success(AvailableWeeksDto(statisticsRepository.getAvailablePeriods(userId, accountId, "weeks")))
 
-    override suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonthsDto =
-        AvailableMonthsDto(statisticsRepository.getAvailablePeriods(userId, accountId, "months"))
+    override suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): Result<AvailableMonthsDto> =
+        Result.Success(AvailableMonthsDto(statisticsRepository.getAvailablePeriods(userId, accountId, "months")))
 
-    override suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYearsDto =
-        AvailableYearsDto(statisticsRepository.getAvailablePeriods(userId, accountId, "years"))
+    override suspend fun getAvailableYears(userId: UUID, accountId: UUID?): Result<AvailableYearsDto> =
+        Result.Success(AvailableYearsDto(statisticsRepository.getAvailablePeriods(userId, accountId, "years")))
 
-    override suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummaryDto {
+    override suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): Result<OverviewSummaryDto> {
         val now = Clock.System.now().toLocalDateTime(TimeZone.UTC).date
         val currentMonthCode = "${now.year}-${now.monthNumber.toString().padStart(2, '0')}"
 
@@ -548,15 +537,15 @@ class StatisticsServiceImpl(
         val weeklyStart = trendEnd.minus(DatePeriod(days = 6))
         val monthlyStart = trendEnd.minus(DatePeriod(days = 29))
 
-        val weekly = getDaySummaries(userId, weeklyStart, trendEnd, accountId)
-        val monthly = getDaySummaries(userId, monthlyStart, trendEnd, accountId)
+        val weeklyResult = getDaySummaries(userId, weeklyStart, trendEnd, accountId)
+        val monthlyResult = getDaySummaries(userId, monthlyStart, trendEnd, accountId)
 
-        return OverviewSummaryDto(
+        return Result.Success(OverviewSummaryDto(
             period = targetMonthCode,
             isCurrent = isCurrent,
-            weeklyOverview = weekly,
-            monthlyOverview = monthly
-        )
+            weeklyOverview = (weeklyResult as Result.Success).value,
+            monthlyOverview = (monthlyResult as Result.Success).value
+        ))
     }
 
     override suspend fun getDaySummaries(
@@ -564,25 +553,26 @@ class StatisticsServiceImpl(
         start: LocalDate,
         end: LocalDate,
         accountId: UUID?
-    ): List<DaySummaryDto> {
+    ): Result<List<DaySummaryDto>> {
         val transactions = statisticsRepository.getTransactionsByDateRange(userId, start, end, accountId)
         val dates = generateSequence(start) { current ->
             if (current < end) current.plus(DatePeriod(days = 1)) else null
         }.toList()
 
-        return dates.map { date ->
+        val summaries = dates.map { date ->
             val dayTxs = transactions.filter { it.dateTime.toLocalDateTime(TimeZone.UTC).date == date }
             val income = dayTxs.filter { it.isIncome }.sumOf { it.totalAmount }
             val expense = dayTxs.filter { !it.isIncome }.sumOf { it.totalAmount }
             DaySummaryDto(date = date, income = income, expense = expense)
         }
+        return Result.Success(summaries)
     }
 
     override suspend fun getCategoryComparisons(
         userId: UUID,
         accountId: UUID?,
         period: String?
-    ): CategoryComparisonSummaryDto {
+    ): Result<CategoryComparisonSummaryDto> {
         log.withContext("userId" to userId, "accountId" to accountId, "period" to period)
             .debug { "Calculating category comparisons with weekly data" }
 
@@ -702,11 +692,11 @@ class StatisticsServiceImpl(
             results
         }
 
-        return CategoryComparisonSummaryDto(
+        return Result.Success(CategoryComparisonSummaryDto(
             period = targetPeriod,
             isCurrent = isCurrent,
             data = comparisons
-        )
+        ))
     }
 
     private fun calculateChange(current: Double, previous: Double): Double =
@@ -751,15 +741,18 @@ class StatisticsServiceImpl(
 
     override suspend fun getTransactionCountSummary(
         userId: UUID, accountId: UUID?, isIncome: Boolean?, category: String?, hasCost: Boolean?, start: Instant?, end: Instant?
-    ): TransactionCountSummaryDto {
-        requireNotNull(accountId) { "Account ID is required" }
+    ): Result<TransactionCountSummaryDto> {
+        if (accountId == null) return Result.Failure(AppError.Validation("Account ID is required"))
         val counts = statisticsRepository.getTransactionCounts(userId, accountId, isIncome, category, hasCost, start, end)
-        return TransactionCountSummaryDto(counts.incomeCount, counts.expenseCount, counts.totalCount, counts.totalTransactionCost)
+        return Result.Success(TransactionCountSummaryDto(counts.incomeCount, counts.expenseCount, counts.totalCount, counts.totalTransactionCost))
     }
 
-    override suspend fun getProfileMetrics(userId: UUID): ProfileMetricsDto {
-        val user = userRepository.findById(userId) ?: throw ValidationException("User not found")
-        val accounts = accountService.getAllAccounts(userId)
+    override suspend fun getProfileMetrics(userId: UUID): Result<ProfileMetricsDto> {
+        val user = userRepository.findById(userId) ?: return Result.Failure(AppError.NotFound("User not found"))
+        val accountsResult = accountService.getAllAccounts(userId)
+        if (accountsResult is Result.Failure) return Result.Failure(accountsResult.error)
+        val accounts = (accountsResult as Result.Success).value
+        
         val netWorth = accounts.sumOf { it.balance }
 
         // Use global highlights (period = null) logic to get overall savings/essential ratios
@@ -778,22 +771,27 @@ class StatisticsServiceImpl(
             .sumOf { it.totalAmount }
         val essentialSpendRatio = if (totalExpense > 0) (essentialSpend / totalExpense) * 100 else null
 
-        return ProfileMetricsDto(
+        return Result.Success(ProfileMetricsDto(
             name = user.name,
             email = user.email,
             netWorth = netWorth,
             savingsRate = savingsRate,
             essentialSpendRatio = essentialSpendRatio
-        )
+        ))
     }
 
     override suspend fun getDaySummariesByDateRange(
         userId: UUID, accountId: UUID?, startParam: String?, endParam: String?
-    ): List<DaySummaryDto> {
-        val range = parseDateRange(startParam, endParam)
-        val start = range.first?.toLocalDateTime(TimeZone.UTC)?.date ?: throw ValidationException("Invalid start date")
-        val end = range.second?.toLocalDateTime(TimeZone.UTC)?.date ?: throw ValidationException("Invalid end date")
-        return getDaySummaries(userId, start, end, accountId)
+    ): Result<List<DaySummaryDto>> {
+        return when (val rangeResult = parseDateRange(startParam, endParam)) {
+            is Result.Success -> {
+                val range = rangeResult.value
+                val start = range.first?.toLocalDateTime(TimeZone.UTC)?.date ?: return Result.Failure(AppError.Validation("Invalid start date"))
+                val end = range.second?.toLocalDateTime(TimeZone.UTC)?.date ?: return Result.Failure(AppError.Validation("Invalid end date"))
+                getDaySummaries(userId, start, end, accountId)
+            }
+            is Result.Failure -> Result.Failure(rangeResult.error)
+        }
     }
 
     override fun parseTypeFilter(typeFilter: String?): Boolean? = when (typeFilter?.lowercase()) {
@@ -802,11 +800,18 @@ class StatisticsServiceImpl(
         else -> null
     }
 
-    override fun parseDateRange(startDate: String?, endDate: String?): Pair<Instant?, Instant?> {
-        val start = startDate?.let { LocalDate.parse(it).atTime(LocalTime(0, 0, 0)).toInstant(TimeZone.UTC) }
-        val end = endDate?.let { LocalDate.parse(it).atTime(LocalTime(23, 59, 59)).toInstant(TimeZone.UTC) }
-        if (start != null && end != null && start > end) throw ValidationException("Start date cannot be after end date")
-        return start to end
+    override fun parseDateRange(startDate: String?, endDate: String?): Result<Pair<Instant?, Instant?>> {
+        return try {
+            val start = startDate?.let { LocalDate.parse(it).atTime(LocalTime(0, 0, 0)).toInstant(TimeZone.UTC) }
+            val end = endDate?.let { LocalDate.parse(it).atTime(LocalTime(23, 59, 59)).toInstant(TimeZone.UTC) }
+            if (start != null && end != null && start > end) {
+                Result.Failure(AppError.Validation("Start date cannot be after end date"))
+            } else {
+                Result.Success(start to end)
+            }
+        } catch (e: Exception) {
+            Result.Failure(AppError.Validation("Invalid date format. Use YYYY-MM-DD"))
+        }
     }
 
     private fun isDescriptionMeaningful(description: String?, categoryName: String): Boolean {

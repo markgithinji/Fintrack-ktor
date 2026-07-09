@@ -1,17 +1,17 @@
 package com.fintrack.feature.accounts.domain
 
+import com.fintrack.core.domain.AppError
+import com.fintrack.core.domain.Result
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
-import com.fintrack.feature.accounts.domain.repository.AccountsRepository
-import com.fintrack.feature.summary.data.model.AccountAggregates
-import core.UnauthorizedAccessException
-import core.ValidationException
 import com.fintrack.feature.accounts.data.model.AccountDto
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.accounts.data.model.toDomain
 import com.fintrack.feature.accounts.data.model.toDto
 import com.fintrack.feature.accounts.domain.model.TransactionSummary
+import com.fintrack.feature.accounts.domain.repository.AccountsRepository
+import com.fintrack.feature.summary.data.model.AccountAggregates
 import kotlinx.datetime.Clock
 import java.util.UUID
 
@@ -21,7 +21,7 @@ class AccountServiceImpl(
 
     private val log = logger<AccountServiceImpl>()
 
-    override suspend fun getAccountAggregates(userId: UUID, accountId: UUID?): AccountAggregates {
+    override suspend fun getAccountAggregates(userId: UUID, accountId: UUID?): Result<AccountAggregates> {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Calculating account aggregates" }
 
@@ -43,10 +43,10 @@ class AccountServiceImpl(
             "finalBalance" to balance
         ).debug { "Account aggregates calculated" }
 
-        return AccountAggregates(incomeSum, expenseSum, balance)
+        return Result.Success(AccountAggregates(incomeSum, expenseSum, balance))
     }
 
-    override suspend fun getAllAccounts(userId: UUID): List<AccountDto> {
+    override suspend fun getAllAccounts(userId: UUID): Result<List<AccountDto>> {
         log.withContext("userId" to userId).info { "Fetching all accounts" }
 
         val accounts = accountsRepository.getAllAccounts(userId)
@@ -78,21 +78,24 @@ class AccountServiceImpl(
 
         log.withContext("userId" to userId, "accountCount" to sortedResult.size)
             .debug { "All accounts retrieved and sorted successfully" }
-        return sortedResult
+        return Result.Success(sortedResult)
     }
 
-    override suspend fun getAccount(userId: UUID, accountId: UUID): AccountDto {
+    override suspend fun getAccount(userId: UUID, accountId: UUID): Result<AccountDto> {
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Fetching account" }
 
         val account = accountsRepository.getAccountById(accountId)
-            ?: throw NoSuchElementException("Account not found")
+            ?: return Result.Failure(AppError.NotFound("Account not found"))
 
         if (account.userId != userId) {
-            throw UnauthorizedAccessException("Account does not belong to user")
+            return Result.Failure(AppError.Unauthorized("Account does not belong to user"))
         }
 
-        val aggregates = getAccountAggregates(userId, account.id)
+        // Internal call to getAccountAggregates - we know it returns Success here
+        val aggregatesResult = getAccountAggregates(userId, account.id)
+        val aggregates = (aggregatesResult as Result.Success).value
+        
         val accountDto = account.toDto(
             id = account.id.toString(),
             income = aggregates.income,
@@ -102,10 +105,10 @@ class AccountServiceImpl(
 
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Account retrieved successfully" }
-        return accountDto
+        return Result.Success(accountDto)
     }
 
-    override suspend fun createAccount(userId: UUID, request: CreateAccountRequest): AccountDto {
+    override suspend fun createAccount(userId: UUID, request: CreateAccountRequest): Result<AccountDto> {
         log.withContext("userId" to userId, "accountName" to request.name)
             .info { "Creating account" }
 
@@ -122,19 +125,19 @@ class AccountServiceImpl(
 
         log.withContext("userId" to userId, "accountId" to createdAccount.id)
             .info { "Account created successfully" }
-        return accountDto
+        return Result.Success(accountDto)
     }
 
     override suspend fun updateAccount(
         userId: UUID,
         accountId: UUID,
         request: UpdateAccountRequest
-    ): AccountDto {
+    ): Result<AccountDto> {
         log.withContext("userId" to userId, "accountId" to accountId)
             .info { "Updating account" }
 
         val existingAccount = accountsRepository.getAccountById(accountId)
-            ?: throw NoSuchElementException("Account not found")
+            ?: return Result.Failure(AppError.NotFound("Account not found"))
 
         if (existingAccount.userId != userId) {
             log.withContext(
@@ -142,7 +145,7 @@ class AccountServiceImpl(
                 "actualUserId" to existingAccount.userId,
                 "accountId" to accountId
             ).warn { "Unauthorized account update attempt" }
-            throw UnauthorizedAccessException("Account does not belong to user")
+            return Result.Failure(AppError.Unauthorized("Account does not belong to user"))
         }
 
         val account = existingAccount.copy(
@@ -150,7 +153,11 @@ class AccountServiceImpl(
             type = request.type
         )
         val updatedAccount = accountsRepository.updateAccount(account)
-        val aggregates = getAccountAggregates(userId, updatedAccount.id)
+        
+        // Internal call
+        val aggregatesResult = getAccountAggregates(userId, updatedAccount.id)
+        val aggregates = (aggregatesResult as Result.Success).value
+        
         val accountDto = updatedAccount.toDto(
             id = updatedAccount.id.toString(),
             income = aggregates.income,
@@ -160,15 +167,15 @@ class AccountServiceImpl(
 
         log.withContext("userId" to userId, "accountId" to accountId)
             .info { "Account updated successfully" }
-        return accountDto
+        return Result.Success(accountDto)
     }
 
-    override suspend fun deleteAccount(userId: UUID, accountId: UUID): Boolean {
+    override suspend fun deleteAccount(userId: UUID, accountId: UUID): Result<Unit> {
         log.withContext("userId" to userId, "accountId" to accountId)
             .info { "Deleting account" }
 
         val account = accountsRepository.getAccountById(accountId)
-            ?: throw NoSuchElementException("Account not found")
+            ?: return Result.Failure(AppError.NotFound("Account not found"))
 
         if (account.userId != userId) {
             log.withContext(
@@ -176,16 +183,16 @@ class AccountServiceImpl(
                 "actualUserId" to account.userId,
                 "accountId" to accountId
             ).warn { "Unauthorized account deletion attempt" }
-            throw UnauthorizedAccessException("Account does not belong to user")
+            return Result.Failure(AppError.Unauthorized("Account does not belong to user"))
         }
 
         if (account.isDefault) {
-            throw ValidationException("Cannot delete a system default account")
+            return Result.Failure(AppError.Validation("Cannot delete a system default account"))
         }
 
         accountsRepository.deleteAccount(accountId)
         log.withContext("userId" to userId, "accountId" to accountId)
             .info { "Account deleted successfully" }
-        return true
+        return Result.Success(Unit)
     }
 }

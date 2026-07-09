@@ -1,4 +1,4 @@
-package feature.transaction
+package com.fintrack.feature.transaction
 
 
 import com.fintrack.feature.transaction.data.model.BulkCreateTransactionRequest

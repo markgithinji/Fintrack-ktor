@@ -1,4 +1,4 @@
-package feature.auth.domain
+package com.fintrack.feature.auth
 
 import feature.auth.data.model.AuthRequest
 import io.ktor.server.plugins.requestvalidation.*

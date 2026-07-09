@@ -1,5 +1,6 @@
 package feature.summary.domain
 
+import com.fintrack.core.domain.Result
 import feature.summary.data.model.AvailableMonthsDto
 import feature.summary.data.model.AvailableWeeksDto
 import feature.summary.data.model.AvailableYearsDto
@@ -22,7 +23,7 @@ interface StatisticsService {
         start: Instant?,
         end: Instant?,
         period: String? = null
-    ): StatisticsSummaryDto
+    ): Result<StatisticsSummaryDto>
 
     suspend fun getDistributionSummary(
         userId: UUID,
@@ -31,35 +32,35 @@ interface StatisticsService {
         isIncome: Boolean?,
         start: Instant?,
         end: Instant?
-    ): DistributionSummaryDto
+    ): Result<DistributionSummaryDto>
 
-    suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): AvailableWeeksDto
+    suspend fun getAvailableWeeks(userId: UUID, accountId: UUID?): Result<AvailableWeeksDto>
 
-    suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): AvailableMonthsDto
+    suspend fun getAvailableMonths(userId: UUID, accountId: UUID?): Result<AvailableMonthsDto>
 
-    suspend fun getAvailableYears(userId: UUID, accountId: UUID?): AvailableYearsDto
+    suspend fun getAvailableYears(userId: UUID, accountId: UUID?): Result<AvailableYearsDto>
 
-    suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): OverviewSummaryDto
+    suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): Result<OverviewSummaryDto>
 
     suspend fun getDaySummaries(
         userId: UUID,
         start: LocalDate,
         end: LocalDate,
         accountId: UUID?
-    ): List<DaySummaryDto>
+    ): Result<List<DaySummaryDto>>
 
     suspend fun getDaySummariesByDateRange(
         userId: UUID,
         accountId: UUID?,
         startParam: String?,
         endParam: String?
-    ): List<DaySummaryDto>
+    ): Result<List<DaySummaryDto>>
 
     suspend fun getCategoryComparisons(
         userId: UUID,
         accountId: UUID?,
         period: String? = null
-    ): CategoryComparisonSummaryDto
+    ): Result<CategoryComparisonSummaryDto>
 
     suspend fun getTransactionCountSummary(
         userId: UUID,
@@ -69,11 +70,11 @@ interface StatisticsService {
         hasCost: Boolean? = null,
         start: Instant? = null,
         end: Instant? = null
-    ): TransactionCountSummaryDto
+    ): Result<TransactionCountSummaryDto>
 
-    suspend fun getProfileMetrics(userId: UUID): ProfileMetricsDto
+    suspend fun getProfileMetrics(userId: UUID): Result<ProfileMetricsDto>
 
     // Helper methods for route parameter processing
     fun parseTypeFilter(typeFilter: String?): Boolean?
-    fun parseDateRange(startDate: String?, endDate: String?): Pair<Instant?, Instant?>
+    fun parseDateRange(startDate: String?, endDate: String?): Result<Pair<Instant?, Instant?>>
 }

@@ -1,4 +1,4 @@
-package com.fintrack.feature.accounts.domain
+package com.fintrack.feature.accounts
 
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest

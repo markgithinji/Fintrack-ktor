@@ -1,10 +1,10 @@
 package plugins
 
-import com.fintrack.feature.accounts.domain.configureAccountValidation
-import feature.auth.domain.configureAuthValidation
-import feature.budget.domain.configureBudgetValidation
-import feature.transaction.configureTransactionValidation
-import feature.user.domain.configureUserValidation
+import com.fintrack.feature.accounts.configureAccountValidation
+import com.fintrack.feature.auth.configureAuthValidation
+import com.fintrack.feature.budget.configureBudgetValidation
+import com.fintrack.feature.transaction.configureTransactionValidation
+import com.fintrack.feature.user.configureUserValidation
 import io.ktor.server.application.*
 import io.ktor.server.plugins.requestvalidation.*
 

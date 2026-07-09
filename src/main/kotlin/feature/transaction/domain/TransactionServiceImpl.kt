@@ -1,5 +1,7 @@
 package feature.transaction.domain
 
+import com.fintrack.core.domain.AppError
+import com.fintrack.core.domain.Result
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.feature.transaction.data.model.DeleteResponse
@@ -37,7 +39,7 @@ class TransactionServiceImpl(
         afterDateTime: String?,
         afterId: UUID?,
         hasTransactionCost: Boolean?
-    ): PaginatedTransactionDto {
+    ): Result<PaginatedTransactionDto> {
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
@@ -82,21 +84,22 @@ class TransactionServiceImpl(
             "finalIsIncome" to finalIsIncome
         ).debug { "Transactions retrieved with cursor pagination" }
 
-        return PaginatedTransactionDto(transactionDtos, nextCursor)
+        return Result.Success(PaginatedTransactionDto(transactionDtos, nextCursor))
     }
 
-    override suspend fun getById(userId: UUID, id: UUID): TransactionDto {
+    override suspend fun getById(userId: UUID, id: UUID): Result<TransactionDto> {
         log.withContext("userId" to userId, "transactionId" to id)
             .debug { "Fetching transaction by ID" }
 
         val transaction = repo.getById(id, userId)
+            ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
 
         log.withContext("userId" to userId, "transactionId" to id)
             .debug { "Transaction retrieved successfully" }
-        return transaction.toDto()
+        return Result.Success(transaction.toDto())
     }
 
-    override suspend fun add(userId: UUID, request: CreateTransactionRequest): TransactionDto {
+    override suspend fun add(userId: UUID, request: CreateTransactionRequest): Result<TransactionDto> {
         log.withContext(
             "userId" to userId,
             "accountId" to request.accountId,
@@ -114,26 +117,30 @@ class TransactionServiceImpl(
             "accountId" to result.accountId
         ).info { "Transaction created successfully" }
 
-        return result.toDto()
+        return Result.Success(result.toDto())
     }
 
     override suspend fun update(
         userId: UUID,
         id: UUID,
         request: UpdateTransactionRequest
-    ): TransactionDto {
+    ): Result<TransactionDto> {
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Updating transaction" }
 
+        repo.getById(id, userId)
+            ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
+
         val transaction = request.toDomain(userId, id)
         val result = repo.update(id, userId, transaction)
+            ?: return Result.Failure(AppError.Internal("Failed to update transaction $id"))
 
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Transaction updated successfully" }
-        return result.toDto()
+        return Result.Success(result.toDto())
     }
 
-    override suspend fun delete(userId: UUID, id: UUID) {
+    override suspend fun delete(userId: UUID, id: UUID): Result<Unit> {
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Deleting transaction" }
 
@@ -142,14 +149,15 @@ class TransactionServiceImpl(
         if (!deleted) {
             log.withContext("userId" to userId, "transactionId" to id)
                 .warn { "Transaction deletion failed - not found" }
-            throw NoSuchElementException("Transaction not found")
+            return Result.Failure(AppError.NotFound("Transaction $id not found"))
         }
 
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Transaction deleted successfully" }
+        return Result.Success(Unit)
     }
 
-    override suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): DeleteResponse {
+    override suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): Result<DeleteResponse> {
         log.withContext("userId" to userId, "accountIds" to accountIds)
             .warn { "Clearing all transactions" }
 
@@ -162,13 +170,13 @@ class TransactionServiceImpl(
         log.withContext("userId" to userId, "accountIds" to accountIds)
             .info { "All transactions cleared successfully" }
 
-        return DeleteResponse(message, cleared)
+        return Result.Success(DeleteResponse(message, cleared))
     }
 
     override suspend fun addBulk(
         userId: UUID,
         requests: List<CreateTransactionRequest>
-    ): List<TransactionDto> {
+    ): Result<List<TransactionDto>> {
         log.withContext("userId" to userId, "bulkCount" to requests.size)
             .info { "Creating bulk transactions" }
 
@@ -181,17 +189,17 @@ class TransactionServiceImpl(
             "createdCount" to result.size
         ).info { "Bulk transactions created successfully" }
 
-        return result.map { it.toDto() }
+        return Result.Success(result.map { it.toDto() })
     }
 
     override suspend fun syncEquityTransactions(
         userId: UUID,
         requests: List<CreateTransactionRequest>
-    ): List<TransactionDto> {
+    ): Result<List<TransactionDto>> {
         log.withContext("userId" to userId, "bulkCount" to requests.size)
             .info { "Syncing Equity Bank transactions" }
 
-        if (requests.isEmpty()) return emptyList()
+        if (requests.isEmpty()) return Result.Success(emptyList())
 
         // 1. Convert to domain objects
         val transactions = requests.map { it.toDomain(userId) }
@@ -222,10 +230,10 @@ class TransactionServiceImpl(
             "createdCount" to result.size
         ).info { "Equity transactions synced successfully" }
 
-        return result.map { it.toDto() }
+        return Result.Success(result.map { it.toDto() })
     }
 
-    override suspend fun detectRecurringBills(userId: UUID): List<RecurringBillDto> {
+    override suspend fun detectRecurringBills(userId: UUID): Result<List<RecurringBillDto>> {
         log.withContext("userId" to userId).info { "Detecting recurring bills" }
 
         // Fetch last 90 days of transactions for analysis
@@ -291,6 +299,6 @@ class TransactionServiceImpl(
         }
 
         log.withContext("userId" to userId, "detectedCount" to recurringBills.size).info { "Recurring bills detected" }
-        return recurringBills
+        return Result.Success(recurringBills)
     }
 }

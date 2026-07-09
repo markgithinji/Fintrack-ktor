@@ -1,6 +1,6 @@
 package feature.transaction
 
-import com.fintrack.core.domain.ApiResponse
+import com.fintrack.core.domain.*
 import com.fintrack.core.logger
 import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
@@ -8,17 +8,11 @@ import com.fintrack.core.withContext
 import com.fintrack.feature.budget.data.model.BulkCreateBudgetRequest
 import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
-import core.ValidationException
 import feature.budget.domain.BudgetService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.delete
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.put
-import io.ktor.server.routing.route
+import io.ktor.server.routing.*
 import java.util.UUID
 
 fun Route.budgetRoutes(budgetService: BudgetService) {
@@ -36,8 +30,13 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "budgetCount" to bulkRequest.budgets.size
             ).info { "Bulk budget creation request received" }
 
-            val saved = budgetService.createBudgets(userId, bulkRequest.budgets)
-            call.respond(ApiResponse.Success(saved))
+            when (val result = budgetService.createBudgets(userId, bulkRequest.budgets)) {
+                is Result.Success -> call.respond(ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         post {
@@ -51,14 +50,19 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "limit" to request.limit
             ).info { "Budget creation request received" }
 
-            val budget = budgetService.createBudget(userId, request)
-            call.respond(HttpStatusCode.Created, ApiResponse.Success(budget))
+            when (val result = budgetService.createBudget(userId, request)) {
+                is Result.Success -> call.respond(HttpStatusCode.Created, ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         put("{id}") {
             val userId = call.userIdOrThrow()
-            val id = call.parameters["id"]?.let { UUID.fromString(it) }
-                ?: throw ValidationException("Invalid budget ID")
+            val id = call.parameters["id"]?.toUUIDOrNull()
+                ?: return@put call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid budget ID", "INVALID_ID"))
 
             val request = call.receive<UpdateBudgetRequest>()
 
@@ -68,14 +72,19 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "endpoint" to "PUT /budgets/{id}"
             ).info { "Budget update request received" }
 
-            val updatedBudget = budgetService.updateBudget(userId, id, request)
-            call.respond(ApiResponse.Success(updatedBudget))
+            when (val result = budgetService.updateBudget(userId, id, request)) {
+                is Result.Success -> call.respond(ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         delete("{id}") {
             val userId = call.userIdOrThrow()
-            val id = call.parameters["id"]?.let { UUID.fromString(it) }
-                ?: throw ValidationException("Invalid budget ID")
+            val id = call.parameters["id"]?.toUUIDOrNull()
+                ?: return@delete call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid budget ID", "INVALID_ID"))
 
             log.withContext(
                 "userId" to userId,
@@ -83,8 +92,13 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "endpoint" to "DELETE /budgets/{id}"
             ).info { "Budget deletion request received" }
 
-            budgetService.deleteBudget(userId, id)
-            call.respond(ApiResponse.Success("Deleted budget with id: $id"))
+            when (val result = budgetService.deleteBudget(userId, id)) {
+                is Result.Success -> call.respond(ApiResponse.Success("Deleted budget with id: $id"))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         delete("/clear") {
@@ -97,13 +111,18 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "endpoint" to "DELETE /budgets/clear"
             ).info { "Delete budgets request received" }
 
-            val result = budgetService.deleteAllBudgets(userId, accountIds)
-            call.respond(ApiResponse.Success(result))
+            when (val result = budgetService.deleteAllBudgets(userId, accountIds)) {
+                is Result.Success -> call.respond(ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         get {
             val userId = call.userIdOrThrow()
-            val accountId = call.request.queryParameters["accountId"]?.let { UUID.fromString(it) }
+            val accountId = call.request.queryParameters["accountId"]?.toUUIDOrNull()
 
             log.withContext(
                 "userId" to userId,
@@ -111,14 +130,19 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "endpoint" to "GET /budgets"
             ).info { "Fetch budgets request received" }
 
-            val budgets = budgetService.getAllBudgets(userId, accountId)
-            call.respond(ApiResponse.Success(budgets))
+            when (val result = budgetService.getAllBudgets(userId, accountId)) {
+                is Result.Success -> call.respond(ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         get("{id}") {
             val userId = call.userIdOrThrow()
-            val id = call.parameters["id"]?.let { UUID.fromString(it) }
-                ?: throw ValidationException("Invalid budget ID")
+            val id = call.parameters["id"]?.toUUIDOrNull()
+                ?: return@get call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid budget ID", "INVALID_ID"))
 
             log.withContext(
                 "userId" to userId,
@@ -126,8 +150,13 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
                 "endpoint" to "GET /budgets/{id}"
             ).info { "Fetch budget by ID request received" }
 
-            val budget = budgetService.getBudgetById(userId, id)
-            call.respond(ApiResponse.Success(budget))
+            when (val result = budgetService.getBudgetById(userId, id)) {
+                is Result.Success -> call.respond(ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
     }
 }

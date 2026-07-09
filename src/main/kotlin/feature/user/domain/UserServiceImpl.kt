@@ -1,19 +1,21 @@
 package feature.user.domain
 
+import com.fintrack.core.EmailService
+import com.fintrack.core.domain.AppError
+import com.fintrack.core.domain.Result
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import com.fintrack.feature.user.data.model.toDto
 import com.fintrack.feature.user.domain.User
+import feature.auth.domain.model.EmailVerificationToken
+import feature.auth.domain.repository.EmailVerificationRepository
 import feature.user.data.model.UpdateUserRequest
 import feature.user.data.model.UserDto
-import com.fintrack.core.EmailService
-import feature.auth.domain.repository.EmailVerificationRepository
-import feature.auth.domain.model.EmailVerificationToken
 import kotlinx.datetime.Clock
-import kotlin.time.Duration.Companion.hours
 import org.mindrot.jbcrypt.BCrypt
 import java.util.UUID
+import kotlin.time.Duration.Companion.hours
 
 class UserServiceImpl(
     private val userRepository: UserRepository,
@@ -24,22 +26,22 @@ class UserServiceImpl(
 
     private val log = logger<UserServiceImpl>()
 
-    override suspend fun getUserProfile(userId: UUID): UserDto {
+    override suspend fun getUserProfile(userId: UUID): Result<UserDto> {
         log.withContext("userId" to userId).debug { "Fetching user profile" }
 
         val user = userRepository.findById(userId) ?: run {
             log.withContext("userId" to userId).warn { "User not found" }
-            throw NoSuchElementException("User not found")
+            return Result.Failure(AppError.NotFound("User not found"))
         }
 
         val userDto = user.toDto()
 
         log.withContext("userId" to userId, "email" to user.email)
             .debug { "User profile retrieved successfully" }
-        return userDto
+        return Result.Success(userDto)
     }
 
-    override suspend fun updateUser(userId: UUID, request: UpdateUserRequest): UserDto {
+    override suspend fun updateUser(userId: UUID, request: UpdateUserRequest): Result<UserDto> {
         log.withContext(
             "userId" to userId,
             "emailUpdate" to (request.email != null),
@@ -49,7 +51,7 @@ class UserServiceImpl(
         // Validate user exists
         val existingUser = userRepository.findById(userId) ?: run {
             log.withContext("userId" to userId).warn { "User update failed - user not found" }
-            throw NoSuchElementException("User not found")
+            return Result.Failure(AppError.NotFound("User not found"))
         }
 
         // Check if email is taken
@@ -60,7 +62,7 @@ class UserServiceImpl(
                     "requestedEmail" to request.email,
                     "currentEmail" to existingUser.email
                 ).warn { "User update failed - email already taken" }
-                throw IllegalArgumentException("Email '${request.email}' is already taken")
+                return Result.Failure(AppError.Conflict("Email '${request.email}' is already taken"))
             }
 
             // Handle email verification flow
@@ -86,43 +88,43 @@ class UserServiceImpl(
 
         if (!updated) {
             log.withContext("userId" to userId).warn { "User update failed" }
-            throw IllegalStateException("Failed to update user")
+            return Result.Failure(AppError.Internal("Failed to update user"))
         }
 
         val updatedUser = userRepository.findById(userId) ?: run {
             log.withContext("userId" to userId).warn { "Failed to fetch updated user" }
-            throw IllegalStateException("Failed to fetch updated user")
+            return Result.Failure(AppError.Internal("Failed to fetch updated user"))
         }
 
         log.withContext("userId" to userId).info { "User updated successfully" }
-        return updatedUser.toDto()
+        return Result.Success(updatedUser.toDto())
     }
 
-    override suspend fun updateTrackedCategories(userId: UUID, categories: List<String>): UserDto {
+    override suspend fun updateTrackedCategories(userId: UUID, categories: List<String>): Result<UserDto> {
         log.withContext("userId" to userId, "categories" to categories).info { "Updating tracked categories" }
 
         val updated = userRepository.updateTrackedCategories(userId, categories.take(2))
 
         if (!updated) {
-            throw IllegalStateException("Failed to update tracked categories")
+            return Result.Failure(AppError.Internal("Failed to update tracked categories"))
         }
 
         return getUserProfile(userId)
     }
 
-    override suspend fun verifyEmailChange(token: String): UserDto {
+    override suspend fun verifyEmailChange(token: String): Result<UserDto> {
         val verificationToken = emailVerificationRepository.findByToken(token)
-            ?: throw IllegalArgumentException("Invalid or expired verification token")
+            ?: return Result.Failure(AppError.Authentication("Invalid or expired verification token"))
 
         if (verificationToken.expiresAt < Clock.System.now()) {
             emailVerificationRepository.deleteByToken(token)
-            throw IllegalArgumentException("Verification token has expired")
+            return Result.Failure(AppError.Authentication("Verification token has expired"))
         }
 
         // Check if email is still available
         if (userRepository.userExists(verificationToken.newEmail)) {
             emailVerificationRepository.deleteByUserId(verificationToken.userId)
-            throw IllegalArgumentException("Email '${verificationToken.newEmail}' is no longer available")
+            return Result.Failure(AppError.Conflict("Email '${verificationToken.newEmail}' is no longer available"))
         }
 
         userRepository.updateEmail(verificationToken.userId, verificationToken.newEmail)
@@ -134,17 +136,18 @@ class UserServiceImpl(
         return getUserProfile(verificationToken.userId)
     }
 
-    override suspend fun deleteUser(userId: UUID) {
+    override suspend fun deleteUser(userId: UUID): Result<Unit> {
         log.withContext("userId" to userId).warn { "Deleting user" }
 
         val deleted = userRepository.deleteUser(userId)
 
         if (!deleted) {
             log.withContext("userId" to userId).warn { "User deletion failed - not found" }
-            throw NoSuchElementException("User not found")
+            return Result.Failure(AppError.NotFound("User not found"))
         }
 
         log.withContext("userId" to userId).warn { "User deleted successfully" }
+        return Result.Success(Unit)
     }
 
     override suspend fun validateUserCredentials(email: String, password: String): User? {

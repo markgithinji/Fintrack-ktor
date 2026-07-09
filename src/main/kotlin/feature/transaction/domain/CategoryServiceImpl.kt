@@ -1,5 +1,7 @@
 package feature.transaction.domain
 
+import com.fintrack.core.domain.AppError
+import com.fintrack.core.domain.Result
 import feature.transaction.data.model.CategoryDto
 import feature.transaction.data.model.CreateCategoryRequest
 import feature.transaction.domain.model.Category
@@ -9,13 +11,14 @@ import java.util.UUID
 class CategoryServiceImpl(
     private val repository: CategoryRepository
 ) : CategoryService {
-    override suspend fun getAll(userId: UUID): List<CategoryDto> {
-        return repository.getAll(userId)
+    override suspend fun getAll(userId: UUID): Result<List<CategoryDto>> {
+        val categories = repository.getAll(userId)
             .sortedBy { it.createdAt ?: Clock.System.now() }
             .map { it.toDto() }
+        return Result.Success(categories)
     }
 
-    override suspend fun add(userId: UUID, request: CreateCategoryRequest): CategoryDto {
+    override suspend fun add(userId: UUID, request: CreateCategoryRequest): Result<CategoryDto> {
         val trimmedName = request.name.trim()
 
         // Prevent duplicate names (case-insensitive) for the same user and type
@@ -24,7 +27,7 @@ class CategoryServiceImpl(
         }
 
         if (existing != null) {
-            return existing.toDto()
+            return Result.Success(existing.toDto())
         }
 
         val category = Category(
@@ -34,18 +37,23 @@ class CategoryServiceImpl(
             isExpense = request.isExpense,
             iconName = request.iconName
         )
-        return repository.add(category).toDto()
+        val added = repository.add(category)
+        return Result.Success(added.toDto())
     }
 
-    override suspend fun delete(userId: UUID, id: UUID) {
-        val category = repository.getById(id, userId) ?: throw NoSuchElementException("Category not found")
+    override suspend fun delete(userId: UUID, id: UUID): Result<Unit> {
+        val category = repository.getById(id, userId) 
+            ?: return Result.Failure(AppError.NotFound("Category not found"))
+            
         if (category.isDefault) {
-            throw IllegalArgumentException("Default categories cannot be deleted")
+            return Result.Failure(AppError.Validation("Default categories cannot be deleted"))
         }
+        
         val success = repository.delete(id, userId)
         if (!success) {
-            throw NoSuchElementException("Category with id $id not found for user $userId")
+            return Result.Failure(AppError.NotFound("Category with id $id not found for user $userId"))
         }
+        return Result.Success(Unit)
     }
 
     private fun Category.toDto() = CategoryDto(

@@ -1,6 +1,6 @@
 package feature.transaction
 
-import com.fintrack.core.domain.ApiResponse
+import com.fintrack.core.domain.*
 import com.fintrack.core.logger
 import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
@@ -8,17 +8,11 @@ import com.fintrack.core.withContext
 import com.fintrack.feature.transaction.data.model.BulkCreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
 import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
-import core.ValidationException
 import feature.transaction.domain.TransactionService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.delete
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.put
-import io.ktor.server.routing.route
+import io.ktor.server.routing.*
 import java.util.UUID
 
 fun Route.transactionRoutes(service: TransactionService) {
@@ -35,8 +29,13 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "endpoint" to "DELETE /transactions/clear"
             ).warn { "Clear transactions request received" }
 
-            val result = service.clearAll(userId, accountIds)
-            call.respond(ApiResponse.Success(result))
+            when (val result = service.clearAll(userId, accountIds)) {
+                is Result.Success -> call.respond(ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         get("/recurring/detect") {
@@ -46,8 +45,13 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "endpoint" to "GET /transactions/recurring/detect"
             ).info { "Detect recurring bills request received" }
 
-            val detected = service.detectRecurringBills(userId)
-            call.respond(ApiResponse.Success(detected))
+            when (val result = service.detectRecurringBills(userId)) {
+                is Result.Success -> call.respond(ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         post("/bulk") {
@@ -60,8 +64,13 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "transactionCount" to bulkRequest.transactions.size
             ).info { "Bulk transaction creation request received" }
 
-            val saved = service.addBulk(userId, bulkRequest.transactions)
-            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+            when (val result = service.addBulk(userId, bulkRequest.transactions)) {
+                is Result.Success -> call.respond(HttpStatusCode.Created, ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         post("/batch") {
@@ -74,8 +83,13 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "transactionCount" to requests.size
             ).info { "Batch transaction creation request received" }
 
-            val saved = service.addBulk(userId, requests)
-            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+            when (val result = service.addBulk(userId, requests)) {
+                is Result.Success -> call.respond(HttpStatusCode.Created, ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         post("/mpesa") {
@@ -88,8 +102,13 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "transactionCount" to requests.size
             ).info { "M-Pesa batch transaction creation request received" }
 
-            val saved = service.addBulk(userId, requests)
-            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+            when (val result = service.addBulk(userId, requests)) {
+                is Result.Success -> call.respond(HttpStatusCode.Created, ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         post("/equity") {
@@ -102,8 +121,13 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "transactionCount" to requests.size
             ).info { "Equity batch transaction creation request received" }
 
-            val saved = service.syncEquityTransactions(userId, requests)
-            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+            when (val result = service.syncEquityTransactions(userId, requests)) {
+                is Result.Success -> call.respond(HttpStatusCode.Created, ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         get {
@@ -138,7 +162,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "afterId" to afterId
             ).info { "Transaction list request received" }
 
-            val result = service.getAllCursor(
+            when (val result = service.getAllCursor(
                 userId = userId,
                 accountId = accountId,
                 typeFilter = typeFilter,
@@ -152,21 +176,26 @@ fun Route.transactionRoutes(service: TransactionService) {
                 afterDateTime = afterDateTime,
                 afterId = afterId,
                 hasTransactionCost = hasCost
-            )
-
-            log.withContext(
-                "userId" to userId,
-                "transactionCount" to result.data.size,
-                "hasNextCursor" to (result.nextCursor != null)
-            ).debug { "Transaction list retrieved successfully" }
-
-            call.respond(ApiResponse.Success(result))
+            )) {
+                is Result.Success -> {
+                    log.withContext(
+                        "userId" to userId,
+                        "transactionCount" to result.value.data.size,
+                        "hasNextCursor" to (result.value.nextCursor != null)
+                    ).debug { "Transaction list retrieved successfully" }
+                    call.respond(ApiResponse.Success(result.value))
+                }
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         get("{id}") {
             val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.toUUIDOrNull()
-                ?: throw ValidationException("Invalid ID")
+                ?: return@get call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid transaction ID", "INVALID_ID"))
 
             log.withContext(
                 "userId" to userId,
@@ -174,8 +203,13 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "endpoint" to "GET /transactions/{id}"
             ).info { "Get transaction by ID request received" }
 
-            val transaction = service.getById(userId, id)
-            call.respond(ApiResponse.Success(transaction))
+            when (val result = service.getById(userId, id)) {
+                is Result.Success -> call.respond(ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         post {
@@ -191,14 +225,19 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "category" to request.category
             ).info { "Create transaction request received" }
 
-            val saved = service.add(userId, request)
-            call.respond(HttpStatusCode.Created, ApiResponse.Success(saved))
+            when (val result = service.add(userId, request)) {
+                is Result.Success -> call.respond(HttpStatusCode.Created, ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         put("{id}") {
             val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.toUUIDOrNull()
-                ?: throw ValidationException("Invalid ID")
+                ?: return@put call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid transaction ID", "INVALID_ID"))
             val request = call.receive<UpdateTransactionRequest>()
 
             log.withContext(
@@ -209,14 +248,19 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "amount" to request.amount
             ).info { "Update transaction request received" }
 
-            val updated = service.update(userId, id, request)
-            call.respond(ApiResponse.Success(updated))
+            when (val result = service.update(userId, id, request)) {
+                is Result.Success -> call.respond(ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         delete("{id}") {
             val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.toUUIDOrNull()
-                ?: throw ValidationException("Invalid ID")
+                ?: return@delete call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid transaction ID", "INVALID_ID"))
 
             log.withContext(
                 "userId" to userId,
@@ -224,8 +268,13 @@ fun Route.transactionRoutes(service: TransactionService) {
                 "endpoint" to "DELETE /transactions/{id}"
             ).info { "Delete transaction request received" }
 
-            service.delete(userId, id)
-            call.respond(ApiResponse.Success(mapOf("message" to "Transaction deleted successfully")))
+            when (val result = service.delete(userId, id)) {
+                is Result.Success -> call.respond(ApiResponse.Success(mapOf("message" to "Transaction deleted successfully")))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
     }
 }

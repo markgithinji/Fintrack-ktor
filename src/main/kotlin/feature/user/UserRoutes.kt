@@ -1,6 +1,6 @@
 package feature.user
 
-import com.fintrack.core.domain.ApiResponse
+import com.fintrack.core.domain.*
 import com.fintrack.core.logger
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
@@ -10,11 +10,7 @@ import feature.user.domain.UserService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.delete
-import io.ktor.server.routing.get
-import io.ktor.server.routing.put
-import io.ktor.server.routing.route
+import io.ktor.server.routing.*
 
 fun Route.userRoutes(userService: UserService) {
     val log = logger("UserRoutes")
@@ -29,8 +25,13 @@ fun Route.userRoutes(userService: UserService) {
                 "endpoint" to "GET /users/me"
             ).info { "Get user profile request received" }
 
-            val user = userService.getUserProfile(userId)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(user))
+            when (val result = userService.getUserProfile(userId)) {
+                is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         put("/me") {
@@ -44,8 +45,13 @@ fun Route.userRoutes(userService: UserService) {
                 "passwordUpdate" to (updateRequest.password != null)
             ).info { "Update user profile request received" }
 
-            val updatedUser = userService.updateUser(userId, updateRequest)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(updatedUser))
+            when (val result = userService.updateUser(userId, updateRequest)) {
+                is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         put("/preferences/tracked-categories") {
@@ -57,8 +63,13 @@ fun Route.userRoutes(userService: UserService) {
                 "categories" to request.categories
             ).info { "Update tracked categories request received" }
 
-            val updatedUser = userService.updateTrackedCategories(userId, request.categories)
-            call.respond(HttpStatusCode.OK, ApiResponse.Success(updatedUser))
+            when (val result = userService.updateTrackedCategories(userId, request.categories)) {
+                is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
 
         delete("/me") {
@@ -69,12 +80,16 @@ fun Route.userRoutes(userService: UserService) {
                 "endpoint" to "DELETE /users/me"
             ).warn { "Delete user account request received" }
 
-            userService.deleteUser(userId)
-            log.withContext("userId" to userId).warn { "User account deletion completed" }
-            call.respond(
-                HttpStatusCode.OK,
-                ApiResponse.Success("User account deleted successfully")
-            )
+            when (val result = userService.deleteUser(userId)) {
+                is Result.Success -> {
+                    log.withContext("userId" to userId).warn { "User account deletion completed" }
+                    call.respond(HttpStatusCode.OK, ApiResponse.Success("User account deleted successfully"))
+                }
+                is Result.Failure -> call.respond(
+                    result.error.toHttpStatusCode(),
+                    ErrorResponse(result.error.message, result.error.errorCode)
+                )
+            }
         }
     }
 }
