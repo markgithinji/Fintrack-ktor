@@ -2,17 +2,20 @@ package feature.accounts.data
 
 import com.fintrack.feature.accounts.domain.Account
 import com.fintrack.feature.accounts.domain.AccountsRepository
+import com.fintrack.feature.accounts.domain.TransactionSummary
 import com.fintrack.feature.user.UsersTable
 import core.dbQuery
 import feature.transaction.data.TransactionsTable
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.update
 import kotlinx.datetime.Clock
 import java.util.UUID
@@ -36,13 +39,8 @@ class AccountsRepositoryImpl : AccountsRepository {
         dbQuery {
             val now = Clock.System.now()
             val insertStatement = AccountsTable.insert { row ->
-                // UUIDTable automatically handles the ID, so we don't need to set it
-                row[AccountsTable.userId] = EntityID(account.userId, UsersTable)
-                row[AccountsTable.name] = account.name
-                row[AccountsTable.isDefault] = account.isDefault
-                row[AccountsTable.type] = account.type
-                row[AccountsTable.balance] = account.balance
-                row[AccountsTable.createdAt] = account.createdAt ?: now
+                row[userId] = EntityID(account.userId, UsersTable)
+                fillRow(row, account, now)
             }
             val id = insertStatement[AccountsTable.id].value
             val createdAt = insertStatement[AccountsTable.createdAt]
@@ -54,47 +52,54 @@ class AccountsRepositoryImpl : AccountsRepository {
             val now = Clock.System.now()
             AccountsTable.batchInsert(accounts) { account ->
                 this[AccountsTable.userId] = EntityID(account.userId, UsersTable)
-                this[AccountsTable.name] = account.name
-                this[AccountsTable.isDefault] = account.isDefault
-                this[AccountsTable.type] = account.type
-                this[AccountsTable.balance] = account.balance
-                this[AccountsTable.createdAt] = account.createdAt ?: now
+                fillRow(this, account, now)
             }.map { toAccount(it) }
         }
 
     override suspend fun updateAccount(account: Account): Account =
         dbQuery {
             requireNotNull(account.id) { "Account ID must not be null for update" }
-            AccountsTable.update({ AccountsTable.id eq EntityID(account.id, AccountsTable) }) {
-                it[AccountsTable.name] = account.name
-                it[AccountsTable.isDefault] = account.isDefault
-                it[AccountsTable.type] = account.type
-                it[AccountsTable.balance] = account.balance ?: 0.0
+            AccountsTable.update({ AccountsTable.id eq EntityID(account.id, AccountsTable) }) { row ->
+                fillRow(row, account, Clock.System.now())
             }
             account
         }
+
+    private fun fillRow(row: UpdateBuilder<*>, account: Account, now: kotlinx.datetime.Instant) {
+        row[AccountsTable.name] = account.name
+        row[AccountsTable.isDefault] = account.isDefault
+        row[AccountsTable.type] = account.type
+        row[AccountsTable.balance] = account.balance
+        row[AccountsTable.createdAt] = account.createdAt ?: now
+    }
 
     override suspend fun deleteAccount(id: UUID): Unit =
         dbQuery {
             AccountsTable.deleteWhere { AccountsTable.id eq EntityID(id, AccountsTable) }
         }
 
-    override suspend fun getTransactionAmounts(
+    override suspend fun getTransactionSummary(
         userId: UUID,
         accountId: UUID?
-    ): List<Pair<Double, Boolean>> =
+    ): TransactionSummary =
         dbQuery {
+            val amountSum = TransactionsTable.amount.sum()
             val query = TransactionsTable
-                .select(TransactionsTable.amount, TransactionsTable.isIncome)
+                .select(TransactionsTable.isIncome, amountSum)
                 .where { TransactionsTable.userId eq EntityID(userId, UsersTable) }
 
-            val filteredQuery = accountId?.let {
+            accountId?.let {
                 query.andWhere { TransactionsTable.accountId eq EntityID(it, AccountsTable) }
-            } ?: query
-
-            filteredQuery.map {
-                it[TransactionsTable.amount] to it[TransactionsTable.isIncome]
             }
+
+            val results = query.groupBy(TransactionsTable.isIncome).associate {
+                it[TransactionsTable.isIncome] to (it[amountSum] ?: 0.0)
+            }
+
+            TransactionSummary(
+                income = results[true] ?: 0.0,
+                expense = results[false] ?: 0.0
+            )
         }
 
     override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double? =

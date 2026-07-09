@@ -22,11 +22,9 @@ class AccountServiceImpl(
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Calculating account aggregates" }
 
-        val transactions = accountsRepository.getTransactionAmounts(userId, accountId)
-        val (income, expense) = transactions.partition { it.second }
-
-        val incomeSum = income.sumOf { it.first }
-        val expenseSum = expense.sumOf { it.first }
+        val summary = accountsRepository.getTransactionSummary(userId, accountId)
+        val incomeSum = summary.income
+        val expenseSum = summary.expense
 
         // Use the latest balance from transactions if available (e.g., for M-Pesa or Equity),
         // otherwise fall back to the calculated balance.
