@@ -7,6 +7,7 @@ import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.summary.data.model.AccountAggregates
 import core.UnauthorizedAccessException
+import core.ValidationException
 import feature.accounts.data.model.toDomain
 import feature.accounts.data.model.toDto
 import kotlinx.datetime.Clock
@@ -47,20 +48,24 @@ class AccountServiceImpl(
         log.withContext("userId" to userId).info { "Fetching all accounts" }
 
         val accounts = accountsRepository.getAllAccounts(userId)
+        val summaries = accountsRepository.getTransactionSummaries(userId)
+        
+        val now = Clock.System.now()
+
         val result = accounts.map { account ->
-            val aggregates = getAccountAggregates(userId, account.id)
+            val summary = summaries[account.id] ?: TransactionSummary(0.0, 0.0)
             account.toDto(
                 id = account.id.toString(),
-                income = aggregates.income,
-                expense = aggregates.expense,
-                balance = aggregates.balance
+                income = summary.income,
+                expense = summary.expense,
+                balance = account.balance
             )
         }
 
         // Sort by creation date (ASC) so default accounts (with early timestamps) appear first
         val sortedResult = result.sortedWith { a, b ->
-            val timeA = a.createdAt ?: Clock.System.now()
-            val timeB = b.createdAt ?: Clock.System.now()
+            val timeA = a.createdAt ?: now
+            val timeB = b.createdAt ?: now
             
             if (timeA != timeB) {
                 timeA.compareTo(timeB)
@@ -170,6 +175,10 @@ class AccountServiceImpl(
                 "accountId" to accountId
             ).warn { "Unauthorized account deletion attempt" }
             throw UnauthorizedAccessException("Account does not belong to user")
+        }
+
+        if (account.isDefault) {
+            throw ValidationException("Cannot delete a system default account")
         }
 
         accountsRepository.deleteAccount(accountId)

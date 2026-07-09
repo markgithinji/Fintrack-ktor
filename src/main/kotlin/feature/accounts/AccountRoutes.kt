@@ -1,4 +1,4 @@
-package feature.transaction
+package com.fintrack.feature.accounts
 
 
 import com.fintrack.core.domain.ApiResponse
@@ -6,7 +6,6 @@ import com.fintrack.core.logger
 import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
-import com.fintrack.feature.accounts.data.model.AccountDto
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
 import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.accounts.domain.AccountService
@@ -20,7 +19,6 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
-import java.util.UUID
 
 fun Route.accountsRoutes(accountService: AccountService) {
     val log = logger("AccountRoutes")

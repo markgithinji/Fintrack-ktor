@@ -102,6 +102,27 @@ class AccountsRepositoryImpl : AccountsRepository {
             )
         }
 
+    override suspend fun getTransactionSummaries(userId: UUID): Map<UUID?, TransactionSummary> =
+        dbQuery {
+            val amountSum = TransactionsTable.amount.sum()
+            TransactionsTable
+                .select(TransactionsTable.accountId, TransactionsTable.isIncome, amountSum)
+                .where { TransactionsTable.userId eq EntityID(userId, UsersTable) }
+                .groupBy(TransactionsTable.accountId, TransactionsTable.isIncome)
+                .map {
+                    val accountId = it[TransactionsTable.accountId].value
+                    val isIncome = it[TransactionsTable.isIncome]
+                    val sum = it[amountSum] ?: 0.0
+                    Triple(accountId, isIncome, sum)
+                }
+                .groupBy { it.first }
+                .mapValues { (_, values) ->
+                    val income = values.find { it.second }?.third ?: 0.0
+                    val expense = values.find { !it.second }?.third ?: 0.0
+                    TransactionSummary(income, expense)
+                }
+        }
+
     override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double? =
         dbQuery {
             val query = TransactionsTable

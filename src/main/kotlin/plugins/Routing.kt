@@ -8,7 +8,7 @@ import com.fintrack.feature.summary.summaryRoutes
 import feature.auth.domain.AuthService
 import feature.budget.domain.BudgetService
 import feature.summary.domain.StatisticsService
-import feature.transaction.accountsRoutes
+import com.fintrack.feature.accounts.accountsRoutes
 import feature.transaction.budgetRoutes
 import feature.transaction.categoryRoutes
 import feature.transaction.domain.CategoryService
