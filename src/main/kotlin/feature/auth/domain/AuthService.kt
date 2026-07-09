@@ -1,8 +1,8 @@
-package feature.auth.domain
+package com.fintrack.feature.auth.domain
 
 import com.fintrack.core.domain.Result
-import feature.auth.domain.model.AuthValidationResponse
-import feature.auth.data.model.AuthResponse
+import com.fintrack.feature.auth.domain.model.AuthValidationResponse
+import com.fintrack.feature.auth.data.model.AuthResponse
 import java.util.UUID
 
 interface AuthService {

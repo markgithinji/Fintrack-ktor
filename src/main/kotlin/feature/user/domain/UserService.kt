@@ -1,9 +1,9 @@
-package feature.user.domain
+package com.fintrack.feature.user.domain
 
 import com.fintrack.core.domain.Result
-import feature.user.data.model.UserDto
+import com.fintrack.feature.user.data.model.UserDto
 import com.fintrack.feature.user.domain.User
-import feature.user.data.model.UpdateUserRequest
+import com.fintrack.feature.user.data.model.UpdateUserRequest
 import java.util.UUID
 
 interface UserService {

@@ -1,4 +1,4 @@
-package feature.auth.domain
+package com.fintrack.feature.auth.domain
 
 import com.fintrack.core.info
 import com.fintrack.core.logger
@@ -7,16 +7,16 @@ import com.fintrack.feature.accounts.domain.model.Account
 import com.fintrack.feature.accounts.domain.model.AccountType
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import com.fintrack.feature.auth.JwtConfig
-import feature.auth.domain.model.AuthValidationResponse
-import feature.auth.domain.model.RefreshToken
-import feature.auth.domain.repository.RefreshTokenRepository
-import feature.auth.domain.repository.TokenBlacklistRepository
+import com.fintrack.feature.auth.domain.model.AuthValidationResponse
+import com.fintrack.feature.auth.domain.model.RefreshToken
+import com.fintrack.feature.auth.domain.repository.RefreshTokenRepository
+import com.fintrack.feature.auth.domain.repository.TokenBlacklistRepository
 import feature.transaction.domain.CategoryRepository
 import feature.transaction.domain.model.Category
 import com.fintrack.core.domain.Result
 import com.fintrack.core.domain.AppError
 import core.dbQuery
-import feature.auth.data.model.AuthResponse
+import com.fintrack.feature.auth.data.model.AuthResponse
 import feature.user.domain.UserRepository
 import core.PasswordHasher
 import java.util.UUID

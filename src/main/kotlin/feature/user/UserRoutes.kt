@@ -1,12 +1,12 @@
-package feature.user
+package com.fintrack.feature.user
 
 import com.fintrack.core.domain.*
 import com.fintrack.core.logger
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
-import feature.user.data.model.TrackedCategoriesRequest
-import feature.user.data.model.UpdateUserRequest
-import feature.user.domain.UserService
+import com.fintrack.feature.user.data.model.TrackedCategoriesRequest
+import com.fintrack.feature.user.data.model.UpdateUserRequest
+import com.fintrack.feature.user.domain.UserService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond

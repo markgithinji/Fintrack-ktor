@@ -1,4 +1,4 @@
-package feature.user.domain
+package com.fintrack.feature.user.domain
 
 import com.fintrack.core.EmailService
 import com.fintrack.core.domain.AppError
@@ -8,10 +8,10 @@ import com.fintrack.core.withContext
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import com.fintrack.feature.user.data.model.toDto
 import com.fintrack.feature.user.domain.User
-import feature.auth.domain.model.EmailVerificationToken
-import feature.auth.domain.repository.EmailVerificationRepository
-import feature.user.data.model.UpdateUserRequest
-import feature.user.data.model.UserDto
+import com.fintrack.feature.auth.domain.model.EmailVerificationToken
+import com.fintrack.feature.auth.domain.repository.EmailVerificationRepository
+import com.fintrack.feature.user.data.model.UpdateUserRequest
+import com.fintrack.feature.user.data.model.UserDto
 import kotlinx.datetime.Clock
 import org.mindrot.jbcrypt.BCrypt
 import java.util.UUID

@@ -1,8 +1,8 @@
-package feature.auth.data.repository
+package com.fintrack.feature.auth.data.repository
 
-import feature.auth.data.table.EmailVerificationTokensTable
-import feature.auth.domain.model.EmailVerificationToken
-import feature.auth.domain.repository.EmailVerificationRepository
+import com.fintrack.feature.auth.data.table.EmailVerificationTokensTable
+import com.fintrack.feature.auth.domain.model.EmailVerificationToken
+import com.fintrack.feature.auth.domain.repository.EmailVerificationRepository
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction

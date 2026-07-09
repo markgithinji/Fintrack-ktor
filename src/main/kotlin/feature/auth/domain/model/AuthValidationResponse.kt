@@ -1,4 +1,4 @@
-package feature.auth.domain.model
+package com.fintrack.feature.auth.domain.model
 
 import com.fintrack.core.serialization.UUIDSerializer
 import kotlinx.serialization.Serializable

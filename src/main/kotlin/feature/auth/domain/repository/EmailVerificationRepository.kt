@@ -1,6 +1,6 @@
-package feature.auth.domain.repository
+package com.fintrack.feature.auth.domain.repository
 
-import feature.auth.domain.model.EmailVerificationToken
+import com.fintrack.feature.auth.domain.model.EmailVerificationToken
 import java.util.UUID
 
 interface EmailVerificationRepository {

@@ -4,7 +4,7 @@ import com.fintrack.feature.user.UsersTable
 import com.fintrack.feature.user.domain.User
 import core.PasswordHasher
 import core.dbQuery
-import feature.user.domain.UserRepository
+import com.fintrack.feature.user.domain.UserRepository
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere

@@ -1,6 +1,6 @@
-package feature.auth.data.repository
+package com.fintrack.feature.auth.data.repository
 
-import feature.auth.domain.repository.TokenBlacklistRepository
+import com.fintrack.feature.auth.domain.repository.TokenBlacklistRepository
 import redis.clients.jedis.JedisPool
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

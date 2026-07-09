@@ -1,4 +1,4 @@
-package feature.user.domain
+package com.fintrack.feature.user.domain
 
 import com.fintrack.feature.user.domain.User
 

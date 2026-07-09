@@ -1,8 +1,8 @@
-package feature.auth.data.repository
+package com.fintrack.feature.auth.data.repository
 
-import feature.auth.data.table.RefreshTokensTable
-import feature.auth.domain.model.RefreshToken
-import feature.auth.domain.repository.RefreshTokenRepository
+import com.fintrack.feature.auth.data.table.RefreshTokensTable
+import com.fintrack.feature.auth.domain.model.RefreshToken
+import com.fintrack.feature.auth.domain.repository.RefreshTokenRepository
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction

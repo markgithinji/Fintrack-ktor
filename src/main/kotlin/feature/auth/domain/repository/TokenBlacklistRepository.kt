@@ -1,4 +1,4 @@
-package feature.auth.domain.repository
+package com.fintrack.feature.auth.domain.repository
 
 interface TokenBlacklistRepository {
     suspend fun blacklistToken(token: String, expirationTimeMillis: Long)

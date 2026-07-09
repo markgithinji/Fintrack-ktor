@@ -1,8 +1,7 @@
 package com.fintrack.feature.user
 
-
-import feature.user.data.model.CreateUserRequest
-import feature.user.data.model.UpdateUserRequest
+import com.fintrack.feature.user.data.model.CreateUserRequest
+import com.fintrack.feature.user.data.model.UpdateUserRequest
 import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
 import io.ktor.server.plugins.requestvalidation.ValidationResult
 

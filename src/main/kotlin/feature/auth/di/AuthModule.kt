@@ -1,14 +1,14 @@
-package feature.auth.di
+package com.fintrack.feature.auth.di
 
-import feature.auth.data.repository.ExposedRefreshTokenRepository
-import feature.auth.data.repository.ExposedEmailVerificationRepository
-import feature.auth.data.repository.RedisTokenBlacklistRepository
-import feature.auth.domain.repository.TokenBlacklistRepository
-import feature.auth.domain.AuthService
-import feature.auth.domain.AuthServiceImpl
-import feature.auth.domain.repository.RefreshTokenRepository
-import feature.auth.domain.repository.EmailVerificationRepository
-import feature.user.domain.UserRepository
+import com.fintrack.feature.auth.data.repository.ExposedRefreshTokenRepository
+import com.fintrack.feature.auth.data.repository.ExposedEmailVerificationRepository
+import com.fintrack.feature.auth.data.repository.RedisTokenBlacklistRepository
+import com.fintrack.feature.auth.domain.repository.TokenBlacklistRepository
+import com.fintrack.feature.auth.domain.AuthService
+import com.fintrack.feature.auth.domain.AuthServiceImpl
+import com.fintrack.feature.auth.domain.repository.RefreshTokenRepository
+import com.fintrack.feature.auth.domain.repository.EmailVerificationRepository
+import com.fintrack.feature.user.domain.UserRepository
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import feature.transaction.domain.CategoryRepository
 import com.fintrack.core.EmailService

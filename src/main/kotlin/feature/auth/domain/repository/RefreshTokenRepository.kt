@@ -1,6 +1,6 @@
-package feature.auth.domain.repository
+package com.fintrack.feature.auth.domain.repository
 
-import feature.auth.domain.model.RefreshToken
+import com.fintrack.feature.auth.domain.model.RefreshToken
 import java.util.UUID
 
 interface RefreshTokenRepository {

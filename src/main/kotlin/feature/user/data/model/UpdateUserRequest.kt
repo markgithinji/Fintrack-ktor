@@ -1,4 +1,4 @@
-package feature.user.data.model
+package com.fintrack.feature.user.data.model
 
 import kotlinx.serialization.Serializable
 
