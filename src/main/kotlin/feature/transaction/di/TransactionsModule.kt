@@ -1,7 +1,7 @@
 package feature.transaction.di
 
-import feature.transaction.data.CategoryRepositoryImpl
-import feature.transaction.data.TransactionRepositoryImpl
+import feature.transaction.data.repository.CategoryRepositoryImpl
+import feature.transaction.data.repository.TransactionRepositoryImpl
 import feature.transaction.domain.CategoryRepository
 import feature.transaction.domain.CategoryService
 import feature.transaction.domain.CategoryServiceImpl
@@ -12,7 +12,7 @@ import org.koin.dsl.module
 
 fun transactionsModule() = module {
     single<TransactionRepository> { TransactionRepositoryImpl() }
-    single<TransactionService> { TransactionServiceImpl(get(), get()) }
+    single<TransactionService> { TransactionServiceImpl(transactionRepository = get(), accountsRepository = get()) }
     single<CategoryRepository> { CategoryRepositoryImpl() }
-    single<CategoryService> { CategoryServiceImpl(get()) }
+    single<CategoryService> { CategoryServiceImpl(categoryRepository =  get()) }
 }

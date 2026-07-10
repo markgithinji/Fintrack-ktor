@@ -5,7 +5,7 @@ import core.dbQuery
 import com.fintrack.feature.accounts.data.table.AccountsTable
 import feature.summary.domain.StatisticsRepository
 import feature.summary.domain.TransactionCounts
-import feature.transaction.data.TransactionsTable
+import feature.transaction.data.table.TransactionsTable
 import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.*
 import org.jetbrains.exposed.dao.id.EntityID

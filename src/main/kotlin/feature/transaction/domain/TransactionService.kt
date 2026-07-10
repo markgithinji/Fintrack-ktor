@@ -2,8 +2,8 @@ package feature.transaction.domain
 
 import com.fintrack.core.domain.Result
 import com.fintrack.feature.transaction.data.model.DeleteResponse
-import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
-import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
+import com.fintrack.feature.transaction.data.model.CreateTransactionRequest
+import com.fintrack.feature.transaction.data.model.UpdateTransactionRequest
 import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.RecurringBillDto
 import feature.transaction.data.model.TransactionDto

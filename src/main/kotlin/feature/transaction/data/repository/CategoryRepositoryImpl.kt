@@ -1,7 +1,8 @@
-package feature.transaction.data
+package feature.transaction.data.repository
 
 import com.fintrack.feature.user.UsersTable
 import core.dbQuery
+import feature.transaction.data.table.CategoriesTable
 import feature.transaction.domain.CategoryRepository
 import feature.transaction.domain.model.Category
 import org.jetbrains.exposed.dao.id.EntityID

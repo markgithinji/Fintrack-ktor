@@ -5,8 +5,8 @@ import com.fintrack.core.domain.Result
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.feature.transaction.data.model.DeleteResponse
-import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
-import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
+import com.fintrack.feature.transaction.data.model.CreateTransactionRequest
+import com.fintrack.feature.transaction.data.model.UpdateTransactionRequest
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.RecurringBillDto
@@ -19,7 +19,7 @@ import java.util.UUID
 import kotlin.math.abs
 
 class TransactionServiceImpl(
-    private val repo: TransactionRepository,
+    private val transactionRepository: TransactionRepository,
     private val accountsRepository: AccountsRepository
 ) : TransactionService {
 
@@ -68,7 +68,7 @@ class TransactionServiceImpl(
         val sortOrder = if (order == "DESC") SortOrder.DESC else SortOrder.ASC
         val parsedAfterDateTime = afterDateTime?.let { Instant.parse(it) }
 
-        val transactions = repo.getAllCursor(
+        val transactions = transactionRepository.getAllCursor(
             userId, accountId, finalIsIncome, categories,
             start, end, sortBy, sortOrder, limit, parsedAfterDateTime, afterId, hasTransactionCost
         )
@@ -91,8 +91,7 @@ class TransactionServiceImpl(
         log.withContext("userId" to userId, "transactionId" to id)
             .debug { "Fetching transaction by ID" }
 
-        val transaction = repo.getById(id, userId)
-            ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
+        val transaction = transactionRepository.getById(id, userId)
 
         log.withContext("userId" to userId, "transactionId" to id)
             .debug { "Transaction retrieved successfully" }
@@ -109,7 +108,7 @@ class TransactionServiceImpl(
         ).info { "Creating transaction" }
 
         val transaction = request.toDomain(userId)
-        val result = repo.add(transaction)
+        val result = transactionRepository.add(transaction)
 
         log.withContext(
             "userId" to userId,
@@ -128,12 +127,10 @@ class TransactionServiceImpl(
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Updating transaction" }
 
-        repo.getById(id, userId)
-            ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
+        transactionRepository.getById(id, userId)
 
         val transaction = request.toDomain(userId, id)
-        val result = repo.update(id, userId, transaction)
-            ?: return Result.Failure(AppError.Internal("Failed to update transaction $id"))
+        val result = transactionRepository.update(id, userId, transaction)
 
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Transaction updated successfully" }
@@ -144,7 +141,7 @@ class TransactionServiceImpl(
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Deleting transaction" }
 
-        val deleted = repo.delete(id, userId)
+        val deleted = transactionRepository.delete(id, userId)
 
         if (!deleted) {
             log.withContext("userId" to userId, "transactionId" to id)
@@ -161,7 +158,7 @@ class TransactionServiceImpl(
         log.withContext("userId" to userId, "accountIds" to accountIds)
             .warn { "Clearing all transactions" }
 
-        val cleared = repo.clearAll(userId, accountIds)
+        val cleared = transactionRepository.clearAll(userId, accountIds)
 
         val message = if (!accountIds.isNullOrEmpty())
             "All transactions cleared for accounts ${accountIds.joinToString()}"
@@ -181,7 +178,7 @@ class TransactionServiceImpl(
             .info { "Creating bulk transactions" }
 
         val transactions = requests.map { it.toDomain(userId) }
-        val result = repo.addBulk(transactions)
+        val result = transactionRepository.addBulk(transactions)
 
         log.withContext(
             "userId" to userId,
@@ -205,7 +202,7 @@ class TransactionServiceImpl(
         val transactions = requests.map { it.toDomain(userId) }
 
         // 2. Deduplication is handled by repo.addBulk (using ignore = true and uniqueIndex(externalId, userId))
-        val result = repo.addBulk(transactions)
+        val result = transactionRepository.addBulk(transactions)
 
         // 3. Account Balance Update
         // Identify the most recent transaction (by dateTime) that has a balance field
@@ -240,7 +237,7 @@ class TransactionServiceImpl(
         val now = Clock.System.now()
         val analysisStart = now.minus(90, DateTimeUnit.DAY, TimeZone.UTC)
         
-        val transactions = repo.getAllCursor(
+        val transactions = transactionRepository.getAllCursor(
             userId = userId,
             accountId = null,
             isIncome = false,

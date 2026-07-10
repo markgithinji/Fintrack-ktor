@@ -6,7 +6,7 @@ import com.fintrack.feature.accounts.data.table.AccountsTable
 import com.fintrack.feature.accounts.domain.model.Account
 import com.fintrack.feature.accounts.domain.model.TransactionSummary
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
-import feature.transaction.data.TransactionsTable
+import feature.transaction.data.table.TransactionsTable
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.jetbrains.exposed.dao.id.EntityID

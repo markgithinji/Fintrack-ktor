@@ -1,4 +1,4 @@
-package feature.transaction.data
+package feature.transaction.data.table
 
 import com.fintrack.core.data.TableNames
 import com.fintrack.feature.transaction.data.CategoriesColumns

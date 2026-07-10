@@ -4,11 +4,9 @@ import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import feature.transaction.data.TransactionsTable
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.exception.FlywayValidateException
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object DatabaseFactory {

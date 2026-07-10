@@ -1,6 +1,7 @@
-package feature.transaction.data
+package feature.transaction.data.repository
 
 import core.dbQuery
+import feature.transaction.data.table.TransactionsTable
 import feature.transaction.domain.TransactionRepository
 import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.Instant

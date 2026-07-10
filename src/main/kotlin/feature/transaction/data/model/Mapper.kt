@@ -1,7 +1,7 @@
 package feature.transaction.data.model
 
-import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
-import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
+import com.fintrack.feature.transaction.data.model.CreateTransactionRequest
+import com.fintrack.feature.transaction.data.model.UpdateTransactionRequest
 import feature.transaction.domain.model.Transaction
 import java.util.UUID
 

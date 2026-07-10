@@ -6,8 +6,8 @@ import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
 import com.fintrack.feature.transaction.data.model.BulkCreateTransactionRequest
-import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
-import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
+import com.fintrack.feature.transaction.data.model.CreateTransactionRequest
+import com.fintrack.feature.transaction.data.model.UpdateTransactionRequest
 import feature.transaction.domain.TransactionService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive

@@ -1,87 +1,44 @@
 package com.fintrack.feature.transaction
 
-
 import com.fintrack.feature.transaction.data.model.BulkCreateTransactionRequest
-import com.fintrack.feature.transactions.data.model.CreateTransactionRequest
-import com.fintrack.feature.transactions.data.model.UpdateTransactionRequest
+import com.fintrack.feature.transaction.data.model.CreateTransactionRequest
+import com.fintrack.feature.transaction.data.model.UpdateTransactionRequest
 import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
 import io.ktor.server.plugins.requestvalidation.ValidationResult
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlin.time.Duration.Companion.seconds
 
 fun RequestValidationConfig.configureTransactionValidation() {
     validate<CreateTransactionRequest> { request ->
-        val violations = mutableListOf<String>()
-
-        // Amount validation
-        when {
-            request.amount <= 0 -> violations.add("Amount must be greater than 0")
-            request.amount > 1_000_000 -> violations.add("Amount cannot exceed 1,000,000")
-        }
-
-        // Transaction cost validation
-        if (request.transactionCost < 0) {
-            violations.add("Transaction cost cannot be negative")
-        }
-
-        // Category validation
-        when {
-            request.category.isBlank() -> violations.add("Category cannot be blank")
-            request.category.length > 50 -> violations.add("Category cannot exceed 50 characters")
-        }
-
-        // Description validation
-        if (request.description.length > 255) {
-            violations.add("Description cannot exceed 255 characters")
-        }
-
-        // Date validation - allow 5s buffer for clock skew
-        if (request.dateTime > Clock.System.now().plus(5.seconds)) {
-            violations.add("Transaction date cannot be in the future")
-        }
-
-        if (violations.isNotEmpty()) {
-            ValidationResult.Invalid(violations.joinToString(", "))
-        } else {
-            ValidationResult.Valid
-        }
+        validateTransactionFields(
+            amount = request.amount,
+            category = request.category,
+            description = request.description,
+            dateTime = request.dateTime,
+            transactionCost = request.transactionCost,
+        )
     }
 
     validate<UpdateTransactionRequest> { request ->
         val violations = mutableListOf<String>()
-
-        // Account ID validation
+        
         if (request.accountId.isBlank()) {
             violations.add("Account ID cannot be blank")
         }
-
-        // Amount validation
-        when {
-            request.amount <= 0 -> violations.add("Amount must be greater than 0")
-            request.amount > 1_000_000 -> violations.add("Amount cannot exceed 1,000,000")
+        
+        val fieldResult = validateTransactionFields(
+            amount = request.amount,
+            category = request.category,
+            description = request.description,
+            dateTime = request.dateTime,
+            transactionCost = request.transactionCost
+        )
+        
+        if (fieldResult is ValidationResult.Invalid) {
+            violations.addAll(fieldResult.reasons)
         }
-
-        // Transaction cost validation
-        if ((request.transactionCost != null) && (request.transactionCost < 0)) {
-            violations.add("Transaction cost cannot be negative")
-        }
-
-        // Category validation
-        when {
-            request.category.isBlank() -> violations.add("Category cannot be blank")
-            request.category.length > 50 -> violations.add("Category cannot exceed 50 characters")
-        }
-
-        // Description validation
-        if (request.description.length > 255) {
-            violations.add("Description cannot exceed 255 characters")
-        }
-
-        // Date validation - allow 5s buffer for clock skew
-        if (request.dateTime > Clock.System.now().plus(5.seconds)) {
-            violations.add("Transaction date cannot be in the future")
-        }
-
+        
         if (violations.isNotEmpty()) {
             ValidationResult.Invalid(violations.joinToString(", "))
         } else {
@@ -90,38 +47,75 @@ fun RequestValidationConfig.configureTransactionValidation() {
     }
 
     validate<BulkCreateTransactionRequest> { bulkRequest ->
-        val allViolations = bulkRequest.transactions.flatMapIndexed { index, request ->
-            val violations = mutableListOf<String>()
+        validateList(bulkRequest.transactions)
+    }
 
-            // Amount validation
-            when {
-                request.amount <= 0 -> violations.add("Transaction #${index + 1}: amount must be greater than 0")
-                request.amount > 1_000_000 -> violations.add("Transaction #${index + 1}: amount cannot exceed 1,000,000")
-            }
+    validate<List<CreateTransactionRequest>> { requests ->
+        validateList(requests)
+    }
+}
 
-            // Category validation
-            when {
-                request.category.isBlank() -> violations.add("Transaction #${index + 1}: category cannot be blank")
-                request.category.length > 50 -> violations.add("Transaction #${index + 1}: category cannot exceed 50 characters")
-            }
+private fun validateList(requests: List<CreateTransactionRequest>): ValidationResult {
+    val allViolations = requests.flatMapIndexed { index, req ->
+        val result = validateTransactionFields(
+            amount = req.amount,
+            category = req.category,
+            description = req.description,
+            dateTime = req.dateTime,
+            transactionCost = req.transactionCost,
+            prefix = "Transaction #${index + 1}"
+        )
+        (result as? ValidationResult.Invalid)?.reasons ?: emptyList()
+    }
 
-            // Description validation
-            if (request.description.length > 255) {
-                violations.add("Transaction #${index + 1}: description cannot exceed 255 characters")
-            }
+    return if (allViolations.isNotEmpty()) {
+        ValidationResult.Invalid(allViolations.joinToString(", "))
+    } else {
+        ValidationResult.Valid
+    }
+}
 
-            // Date validation - allow 5s buffer for clock skew
-            if (request.dateTime > Clock.System.now().plus(5.seconds)) {
-                violations.add("Transaction #${index + 1}: date cannot be in the future")
-            }
+private fun validateTransactionFields(
+    amount: Double,
+    category: String,
+    description: String,
+    dateTime: Instant,
+    transactionCost: Double?,
+    prefix: String? = null
+): ValidationResult {
+    val violations = mutableListOf<String>()
+    val p = if (prefix != null) "$prefix: " else ""
 
-            violations
-        }
+    // Amount validation
+    when {
+        amount <= 0 -> violations.add("${p}Amount must be greater than 0")
+        amount > 1_000_000 -> violations.add("${p}Amount cannot exceed 1,000,000")
+    }
 
-        if (allViolations.isNotEmpty()) {
-            ValidationResult.Invalid(allViolations.joinToString(", "))
-        } else {
-            ValidationResult.Valid
-        }
+    // Transaction cost validation
+    if (transactionCost != null && transactionCost < 0) {
+        violations.add("${p}Transaction cost cannot be negative")
+    }
+
+    // Category validation
+    when {
+        category.isBlank() -> violations.add("${p}Category cannot be blank")
+        category.length > 50 -> violations.add("${p}Category cannot exceed 50 characters")
+    }
+
+    // Description validation
+    if (description.length > 255) {
+        violations.add("${p}Description cannot exceed 255 characters")
+    }
+
+    // Date validation - allow 5s buffer for clock skew
+    if (dateTime > Clock.System.now() + 5.seconds) {
+        violations.add("${p}Transaction date cannot be in the future")
+    }
+
+    return if (violations.isNotEmpty()) {
+        ValidationResult.Invalid(violations)
+    } else {
+        ValidationResult.Valid
     }
 }

@@ -9,10 +9,10 @@ import kotlinx.datetime.Clock
 import java.util.UUID
 
 class CategoryServiceImpl(
-    private val repository: CategoryRepository
+    private val categoryRepository: CategoryRepository
 ) : CategoryService {
     override suspend fun getAll(userId: UUID): Result<List<CategoryDto>> {
-        val categories = repository.getAll(userId)
+        val categories = categoryRepository.getAll(userId)
             .sortedBy { it.createdAt ?: Clock.System.now() }
             .map { it.toDto() }
         return Result.Success(categories)
@@ -22,7 +22,7 @@ class CategoryServiceImpl(
         val trimmedName = request.name.trim()
 
         // Prevent duplicate names (case-insensitive) for the same user and type
-        val existing = repository.getAll(userId).find {
+        val existing = categoryRepository.getAll(userId).find {
             it.name.equals(trimmedName, ignoreCase = true) && it.isExpense == request.isExpense
         }
 
@@ -37,19 +37,19 @@ class CategoryServiceImpl(
             isExpense = request.isExpense,
             iconName = request.iconName
         )
-        val added = repository.add(category)
+        val added = categoryRepository.add(category)
         return Result.Success(added.toDto())
     }
 
     override suspend fun delete(userId: UUID, id: UUID): Result<Unit> {
-        val category = repository.getById(id, userId) 
+        val category = categoryRepository.getById(id, userId)
             ?: return Result.Failure(AppError.NotFound("Category not found"))
             
         if (category.isDefault) {
             return Result.Failure(AppError.Validation("Default categories cannot be deleted"))
         }
         
-        val success = repository.delete(id, userId)
+        val success = categoryRepository.delete(id, userId)
         if (!success) {
             return Result.Failure(AppError.NotFound("Category with id $id not found for user $userId"))
         }

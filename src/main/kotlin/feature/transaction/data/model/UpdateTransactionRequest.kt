@@ -1,4 +1,4 @@
-package com.fintrack.feature.transactions.data.model
+package com.fintrack.feature.transaction.data.model
 
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
