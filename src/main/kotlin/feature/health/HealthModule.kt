@@ -6,5 +6,9 @@ fun healthModule() = module {
     single<DatabaseHealthIndicator> { DatabaseHealthIndicator() }
     single<MemoryHealthIndicator> { MemoryHealthIndicator() }
     single<RateLimitMetrics> { RateLimitMetrics() }
-    single<HealthService> { HealthService(get(), get(), get()) }
+    single<HealthService> { HealthService(
+        databaseHealthIndicator = get(),
+        memoryHealthIndicator = get(),
+        rateLimitMetrics = get())
+    }
 }

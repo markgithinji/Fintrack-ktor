@@ -1,6 +1,5 @@
 package com.fintrack.feature.health
 
-import com.fintrack.core.logger
 import com.fintrack.core.data.DatabaseFactory
 import java.lang.management.ManagementFactory
 import java.lang.Runtime
@@ -10,6 +9,9 @@ class HealthService(
     private val memoryHealthIndicator: MemoryHealthIndicator,
     private val rateLimitMetrics: RateLimitMetrics = RateLimitMetrics()
 ) {
+    companion object {
+        private const val MEMORY_THRESHOLD = 0.9
+    }
 
     fun getDetailedHealthStatus(): Map<String, Any> {
         // Check database health
@@ -20,7 +22,9 @@ class HealthService(
         memoryHealthIndicator.updateHealth()
 
         val runtime = Runtime.getRuntime()
-        val memoryUsage = (runtime.totalMemory() - runtime.freeMemory()).toDouble() / runtime.maxMemory()
+        val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+        val maxMemory = runtime.maxMemory()
+        val memoryUsage = usedMemory.toDouble() / maxMemory
 
         val checks = mapOf(
             "database" to mapOf(
@@ -28,15 +32,15 @@ class HealthService(
                 "details" to DatabaseFactory.getPoolStats()
             ),
             "memory" to mapOf(
-                "status" to if (memoryUsage < 0.9) "UP" else "DOWN",
+                "status" to if (memoryUsage < MEMORY_THRESHOLD) "UP" else "DOWN",
                 "details" to mapOf(
                     "usagePercent" to "%.2f".format(memoryUsage * 100),
-                    "usedMB" to (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024,
-                    "maxMB" to runtime.maxMemory() / 1024 / 1024
+                    "usedMB" to usedMemory / 1024 / 1024,
+                    "maxMB" to maxMemory / 1024 / 1024
                 )
             ),
             "rateLimiting" to mapOf(
-                "status" to "UP", // Rate limiting is always UP as it's in-memory
+                "status" to "UP",
                 "details" to rateLimitMetrics.getMetrics()
             ),
             "application" to mapOf(
@@ -47,7 +51,7 @@ class HealthService(
             )
         )
 
-        val overallStatus = if (dbHealthy && memoryUsage < 0.9) "UP" else "DOWN"
+        val overallStatus = if (dbHealthy && memoryUsage < MEMORY_THRESHOLD) "UP" else "DOWN"
 
         return mapOf(
             "status" to overallStatus,
@@ -65,23 +69,25 @@ class HealthService(
         val runtime = Runtime.getRuntime()
         val memoryUsage = (runtime.totalMemory() - runtime.freeMemory()).toDouble() / runtime.maxMemory()
 
-        return dbHealthy && memoryUsage < 0.9
+        return dbHealthy && memoryUsage < MEMORY_THRESHOLD
     }
 
     fun getHealthMetrics(): Map<String, Any> {
         val runtime = Runtime.getRuntime()
-        val memoryUsage = (runtime.totalMemory() - runtime.freeMemory()).toDouble() / runtime.maxMemory()
+        val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+        val maxMemory = runtime.maxMemory()
+        val memoryUsage = usedMemory.toDouble() / maxMemory
 
         return mapOf(
             "health" to mapOf(
                 "database" to if (DatabaseFactory.checkConnection()) "healthy" else "unhealthy",
-                "memory" to if (memoryUsage < 0.9) "healthy" else "unhealthy",
+                "memory" to if (memoryUsage < MEMORY_THRESHOLD) "healthy" else "unhealthy",
                 "rateLimiting" to "healthy"
             ),
             "resources" to mapOf(
                 "memory" to mapOf(
-                    "usedMB" to (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024,
-                    "maxMB" to runtime.maxMemory() / 1024 / 1024,
+                    "usedMB" to usedMemory / 1024 / 1024,
+                    "maxMB" to maxMemory / 1024 / 1024,
                     "usagePercent" to "%.2f".format(memoryUsage * 100)
                 ),
                 "processors" to runtime.availableProcessors()
