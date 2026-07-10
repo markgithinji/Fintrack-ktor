@@ -5,6 +5,7 @@ import com.fintrack.feature.accounts.di.accountsModule
 import com.fintrack.feature.auth.di.authModule
 import com.fintrack.feature.user.di.userModule
 import feature.budget.di.budgetModule
+import feature.category.di.categoryModule
 import feature.summary.di.summaryModule
 import feature.transaction.di.transactionsModule
 import io.ktor.server.application.*
@@ -15,6 +16,7 @@ fun Application.configureDI() {
         modules(
             accountsModule,
             transactionsModule(),
+            categoryModule,
             summaryModule,
             budgetModule,
             userModule(),

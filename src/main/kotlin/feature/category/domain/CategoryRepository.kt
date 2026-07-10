@@ -1,6 +1,6 @@
-package feature.transaction.domain
+package feature.category.domain
 
-import feature.transaction.domain.model.Category
+import feature.category.domain.model.Category
 import java.util.UUID
 
 interface CategoryRepository {

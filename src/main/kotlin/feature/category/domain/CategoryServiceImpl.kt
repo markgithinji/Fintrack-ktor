@@ -1,10 +1,10 @@
-package feature.transaction.domain
+package feature.category.domain
 
 import com.fintrack.core.domain.AppError
 import com.fintrack.core.domain.Result
-import feature.transaction.data.model.CategoryDto
-import feature.transaction.data.model.CreateCategoryRequest
-import feature.transaction.domain.model.Category
+import feature.category.data.model.CategoryDto
+import feature.category.data.model.CreateCategoryRequest
+import feature.category.domain.model.Category
 import kotlinx.datetime.Clock
 import java.util.UUID
 

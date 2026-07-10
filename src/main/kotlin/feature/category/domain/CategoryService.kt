@@ -1,8 +1,8 @@
-package feature.transaction.domain
+package feature.category.domain
 
 import com.fintrack.core.domain.Result
-import feature.transaction.data.model.CategoryDto
-import feature.transaction.data.model.CreateCategoryRequest
+import feature.category.data.model.CategoryDto
+import feature.category.data.model.CreateCategoryRequest
 import java.util.UUID
 
 interface CategoryService {

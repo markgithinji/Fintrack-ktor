@@ -1,7 +1,6 @@
-package feature.transaction.data.table
+package feature.category.data.table
 
 import com.fintrack.core.data.TableNames
-import com.fintrack.feature.transaction.data.CategoriesColumns
 import com.fintrack.feature.user.UsersTable
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption

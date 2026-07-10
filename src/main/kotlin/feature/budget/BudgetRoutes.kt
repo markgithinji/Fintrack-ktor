@@ -1,4 +1,4 @@
-package feature.transaction
+package feature.budget
 
 import com.fintrack.core.domain.*
 import com.fintrack.core.toUUIDOrNull

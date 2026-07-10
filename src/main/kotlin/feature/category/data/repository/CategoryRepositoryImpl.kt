@@ -1,10 +1,10 @@
-package feature.transaction.data.repository
+package feature.category.data.repository
 
 import com.fintrack.feature.user.UsersTable
 import core.dbQuery
-import feature.transaction.data.table.CategoriesTable
-import feature.transaction.domain.CategoryRepository
-import feature.transaction.domain.model.Category
+import feature.category.data.table.CategoriesTable
+import feature.category.domain.CategoryRepository
+import feature.category.domain.model.Category
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq

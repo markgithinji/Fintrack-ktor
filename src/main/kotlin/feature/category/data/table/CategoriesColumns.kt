@@ -1,4 +1,4 @@
-package com.fintrack.feature.transaction.data
+package feature.category.data.table
 
 object CategoriesColumns {
     const val USER_ID = "user_id"

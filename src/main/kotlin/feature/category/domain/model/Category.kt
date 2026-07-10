@@ -1,4 +1,4 @@
-package feature.transaction.domain.model
+package feature.category.domain.model
 
 import kotlinx.datetime.Instant
 import java.util.UUID

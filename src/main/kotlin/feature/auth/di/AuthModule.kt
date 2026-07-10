@@ -10,7 +10,7 @@ import com.fintrack.feature.auth.domain.repository.RefreshTokenRepository
 import com.fintrack.feature.auth.domain.repository.EmailVerificationRepository
 import com.fintrack.feature.user.domain.UserRepository
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
-import feature.transaction.domain.CategoryRepository
+import feature.category.domain.CategoryRepository
 import com.fintrack.core.EmailService
 import com.fintrack.core.LogEmailService
 import org.koin.dsl.module

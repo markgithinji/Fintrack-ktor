@@ -16,8 +16,8 @@ import com.fintrack.feature.auth.domain.model.RefreshToken
 import com.fintrack.feature.auth.domain.repository.RefreshTokenRepository
 import com.fintrack.feature.auth.domain.repository.TokenBlacklistRepository
 import com.fintrack.feature.user.domain.UserRepository
-import feature.transaction.domain.CategoryRepository
-import feature.transaction.domain.model.Category
+import feature.category.domain.CategoryRepository
+import feature.category.domain.model.Category
 import core.PasswordHasher
 import core.dbQuery
 import kotlinx.datetime.Clock

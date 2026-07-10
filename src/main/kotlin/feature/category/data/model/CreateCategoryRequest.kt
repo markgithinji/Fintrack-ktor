@@ -1,4 +1,4 @@
-package feature.transaction.data.model
+package feature.category.data.model
 
 import kotlinx.serialization.Serializable
 

@@ -1,17 +1,16 @@
-package feature.transaction
+package feature.category
 
 import com.fintrack.core.domain.*
 import com.fintrack.core.logger
 import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.core.withContext
-import feature.transaction.data.model.CreateCategoryRequest
-import feature.transaction.domain.CategoryService
+import feature.category.data.model.CreateCategoryRequest
+import feature.category.domain.CategoryService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.*
-import java.util.UUID
 
 fun Route.categoryRoutes(service: CategoryService) {
     val log = logger("CategoryRoutes")

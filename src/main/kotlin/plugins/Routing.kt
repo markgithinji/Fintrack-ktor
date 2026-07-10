@@ -11,9 +11,9 @@ import com.fintrack.feature.accounts.accountsRoutes
 import com.fintrack.feature.auth.domain.AuthService
 import com.fintrack.feature.user.domain.UserService
 import com.fintrack.feature.user.userRoutes
-import feature.transaction.budgetRoutes
-import feature.transaction.categoryRoutes
-import feature.transaction.domain.CategoryService
+import feature.budget.budgetRoutes
+import feature.category.categoryRoutes
+import feature.category.domain.CategoryService
 import feature.transaction.domain.TransactionService
 import feature.transaction.transactionRoutes
 import io.ktor.server.application.*
