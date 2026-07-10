@@ -1,9 +1,6 @@
 package com.fintrack.feature.accounts
 
-import com.fintrack.core.domain.ApiResponse
-import com.fintrack.core.domain.ErrorResponse
-import com.fintrack.core.domain.Result
-import com.fintrack.core.domain.toHttpStatusCode
+import com.fintrack.core.domain.*
 import com.fintrack.core.toUUIDOrNull
 import com.fintrack.core.userIdOrThrow
 import com.fintrack.feature.accounts.data.model.CreateAccountRequest
@@ -24,7 +21,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 is Result.Success -> call.respond(ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -38,7 +35,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 is Result.Success -> call.respond(ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -50,7 +47,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 is Result.Success -> call.respond(HttpStatusCode.Created, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -65,7 +62,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 is Result.Success -> call.respond(ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -79,7 +76,7 @@ fun Route.accountsRoutes(accountService: AccountService) {
                 is Result.Success -> call.respond(ApiResponse.Success("Account deleted successfully"))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }

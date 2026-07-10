@@ -19,7 +19,7 @@ fun Route.categoryRoutes(service: CategoryService) {
                 is Result.Success -> call.respond(ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -32,7 +32,7 @@ fun Route.categoryRoutes(service: CategoryService) {
                 is Result.Success -> call.respond(HttpStatusCode.Created, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -40,13 +40,13 @@ fun Route.categoryRoutes(service: CategoryService) {
         delete("{id}") {
             val userId = call.userIdOrThrow()
             val id = call.parameters["id"]?.toUUIDOrNull()
-                ?: return@delete call.respond(HttpStatusCode.BadRequest, ErrorResponse("Invalid category ID", "INVALID_ID"))
+                ?: return@delete call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Invalid category ID", "INVALID_ID"))
                 
             when (val result = service.delete(userId, id)) {
                 is Result.Success -> call.respond(ApiResponse.Success(mapOf("message" to "Category deleted successfully")))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }

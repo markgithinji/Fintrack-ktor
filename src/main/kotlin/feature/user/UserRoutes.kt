@@ -20,7 +20,7 @@ fun Route.userRoutes(userService: UserService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -33,7 +33,7 @@ fun Route.userRoutes(userService: UserService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -46,7 +46,7 @@ fun Route.userRoutes(userService: UserService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -60,7 +60,7 @@ fun Route.userRoutes(userService: UserService) {
                 }
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }

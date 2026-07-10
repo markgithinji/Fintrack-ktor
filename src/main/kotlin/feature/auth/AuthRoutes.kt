@@ -18,7 +18,7 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
             val token = call.request.queryParameters["token"]
             
             if (token == null) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Token is required", "MISSING_TOKEN"))
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Token is required", "MISSING_TOKEN"))
                 return@get
             }
 
@@ -26,7 +26,7 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success("Email verified and updated successfully"))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -39,7 +39,7 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
                     is Result.Success -> call.respond(HttpStatusCode.Created, result.value)
                     is Result.Failure -> call.respond(
                         result.error.toHttpStatusCode(),
-                        ErrorResponse(result.error.message, result.error.errorCode)
+                        result.error.toApiResponse()
                     )
                 }
             }
@@ -51,7 +51,7 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
                     is Result.Success -> call.respond(HttpStatusCode.OK, result.value)
                     is Result.Failure -> call.respond(
                         result.error.toHttpStatusCode(),
-                        ErrorResponse(result.error.message, result.error.errorCode)
+                        result.error.toApiResponse()
                     )
                 }
             }
@@ -63,7 +63,7 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
                     is Result.Success -> call.respond(HttpStatusCode.OK, result.value)
                     is Result.Failure -> call.respond(
                         result.error.toHttpStatusCode(),
-                        ErrorResponse(result.error.message, result.error.errorCode)
+                        result.error.toApiResponse()
                     )
                 }
             }
@@ -72,7 +72,7 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
         get("/validate") {
             val authHeader = call.request.headers["Authorization"]
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Missing or invalid header", "MISSING_HEADER"))
+                call.respond(HttpStatusCode.Unauthorized, ApiResponse.Error("Missing or invalid header", "MISSING_HEADER"))
                 return@get
             }
             val token = authHeader.removePrefix("Bearer ").trim()
@@ -81,7 +81,7 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, result.value.toDto())
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -96,7 +96,7 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
                     is Result.Success -> call.respond(HttpStatusCode.OK)
                     is Result.Failure -> call.respond(
                         result.error.toHttpStatusCode(),
-                        ErrorResponse(result.error.message, result.error.errorCode)
+                        result.error.toApiResponse()
                     )
                 }
             } else {
@@ -113,7 +113,7 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
                     is Result.Success -> call.respond(HttpStatusCode.OK, "Password changed successfully")
                     is Result.Failure -> call.respond(
                         result.error.toHttpStatusCode(),
-                        ErrorResponse(result.error.message, result.error.errorCode)
+                        result.error.toApiResponse()
                     )
                 }
             }

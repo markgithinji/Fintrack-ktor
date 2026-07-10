@@ -29,3 +29,5 @@ fun AppError.toHttpStatusCode(): HttpStatusCode = when (this) {
     is AppError.Conflict -> HttpStatusCode.Conflict
     is AppError.Internal -> HttpStatusCode.InternalServerError
 }
+
+fun AppError.toApiResponse(): ApiResponse.Error = ApiResponse.Error(this.message, this.errorCode)

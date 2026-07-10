@@ -23,7 +23,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
             val rangeResult = service.parseDateRange(startDate, endDate)
             if (rangeResult is Result.Failure) {
-                call.respond(rangeResult.error.toHttpStatusCode(), ErrorResponse(rangeResult.error.message, rangeResult.error.errorCode))
+                call.respond(rangeResult.error.toHttpStatusCode(), rangeResult.error.toApiResponse())
                 return@get
             }
             
@@ -41,7 +41,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -51,7 +51,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
             val period = call.request.queryParameters["period"]
             
             if (period == null) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Missing period parameter", "MISSING_PERIOD"))
+                call.respond(HttpStatusCode.BadRequest, ApiResponse.Error("Missing period parameter", "MISSING_PERIOD"))
                 return@get
             }
 
@@ -62,7 +62,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
             val rangeResult = service.parseDateRange(startDate, endDate)
             if (rangeResult is Result.Failure) {
-                call.respond(rangeResult.error.toHttpStatusCode(), ErrorResponse(rangeResult.error.message, rangeResult.error.errorCode))
+                call.respond(rangeResult.error.toHttpStatusCode(), rangeResult.error.toApiResponse())
                 return@get
             }
             
@@ -80,7 +80,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -93,7 +93,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -106,7 +106,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -119,7 +119,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -132,7 +132,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -147,7 +147,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -161,7 +161,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -177,7 +177,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
 
             val rangeResult = service.parseDateRange(startDate, endDate)
             if (rangeResult is Result.Failure) {
-                call.respond(rangeResult.error.toHttpStatusCode(), ErrorResponse(rangeResult.error.message, rangeResult.error.errorCode))
+                call.respond(rangeResult.error.toHttpStatusCode(), rangeResult.error.toApiResponse())
                 return@get
             }
             
@@ -194,7 +194,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }
@@ -205,7 +205,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
-                    ErrorResponse(result.error.message, result.error.errorCode)
+                    result.error.toApiResponse()
                 )
             }
         }

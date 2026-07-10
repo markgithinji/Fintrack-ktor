@@ -1,6 +1,6 @@
 package com.fintrack.plugins
 
-import com.fintrack.core.domain.ErrorResponse
+import com.fintrack.core.domain.ApiResponse
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import core.*
@@ -34,7 +34,7 @@ fun Application.configureStatusPages() {
 
             call.respond(
                 status,
-                ErrorResponse(
+                ApiResponse.Error(
                     message = cause.message ?: "An error occurred",
                     errorCode = cause.errorCode
                 )
@@ -49,7 +49,7 @@ fun Application.configureStatusPages() {
 
             call.respond(
                 HttpStatusCode.UnprocessableEntity,
-                ErrorResponse(
+                ApiResponse.Error(
                     message = cause.reasons.joinToString(". "),
                     errorCode = "VALIDATION_ERROR"
                 )
@@ -63,7 +63,7 @@ fun Application.configureStatusPages() {
             ).warn { "Bad request: ${cause.message}" }
             call.respond(
                 HttpStatusCode.BadRequest,
-                ErrorResponse(
+                ApiResponse.Error(
                     message = cause.message ?: "Invalid request",
                     errorCode = "BAD_REQUEST"
                 )
@@ -77,7 +77,7 @@ fun Application.configureStatusPages() {
             ).info { "Resource not found: ${cause.message}" }
             call.respond(
                 HttpStatusCode.NotFound,
-                ErrorResponse(
+                ApiResponse.Error(
                     message = cause.message ?: "Resource not found",
                     errorCode = "NOT_FOUND"
                 )
@@ -94,7 +94,7 @@ fun Application.configureStatusPages() {
 
             call.respond(
                 status,
-                ErrorResponse(
+                ApiResponse.Error(
                     message = "Rate limit exceeded",
                     errorCode = "TOO_MANY_REQUESTS"
                 )
@@ -109,7 +109,7 @@ fun Application.configureStatusPages() {
             ).info { "404 Not Found" }
             call.respond(
                 HttpStatusCode.NotFound,
-                ErrorResponse(
+                ApiResponse.Error(
                     message = "Resource not found",
                     errorCode = "NOT_FOUND"
                 )
@@ -124,7 +124,7 @@ fun Application.configureStatusPages() {
             ).info { "401 Unauthorized" }
             call.respond(
                 HttpStatusCode.Unauthorized,
-                ErrorResponse(
+                ApiResponse.Error(
                     message = "Unauthorized access",
                     errorCode = "UNAUTHORIZED"
                 )
@@ -138,7 +138,7 @@ fun Application.configureStatusPages() {
             ).error({ "Unhandled exception: ${cause.message}" }, cause)
             call.respond(
                 HttpStatusCode.InternalServerError,
-                ErrorResponse(
+                ApiResponse.Error(
                     message = "Internal server error",
                     errorCode = "INTERNAL_SERVER_ERROR"
                 )
