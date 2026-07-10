@@ -1,9 +1,10 @@
-package com.fintrack.feature.summary.data.repository
+package feature.summary.data.repository
 
 import com.fintrack.feature.user.UsersTable
 import core.dbQuery
 import com.fintrack.feature.accounts.data.table.AccountsTable
 import feature.summary.domain.StatisticsRepository
+import feature.summary.domain.TransactionCounts
 import feature.transaction.data.TransactionsTable
 import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.*
@@ -45,14 +46,14 @@ class StatisticsRepositoryImpl : StatisticsRepository {
     override suspend fun getAvailablePeriods(
         userId: UUID,
         accountId: UUID?,
-        periodType: String
+        periodType: String,
     ): List<String> =
         dbQuery {
-            var query = TransactionsTable.selectAll()
-                .andWhere { TransactionsTable.userId eq EntityID(userId, UsersTable) }
+            val query = TransactionsTable.select(TransactionsTable.dateTime)
+                .where { TransactionsTable.userId eq EntityID(userId, UsersTable) }
 
             if (accountId != null) {
-                query = query.andWhere {
+                query.andWhere {
                     TransactionsTable.accountId eq EntityID(
                         accountId,
                         AccountsTable
@@ -60,36 +61,25 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                 }
             }
 
-            when (periodType) {
-                "weeks" -> query.asSequence()
-                    .map { it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime().toLocalDate() }
-                    .map { date ->
-                        val year = date.year
-                        val week = date[IsoFields.WEEK_OF_WEEK_BASED_YEAR]
-                        "%04d-W%02d".format(year, week)
+            query.map { it[TransactionsTable.dateTime] }
+                .asSequence()
+                .map { it.toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime().toLocalDate() }
+                .map { date ->
+                    when (periodType) {
+                        "weeks" -> {
+                            val year = date.year
+                            val week = date[IsoFields.WEEK_OF_WEEK_BASED_YEAR]
+                            "%04d-W%02d".format(year, week)
+                        }
+                        "months" -> "%04d-%02d".format(date.year, date.monthValue)
+                        "years" -> date.year.toString()
+                        else -> ""
                     }
-                    .distinct()
-                    .toList()
-                    .sortedDescending()
-
-                "months" -> query.asSequence()
-                    .map { it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).toJavaLocalDateTime().toLocalDate() }
-                    .map { date ->
-                        val year = date.year
-                        val month = date.monthValue
-                        "%04d-%02d".format(year, month)
-                    }
-                    .distinct()
-                    .toList()
-                    .sortedDescending()
-
-                "years" -> query
-                    .map { it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).year.toString() }
-                    .distinct()
-                    .sortedDescending()
-
-                else -> emptyList()
-            }
+                }
+                .filter { it.isNotEmpty() }
+                .distinct()
+                .toList()
+                .sortedDescending()
         }
 
     override suspend fun getTransactionsByDateRange(
@@ -154,9 +144,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
             query
                 .groupBy(TransactionsTable.category)
-                .associate { 
-                    it[TransactionsTable.category] to (it[totalSum] ?: 0.0)
-                }
+                .associateBy({ it[TransactionsTable.category] }, { it[totalSum] ?: 0.0 })
         }
 
     override suspend fun getTransactionCounts(
@@ -239,10 +227,3 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         balance = this[TransactionsTable.balance]
     )
 }
-
-data class TransactionCounts(
-    val incomeCount: Int,
-    val expenseCount: Int,
-    val totalCount: Int,
-    val totalTransactionCost: Double = 0.0
-)
