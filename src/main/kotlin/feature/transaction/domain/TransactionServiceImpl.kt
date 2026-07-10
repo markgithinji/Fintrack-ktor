@@ -43,17 +43,7 @@ class TransactionServiceImpl(
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
-            "typeFilter" to typeFilter,
-            "isIncome" to isIncome,
-            "categories" to categories?.size,
-            "startDate" to startDate,
-            "endDate" to endDate,
-            "sortBy" to sortBy,
-            "order" to order,
             "limit" to limit,
-            "afterDateTime" to afterDateTime,
-            "afterId" to afterId,
-            "hasTransactionCost" to hasTransactionCost
         ).debug { "Fetching transactions with cursor pagination" }
 
         // PREFER isIncome parameter over typeFilter if both are provided
@@ -63,10 +53,24 @@ class TransactionServiceImpl(
             else -> null
         }
 
-        val start = startDate?.let { LocalDate.parse(it).atTime(0, 0, 0).toInstant(TimeZone.UTC) }
-        val end = endDate?.let { LocalDate.parse(it).atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC) }
+        val start = try {
+            startDate?.let { LocalDate.parse(it).atTime(0, 0, 0).toInstant(TimeZone.UTC) }
+        } catch (e: IllegalArgumentException) {
+            return Result.Failure(AppError.Validation("Invalid start date format: $startDate"))
+        }
+
+        val end = try {
+            endDate?.let { LocalDate.parse(it).atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC) }
+        } catch (e: IllegalArgumentException) {
+            return Result.Failure(AppError.Validation("Invalid end date format: $endDate"))
+        }
+
         val sortOrder = if (order == "DESC") SortOrder.DESC else SortOrder.ASC
-        val parsedAfterDateTime = afterDateTime?.let { Instant.parse(it) }
+        val parsedAfterDateTime = try {
+            afterDateTime?.let { Instant.parse(it) }
+        } catch (e: IllegalArgumentException) {
+            return Result.Failure(AppError.Validation("Invalid cursor datetime: $afterDateTime"))
+        }
 
         val transactions = transactionRepository.getAllCursor(
             userId, accountId, finalIsIncome, categories,
@@ -77,24 +81,13 @@ class TransactionServiceImpl(
         val last = transactionDtos.lastOrNull()
         val nextCursor = last?.let { "${it.dateTime}|${it.id}" }
 
-        log.withContext(
-            "userId" to userId,
-            "transactionCount" to transactionDtos.size,
-            "hasNextCursor" to (nextCursor != null),
-            "finalIsIncome" to finalIsIncome
-        ).debug { "Transactions retrieved with cursor pagination" }
-
         return Result.Success(PaginatedTransactionDto(transactionDtos, nextCursor))
     }
 
     override suspend fun getById(userId: UUID, id: UUID): Result<TransactionDto> {
-        log.withContext("userId" to userId, "transactionId" to id)
-            .debug { "Fetching transaction by ID" }
-
         val transaction = transactionRepository.getById(id, userId)
+            ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
 
-        log.withContext("userId" to userId, "transactionId" to id)
-            .debug { "Transaction retrieved successfully" }
         return Result.Success(transaction.toDto())
     }
 
@@ -103,18 +96,11 @@ class TransactionServiceImpl(
             "userId" to userId,
             "accountId" to request.accountId,
             "amount" to request.amount,
-            "isIncome" to request.isIncome,
             "category" to request.category
         ).info { "Creating transaction" }
 
         val transaction = request.toDomain(userId)
         val result = transactionRepository.add(transaction)
-
-        log.withContext(
-            "userId" to userId,
-            "transactionId" to result.id,
-            "accountId" to result.accountId
-        ).info { "Transaction created successfully" }
 
         return Result.Success(result.toDto())
     }
@@ -127,45 +113,29 @@ class TransactionServiceImpl(
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Updating transaction" }
 
-        transactionRepository.getById(id, userId)
-
         val transaction = request.toDomain(userId, id)
         val result = transactionRepository.update(id, userId, transaction)
+            ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
 
-        log.withContext("userId" to userId, "transactionId" to id)
-            .info { "Transaction updated successfully" }
         return Result.Success(result.toDto())
     }
 
     override suspend fun delete(userId: UUID, id: UUID): Result<Unit> {
-        log.withContext("userId" to userId, "transactionId" to id)
-            .info { "Deleting transaction" }
-
         val deleted = transactionRepository.delete(id, userId)
 
         if (!deleted) {
-            log.withContext("userId" to userId, "transactionId" to id)
-                .warn { "Transaction deletion failed - not found" }
             return Result.Failure(AppError.NotFound("Transaction $id not found"))
         }
 
-        log.withContext("userId" to userId, "transactionId" to id)
-            .info { "Transaction deleted successfully" }
         return Result.Success(Unit)
     }
 
     override suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): Result<DeleteResponse> {
-        log.withContext("userId" to userId, "accountIds" to accountIds)
-            .warn { "Clearing all transactions" }
-
         val cleared = transactionRepository.clearAll(userId, accountIds)
 
         val message = if (!accountIds.isNullOrEmpty())
             "All transactions cleared for accounts ${accountIds.joinToString()}"
         else "All transactions cleared for user $userId"
-
-        log.withContext("userId" to userId, "accountIds" to accountIds)
-            .info { "All transactions cleared successfully" }
 
         return Result.Success(DeleteResponse(message, cleared))
     }
@@ -174,17 +144,8 @@ class TransactionServiceImpl(
         userId: UUID,
         requests: List<CreateTransactionRequest>
     ): Result<List<TransactionDto>> {
-        log.withContext("userId" to userId, "bulkCount" to requests.size)
-            .info { "Creating bulk transactions" }
-
         val transactions = requests.map { it.toDomain(userId) }
         val result = transactionRepository.addBulk(transactions)
-
-        log.withContext(
-            "userId" to userId,
-            "requestedCount" to requests.size,
-            "createdCount" to result.size
-        ).info { "Bulk transactions created successfully" }
 
         return Result.Success(result.map { it.toDto() })
     }
@@ -193,9 +154,6 @@ class TransactionServiceImpl(
         userId: UUID,
         requests: List<CreateTransactionRequest>
     ): Result<List<TransactionDto>> {
-        log.withContext("userId" to userId, "bulkCount" to requests.size)
-            .info { "Syncing Equity Bank transactions" }
-
         if (requests.isEmpty()) return Result.Success(emptyList())
 
         // 1. Convert to domain objects
@@ -205,34 +163,19 @@ class TransactionServiceImpl(
         val result = transactionRepository.addBulk(transactions)
 
         // 3. Account Balance Update
-        // Identify the most recent transaction (by dateTime) that has a balance field
         val mostRecentWithBalance = requests
             .filter { it.balance != null }
             .maxByOrNull { it.dateTime }
 
         if (mostRecentWithBalance != null) {
             val accountId = UUID.fromString(mostRecentWithBalance.accountId)
-            log.withContext(
-                "userId" to userId,
-                "accountId" to accountId,
-                "newBalance" to mostRecentWithBalance.balance
-            ).info { "Updating account balance from Equity transaction" }
-            
             accountsRepository.updateBalance(accountId, mostRecentWithBalance.balance!!)
         }
-
-        log.withContext(
-            "userId" to userId,
-            "requestedCount" to requests.size,
-            "createdCount" to result.size
-        ).info { "Equity transactions synced successfully" }
 
         return Result.Success(result.map { it.toDto() })
     }
 
     override suspend fun detectRecurringBills(userId: UUID): Result<List<RecurringBillDto>> {
-        log.withContext("userId" to userId).info { "Detecting recurring bills" }
-
         // Fetch last 90 days of transactions for analysis
         val now = Clock.System.now()
         val analysisStart = now.minus(90, DateTimeUnit.DAY, TimeZone.UTC)
@@ -259,7 +202,7 @@ class TransactionServiceImpl(
 
         val recurringBills = mutableListOf<RecurringBillDto>()
 
-        groups.forEach { (key, txns) ->
+        groups.forEach { (_, txns) ->
             if (txns.size >= 3) {
                 val sortedTxns = txns.sortedBy { it.dateTime }
                 
@@ -295,7 +238,6 @@ class TransactionServiceImpl(
             }
         }
 
-        log.withContext("userId" to userId, "detectedCount" to recurringBills.size).info { "Recurring bills detected" }
         return Result.Success(recurringBills)
     }
 }

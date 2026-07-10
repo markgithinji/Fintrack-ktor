@@ -9,4 +9,5 @@ interface CategoryRepository {
     suspend fun add(category: Category): Category
     suspend fun addAll(categories: List<Category>): List<Category>
     suspend fun delete(id: UUID, userId: UUID): Boolean
+    suspend fun exists(userId: UUID, name: String, isExpense: Boolean): Boolean
 }

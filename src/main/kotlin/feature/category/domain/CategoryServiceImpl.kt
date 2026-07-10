@@ -5,7 +5,6 @@ import com.fintrack.core.domain.Result
 import feature.category.data.model.CategoryDto
 import feature.category.data.model.CreateCategoryRequest
 import feature.category.domain.model.Category
-import kotlinx.datetime.Clock
 import java.util.UUID
 
 class CategoryServiceImpl(
@@ -13,7 +12,6 @@ class CategoryServiceImpl(
 ) : CategoryService {
     override suspend fun getAll(userId: UUID): Result<List<CategoryDto>> {
         val categories = categoryRepository.getAll(userId)
-            .sortedBy { it.createdAt ?: Clock.System.now() }
             .map { it.toDto() }
         return Result.Success(categories)
     }
@@ -21,13 +19,13 @@ class CategoryServiceImpl(
     override suspend fun add(userId: UUID, request: CreateCategoryRequest): Result<CategoryDto> {
         val trimmedName = request.name.trim()
 
-        // Prevent duplicate names (case-insensitive) for the same user and type
-        val existing = categoryRepository.getAll(userId).find {
-            it.name.equals(trimmedName, ignoreCase = true) && it.isExpense == request.isExpense
-        }
-
-        if (existing != null) {
-            return Result.Success(existing.toDto())
+        // Efficient existence check in DB
+        if (categoryRepository.exists(userId, trimmedName, request.isExpense)) {
+            // Re-fetch the existing one to return it (or just return success if the goal is idempotency)
+            val existing = categoryRepository.getAll(userId).find {
+                it.name.equals(trimmedName, ignoreCase = true) && it.isExpense == request.isExpense
+            }
+            if (existing != null) return Result.Success(existing.toDto())
         }
 
         val category = Category(

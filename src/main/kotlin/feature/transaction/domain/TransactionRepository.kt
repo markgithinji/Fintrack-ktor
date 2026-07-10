@@ -22,9 +22,9 @@ interface TransactionRepository {
         hasTransactionCost: Boolean? = null
     ): List<Transaction>
 
-    suspend fun getById(id: UUID, userId: UUID): Transaction
+    suspend fun getById(id: UUID, userId: UUID): Transaction?
     suspend fun add(entity: Transaction): Transaction
-    suspend fun update(id: UUID, userId: UUID, entity: Transaction): Transaction
+    suspend fun update(id: UUID, userId: UUID, entity: Transaction): Transaction?
     suspend fun delete(id: UUID, userId: UUID): Boolean
     suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): Boolean
     suspend fun addBulk(entities: List<Transaction>): List<Transaction>

@@ -15,6 +15,7 @@ class CategoryRepositoryImpl : CategoryRepository {
     override suspend fun getAll(userId: UUID): List<Category> = dbQuery {
         CategoriesTable.selectAll()
             .where { CategoriesTable.userId eq EntityID(userId, UsersTable) }
+            .orderBy(CategoriesTable.createdAt to SortOrder.ASC)
             .map { it.toCategory() }
     }
 
@@ -58,6 +59,16 @@ class CategoryRepositoryImpl : CategoryRepository {
             (CategoriesTable.id eq EntityID(id, CategoriesTable)) and (CategoriesTable.userId eq EntityID(userId, UsersTable))
         }
         deleted > 0
+    }
+
+    override suspend fun exists(userId: UUID, name: String, isExpense: Boolean): Boolean = dbQuery {
+        CategoriesTable.selectAll()
+            .where {
+                (CategoriesTable.userId eq EntityID(userId, UsersTable)) and
+                        (CategoriesTable.name.lowerCase() eq name.lowercase()) and
+                        (CategoriesTable.isExpense eq isExpense)
+            }
+            .count() > 0
     }
 
     private fun ResultRow.toCategory() = Category(

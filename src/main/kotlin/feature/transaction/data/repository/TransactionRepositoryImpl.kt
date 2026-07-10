@@ -66,7 +66,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             .map { it.toTransaction() }
     }
 
-    override suspend fun getById(id: UUID, userId: UUID): Transaction = dbQuery {
+    override suspend fun getById(id: UUID, userId: UUID): Transaction? = dbQuery {
         TransactionsTable
             .selectAll().where {
                 (TransactionsTable.id eq id) and
@@ -74,7 +74,6 @@ class TransactionRepositoryImpl : TransactionRepository {
             }
             .map { it.toTransaction() }
             .singleOrNull()
-            ?: throw NoSuchElementException("Transaction with id $id not found for user $userId")
     }
 
     override suspend fun add(entity: Transaction): Transaction = dbQuery {
@@ -96,7 +95,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         inserted.toTransaction()
     }
 
-    override suspend fun update(id: UUID, userId: UUID, entity: Transaction): Transaction = dbQuery {
+    override suspend fun update(id: UUID, userId: UUID, entity: Transaction): Transaction? = dbQuery {
         val updated = TransactionsTable.update(
             where = {
                 (TransactionsTable.id eq id) and
@@ -114,7 +113,8 @@ class TransactionRepositoryImpl : TransactionRepository {
             row[TransactionsTable.balance] = entity.balance
         }
 
-        if (updated == 0) throw NoSuchElementException("Transaction with id $id not found for user $userId")
+        if (updated == 0) return@dbQuery null
+        
         // Re-fetch the updated transaction
         TransactionsTable
             .selectAll().where {
@@ -123,7 +123,6 @@ class TransactionRepositoryImpl : TransactionRepository {
             }
             .map { it.toTransaction() }
             .singleOrNull()
-            ?: throw NoSuchElementException("Transaction with id $id not found after update")
     }
 
     override suspend fun delete(id: UUID, userId: UUID): Boolean = dbQuery {
@@ -131,8 +130,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             (TransactionsTable.id eq id) and
                     (TransactionsTable.userId eq userId)
         }
-        if (deleted == 0) throw NoSuchElementException("Transaction with id $id not found for user $userId")
-        true
+        deleted > 0
     }
 
     override suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): Boolean = dbQuery {
