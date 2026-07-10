@@ -13,10 +13,9 @@ fun userModule() = module {
     single<UserRepository> { UserRepositoryImpl() }
     single<UserService> { 
         UserServiceImpl(
-            get<UserRepository>(), 
-            get<AccountsRepository>(), 
-            get<EmailService>(), 
-            get<EmailVerificationRepository>()
+            userRepository = get<UserRepository>(),
+            emailService = get<EmailService>(),
+            emailVerificationRepository = get<EmailVerificationRepository>()
         ) 
     }
 }

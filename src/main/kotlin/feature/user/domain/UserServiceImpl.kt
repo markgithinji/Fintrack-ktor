@@ -18,7 +18,6 @@ import kotlin.time.Duration.Companion.hours
 
 class UserServiceImpl(
     private val userRepository: UserRepository,
-    private val accountsRepository: AccountsRepository,
     private val emailService: EmailService,
     private val emailVerificationRepository: EmailVerificationRepository
 ) : UserService {
