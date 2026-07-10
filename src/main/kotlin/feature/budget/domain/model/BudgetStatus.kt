@@ -1,4 +1,4 @@
-package com.fintrack.feature.budget.domain
+package feature.budget.domain.model
 
 data class BudgetStatus(
     val limit: Double,

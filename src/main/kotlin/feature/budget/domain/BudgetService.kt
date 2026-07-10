@@ -9,7 +9,13 @@ import java.util.UUID
 
 
 interface BudgetService {
-    suspend fun getAllBudgets(userId: UUID, accountId: UUID?): Result<List<BudgetWithStatusDto>>
+    suspend fun getAllBudgets(
+        userId: UUID, 
+        accountId: UUID?,
+        limit: Int = 20,
+        offset: Long = 0
+    ): Result<List<BudgetWithStatusDto>>
+
     suspend fun getBudgetById(userId: UUID, id: UUID): Result<BudgetWithStatusDto>
     suspend fun createBudget(userId: UUID, request: CreateBudgetRequest): Result<BudgetWithStatusDto>
     suspend fun createBudgets(

@@ -8,5 +8,5 @@ import org.koin.dsl.module
 
 val budgetModule = module {
     single<BudgetRepository> { BudgetRepositoryImpl() }
-    single<BudgetService> { BudgetServiceImpl(get()) }
+    single<BudgetService> { BudgetServiceImpl(budgetRepository = get()) }
 }

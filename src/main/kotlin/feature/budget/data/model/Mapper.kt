@@ -2,9 +2,9 @@ package com.fintrack.feature.budget.data
 
 import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
-import com.fintrack.feature.budget.domain.BudgetStatus
-import com.fintrack.feature.budget.domain.BudgetWithStatus
-import feature.transaction.Budget
+import feature.budget.domain.model.BudgetStatus
+import feature.budget.domain.model.BudgetWithStatus
+import feature.budget.domain.model.Budget
 import java.util.UUID
 
 fun Budget.toDto(): BudgetDto =

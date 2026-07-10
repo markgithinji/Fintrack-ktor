@@ -64,7 +64,7 @@ class TransactionServiceImpl(
         }
 
         val start = startDate?.let { LocalDate.parse(it).atTime(0, 0, 0).toInstant(TimeZone.UTC) }
-        val end = endDate?.let { LocalDate.parse(it).atTime(23, 59, 59).toInstant(TimeZone.UTC) }
+        val end = endDate?.let { LocalDate.parse(it).atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC) }
         val sortOrder = if (order == "DESC") SortOrder.DESC else SortOrder.ASC
         val parsedAfterDateTime = afterDateTime?.let { Instant.parse(it) }
 

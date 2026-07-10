@@ -1,7 +1,6 @@
-package feature.transaction
+package feature.budget.data
 
 import com.fintrack.core.data.TableNames
-import com.fintrack.feature.budget.data.BudgetsColumns
 import com.fintrack.feature.user.UsersTable
 import com.fintrack.feature.accounts.data.table.AccountsTable
 import org.jetbrains.exposed.dao.id.UUIDTable

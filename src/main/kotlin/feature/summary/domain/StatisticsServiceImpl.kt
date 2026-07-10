@@ -224,7 +224,7 @@ class StatisticsServiceImpl(
 
         var projectedExceedMonth: String? = null
         if (yearMode && expenseProjectedTotal != null) {
-            val budgets = budgetRepository.getAllByUser(userId, accountId).filter { it.isExpense }
+            val budgets = budgetRepository.getAllByUser(userId, accountId, limit = Int.MAX_VALUE, offset = 0).filter { it.isExpense }
             val totalMonthlyLimit = budgets.sumOf { it.limit }
             val yearlyLimit = totalMonthlyLimit * 12
 
@@ -265,7 +265,7 @@ class StatisticsServiceImpl(
             val hTxns = statisticsRepository.getTransactions(
                 userId, accountId, null,
                 historicalStart.atStartOfDayIn(TimeZone.UTC),
-                historicalEnd.atTime(23, 59, 59).toInstant(TimeZone.UTC)
+                historicalEnd.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
             )
 
             val monthlyData = hTxns.groupBy {
@@ -400,7 +400,7 @@ class StatisticsServiceImpl(
             val histTxns = statisticsRepository.getTransactions(
                 userId, accountId, isIncome,
                 historicalStart.atStartOfDayIn(TimeZone.UTC),
-                historicalEnd.atTime(23, 59, 59).toInstant(TimeZone.UTC)
+                historicalEnd.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
             )
 
             histTxns.groupBy { it.category.trim().lowercase() }
@@ -803,7 +803,7 @@ class StatisticsServiceImpl(
     override fun parseDateRange(startDate: String?, endDate: String?): Result<Pair<Instant?, Instant?>> {
         return try {
             val start = startDate?.let { LocalDate.parse(it).atTime(LocalTime(0, 0, 0)).toInstant(TimeZone.UTC) }
-            val end = endDate?.let { LocalDate.parse(it).atTime(LocalTime(23, 59, 59)).toInstant(TimeZone.UTC) }
+            val end = endDate?.let { LocalDate.parse(it).atTime(LocalTime(23, 59, 59, 999_999_999)).toInstant(TimeZone.UTC) }
             if (start != null && end != null && start > end) {
                 Result.Failure(AppError.Validation("Start date cannot be after end date"))
             } else {

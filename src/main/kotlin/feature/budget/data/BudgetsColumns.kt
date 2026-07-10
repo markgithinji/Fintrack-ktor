@@ -1,4 +1,4 @@
-package com.fintrack.feature.budget.data
+package feature.budget.data
 
 object BudgetsColumns {
     const val USER_ID = "user_id"

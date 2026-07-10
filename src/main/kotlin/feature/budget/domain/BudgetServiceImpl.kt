@@ -9,10 +9,10 @@ import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import com.fintrack.feature.budget.data.toDomain
 import com.fintrack.feature.budget.data.toDto
-import com.fintrack.feature.budget.domain.BudgetStatus
-import com.fintrack.feature.budget.domain.BudgetWithStatus
+import feature.budget.domain.model.BudgetStatus
+import feature.budget.domain.model.BudgetWithStatus
 import com.fintrack.feature.transaction.data.model.DeleteResponse
-import feature.transaction.Budget
+import feature.budget.domain.model.Budget
 import kotlinx.datetime.*
 import java.util.UUID
 
@@ -22,15 +22,24 @@ class BudgetServiceImpl(
 
     private val log = logger<BudgetServiceImpl>()
 
-    override suspend fun getAllBudgets(userId: UUID, accountId: UUID?): Result<List<BudgetWithStatusDto>> {
-        log.withContext("userId" to userId, "accountId" to accountId)
-            .debug { "Fetching all budgets" }
+    override suspend fun getAllBudgets(
+        userId: UUID, 
+        accountId: UUID?,
+        limit: Int,
+        offset: Long
+    ): Result<List<BudgetWithStatusDto>> {
+        log.withContext("userId" to userId, "accountId" to accountId, "limit" to limit, "offset" to offset)
+            .debug { "Fetching all budgets with pagination" }
 
-        val budgets = budgetRepository.getAllByUser(userId, accountId)
-        val result = budgets.map { budget ->
+        val budgets = budgetRepository.getAllByUser(userId, accountId, limit, offset)
+
+        val spentAmounts = budgetRepository.getSpentAmounts(budgets)
+
+        val result: List<BudgetWithStatusDto> = budgets.map { budget ->
+            val spent = spentAmounts[budget.id] ?: 0.0
             BudgetWithStatus(
                 budget = budget,
-                status = calculateBudgetStatus(budget)
+                status = assembleBudgetStatus(budget, spent)
             ).toDto()
         }
 
@@ -46,9 +55,17 @@ class BudgetServiceImpl(
         val budget = budgetRepository.getById(userId, id)
             ?: return Result.Failure(AppError.NotFound("Budget $id not found"))
 
+        val spent = budgetRepository.getSpentAmount(
+            accountId = budget.accountId,
+            categories = budget.categories,
+            isExpense = budget.isExpense,
+            start = budget.startDate.atStartOfDay(TimeZone.UTC),
+            end = budget.endDate.atEndOfDay(TimeZone.UTC)
+        )
+
         val budgetWithStatus = BudgetWithStatus(
             budget = budget,
-            status = calculateBudgetStatus(budget)
+            status = assembleBudgetStatus(budget, spent)
         ).toDto()
 
         log.withContext("userId" to userId, "budgetId" to id)
@@ -68,9 +85,11 @@ class BudgetServiceImpl(
         ).info { "Creating budget" }
 
         val budget = budgetRepository.add(request.toDomain())
+        
+        // New budget starts with 0 spent
         val budgetWithStatus = BudgetWithStatus(
             budget = budget,
-            status = calculateBudgetStatus(budget)
+            status = assembleBudgetStatus(budget, 0.0)
         ).toDto()
 
         log.withContext("userId" to userId, "budgetId" to budget.id)
@@ -89,7 +108,7 @@ class BudgetServiceImpl(
         val result = budgets.map { budget ->
             BudgetWithStatus(
                 budget = budget,
-                status = calculateBudgetStatus(budget)
+                status = assembleBudgetStatus(budget, 0.0)
             ).toDto()
         }
 
@@ -106,15 +125,20 @@ class BudgetServiceImpl(
         log.withContext("userId" to userId, "budgetId" to id)
             .info { "Updating budget" }
 
-        budgetRepository.getById(userId, id)
-            ?: return Result.Failure(AppError.NotFound("Budget $id not found"))
-
         val updatedBudget = budgetRepository.update(userId, id, request.toDomain(id))
             ?: return Result.Failure(AppError.Internal("Failed to update budget $id"))
 
+        val spent = budgetRepository.getSpentAmount(
+            accountId = updatedBudget.accountId,
+            categories = updatedBudget.categories,
+            isExpense = updatedBudget.isExpense,
+            start = updatedBudget.startDate.atStartOfDay(TimeZone.UTC),
+            end = updatedBudget.endDate.atEndOfDay(TimeZone.UTC)
+        )
+
         val budgetWithStatus = BudgetWithStatus(
             budget = updatedBudget,
-            status = calculateBudgetStatus(updatedBudget)
+            status = assembleBudgetStatus(updatedBudget, spent)
         ).toDto()
 
         log.withContext("userId" to userId, "budgetId" to id)
@@ -162,35 +186,10 @@ class BudgetServiceImpl(
         return Result.Success(result)
     }
 
-    private suspend fun calculateBudgetStatus(budget: Budget): BudgetStatus {
-        log.withContext("budgetId" to budget.id).debug { "Calculating budget status" }
-
-        val tz = TimeZone.currentSystemDefault()
-        val start = budget.startDate.atStartOfDay(tz)
-        val end = budget.endDate.atEndOfDay(tz)
-
-        val transactions = budgetRepository.getTransactionsInDateRange(
-            accountId = budget.accountId,
-            categories = budget.categories,
-            isExpense = budget.isExpense,
-            start = start,
-            end = end
-        )
-
-        val spent = transactions.sumOf { it.amount }
+    private fun assembleBudgetStatus(budget: Budget, spent: Double): BudgetStatus {
         val remaining = budget.limit - spent
         val percentageUsed = if (budget.limit > 0) (spent / budget.limit) * 100 else 0.0
         val isExceeded = spent > budget.limit
-
-        log.withContext(
-            "budgetId" to budget.id,
-            "limit" to budget.limit,
-            "spent" to spent,
-            "remaining" to remaining,
-            "percentageUsed" to percentageUsed,
-            "isExceeded" to isExceeded,
-            "transactionCount" to transactions.size
-        ).debug { "Budget status calculated" }
 
         return BudgetStatus(
             limit = budget.limit,
@@ -201,9 +200,9 @@ class BudgetServiceImpl(
         )
     }
 
-    private fun LocalDate.atStartOfDay(zone: TimeZone = TimeZone.currentSystemDefault()): Instant =
+    private fun LocalDate.atStartOfDay(zone: TimeZone = TimeZone.UTC): Instant =
         this.atTime(LocalTime(0, 0)).toInstant(zone)
 
-    private fun LocalDate.atEndOfDay(zone: TimeZone = TimeZone.currentSystemDefault()): Instant =
-        this.plus(1, DateTimeUnit.DAY).atStartOfDay(zone)
+    private fun LocalDate.atEndOfDay(zone: TimeZone = TimeZone.UTC): Instant =
+        this.atTime(LocalTime(23, 59, 59, 999_999_999)).toInstant(zone)
 }

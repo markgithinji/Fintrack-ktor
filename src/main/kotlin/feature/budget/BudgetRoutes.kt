@@ -123,14 +123,18 @@ fun Route.budgetRoutes(budgetService: BudgetService) {
         get {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.toUUIDOrNull()
+            val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceAtMost(100) ?: 20
+            val offset = call.request.queryParameters["offset"]?.toLongOrNull() ?: 0L
 
             log.withContext(
                 "userId" to userId,
                 "accountId" to accountId,
+                "limit" to limit,
+                "offset" to offset,
                 "endpoint" to "GET /budgets"
             ).info { "Fetch budgets request received" }
 
-            when (val result = budgetService.getAllBudgets(userId, accountId)) {
+            when (val result = budgetService.getAllBudgets(userId, accountId, limit, offset)) {
                 is Result.Success -> call.respond(ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),

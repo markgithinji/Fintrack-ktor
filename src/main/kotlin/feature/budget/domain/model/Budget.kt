@@ -1,4 +1,4 @@
-package feature.transaction
+package feature.budget.domain.model
 
 import kotlinx.datetime.LocalDate
 import java.util.*
