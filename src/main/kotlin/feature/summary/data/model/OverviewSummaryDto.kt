@@ -3,7 +3,6 @@ package feature.summary.data.model
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
-
 @Serializable
 data class OverviewSummaryDto(
     val period: String,

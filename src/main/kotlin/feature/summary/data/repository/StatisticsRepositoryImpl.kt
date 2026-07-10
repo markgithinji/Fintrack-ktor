@@ -191,7 +191,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
         val incomeCount = when {
             isIncome == false -> 0L
-            hasCost == true -> 0L // Income usually doesn't have transaction cost in this app's logic
+            hasCost == true -> 0L // Income usually doesn't have transaction cost
             else -> TransactionsTable
                 .selectAll()
                 .where { baseCondition() and (TransactionsTable.isIncome eq true) }

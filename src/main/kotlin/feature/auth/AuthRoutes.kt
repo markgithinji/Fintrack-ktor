@@ -2,9 +2,7 @@ package com.fintrack.feature.auth
 
 import com.fintrack.core.domain.*
 import com.fintrack.core.userIdOrThrow
-import com.fintrack.feature.auth.data.model.AuthRequest
-import com.fintrack.feature.auth.data.model.ChangePasswordRequest
-import com.fintrack.feature.auth.data.model.RefreshRequest
+import com.fintrack.feature.auth.data.model.*
 import com.fintrack.feature.auth.domain.AuthService
 import com.fintrack.feature.user.domain.UserService
 import com.fintrack.plugins.withAuthRateLimit
@@ -80,7 +78,7 @@ fun Route.authRoutes(authService: AuthService, userService: UserService) {
             val token = authHeader.removePrefix("Bearer ").trim()
             
             when (val result = authService.validateToken(token)) {
-                is Result.Success -> call.respond(HttpStatusCode.OK, result.value)
+                is Result.Success -> call.respond(HttpStatusCode.OK, result.value.toDto())
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),
                     ErrorResponse(result.error.message, result.error.errorCode)
