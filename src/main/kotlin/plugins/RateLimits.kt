@@ -13,6 +13,8 @@ import kotlin.time.Duration.Companion.seconds
 import org.koin.ktor.ext.inject
 import redis.clients.jedis.JedisPool
 import kotlinx.datetime.Clock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class RateLimitConfig {
     companion object {
@@ -98,13 +100,13 @@ class RedisRateLimiter(
     private val limit: Int,
     private val refillPeriod: Duration
 ) : RateLimiter {
-    override suspend fun tryConsume(tokens: Int): RateLimiter.State {
-        return jedisPool.resource.use { jedis ->
+    override suspend fun tryConsume(tokens: Int): RateLimiter.State = withContext(Dispatchers.IO) {
+        jedisPool.resource.use { jedis ->
             val redisKey = "ratelimit:$key"
-            
+
             // Atomic increment
             val newValue = jedis.incrBy(redisKey, tokens.toLong())
-            
+
             // Set TTL only on the first increment
             if (newValue == tokens.toLong()) {
                 jedis.expire(redisKey, refillPeriod.inWholeSeconds)
