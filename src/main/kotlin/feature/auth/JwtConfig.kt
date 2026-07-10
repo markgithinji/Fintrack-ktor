@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import io.ktor.server.config.ApplicationConfig
+import core.util.IdGenerator
 import java.util.Date
 import java.util.UUID
 
@@ -48,7 +49,7 @@ object JwtConfig {
             .withExpiresAt(Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION))
             .sign(Algorithm.HMAC256(config.secret))
 
-    fun generateRefreshToken(): String = UUID.randomUUID().toString()
+    fun generateRefreshToken(): String = IdGenerator.nextId().toString()
 
     val realm: String get() = config.realm
 }

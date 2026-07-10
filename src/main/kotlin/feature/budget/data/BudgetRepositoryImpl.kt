@@ -3,6 +3,7 @@ package feature.budget.data
 import com.fintrack.feature.user.UsersTable
 import com.fintrack.core.data.dbQuery
 import com.fintrack.feature.accounts.data.table.AccountsTable
+import core.util.IdGenerator
 import feature.budget.domain.BudgetRepository
 import feature.budget.domain.model.Budget
 import feature.transaction.data.table.TransactionsTable
@@ -51,7 +52,7 @@ class BudgetRepositoryImpl : BudgetRepository {
             val accountUserId = account[AccountsTable.userId].value
             val now = Clock.System.now()
             val insertStatement = BudgetsTable.insert {
-                it[id] = EntityID(budget.id ?: UUID.randomUUID(), BudgetsTable)
+                it[id] = EntityID(budget.id ?: IdGenerator.nextId(), BudgetsTable)
                 it[userId] = EntityID(accountUserId, UsersTable)
                 it[accountId] = EntityID(budget.accountId, AccountsTable)
                 it[name] = budget.name
@@ -79,7 +80,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                 val accountUserId = account[AccountsTable.userId].value
 
                 val inserted = BudgetsTable.insert {
-                    it[id] = EntityID(budget.id ?: UUID.randomUUID(), BudgetsTable)
+                    it[id] = EntityID(budget.id ?: IdGenerator.nextId(), BudgetsTable)
                     it[userId] = EntityID(accountUserId, UsersTable)
                     it[accountId] = EntityID(budget.accountId, AccountsTable)
                     it[name] = budget.name
@@ -206,7 +207,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                 txn.dateTime <= budget.endDate.atEndOfDay(KTimeZone.UTC)
             }.sumOf { it.amount }
             
-            (budget.id ?: UUID.randomUUID()) to spent
+            (budget.id ?: IdGenerator.nextId()) to spent
         }
     }
 

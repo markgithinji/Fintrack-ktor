@@ -46,4 +46,5 @@ dependencies {
     implementation(libs.jedis)
     implementation(libs.flyway.core)
     implementation(libs.flyway.database.postgresql)
+    implementation(libs.uuid.creator)
 }

@@ -2,6 +2,7 @@ package feature.category.domain
 
 import com.fintrack.core.domain.AppError
 import com.fintrack.core.domain.Result
+import core.util.IdGenerator
 import feature.category.data.model.CategoryDto
 import feature.category.data.model.CreateCategoryRequest
 import feature.category.domain.model.Category
@@ -29,7 +30,7 @@ class CategoryServiceImpl(
         }
 
         val category = Category(
-            id = UUID.randomUUID(),
+            id = IdGenerator.nextId(),
             userId = userId,
             name = trimmedName,
             isExpense = request.isExpense,

@@ -12,6 +12,7 @@ import com.fintrack.feature.user.data.model.UpdateUserRequest
 import com.fintrack.feature.user.data.model.UserDto
 import com.fintrack.feature.user.data.model.toDto
 import core.PasswordHasher
+import core.util.IdGenerator
 import kotlinx.datetime.Clock
 import java.util.UUID
 import kotlin.time.Duration.Companion.hours
@@ -64,7 +65,7 @@ class UserServiceImpl(
             }
 
             // Handle email verification flow
-            val verificationToken = UUID.randomUUID().toString()
+            val verificationToken = IdGenerator.nextId().toString()
             val token = EmailVerificationToken(
                 userId = userId,
                 newEmail = request.email,

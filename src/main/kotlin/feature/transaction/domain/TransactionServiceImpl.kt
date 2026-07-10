@@ -11,6 +11,7 @@ import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.RecurringBillDto
 import feature.transaction.data.model.TransactionDto
+import core.util.IdGenerator
 import feature.transaction.data.model.toDomain
 import feature.transaction.data.model.toDto
 import kotlinx.datetime.*
@@ -225,7 +226,7 @@ class TransactionServiceImpl(
 
                     recurringBills.add(
                         RecurringBillDto(
-                            id = UUID.randomUUID().toString(),
+                            id = IdGenerator.nextId().toString(),
                             name = name,
                             amount = avgAmount,
                             category = lastTxn.category,

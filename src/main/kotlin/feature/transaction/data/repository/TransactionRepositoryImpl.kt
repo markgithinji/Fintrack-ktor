@@ -1,6 +1,7 @@
 package feature.transaction.data.repository
 
 import com.fintrack.core.data.dbQuery
+import core.util.IdGenerator
 import feature.transaction.data.table.TransactionsTable
 import feature.transaction.domain.TransactionRepository
 import feature.transaction.domain.model.Transaction
@@ -78,7 +79,7 @@ class TransactionRepositoryImpl : TransactionRepository {
 
     override suspend fun add(entity: Transaction): Transaction = dbQuery {
         val inserted = TransactionsTable.insert { row ->
-            row[TransactionsTable.id] = entity.id ?: UUID.randomUUID()
+            row[TransactionsTable.id] = entity.id ?: IdGenerator.nextId()
             row[TransactionsTable.userId] = entity.userId
             row[TransactionsTable.accountId] = entity.accountId
             row[TransactionsTable.isIncome] = entity.isIncome
@@ -147,7 +148,7 @@ class TransactionRepositoryImpl : TransactionRepository {
 
     override suspend fun addBulk(entities: List<Transaction>): List<Transaction> = dbQuery {
         TransactionsTable.batchInsert(entities, ignore = true) { entity ->
-            this[TransactionsTable.id] = entity.id ?: UUID.randomUUID()
+            this[TransactionsTable.id] = entity.id ?: IdGenerator.nextId()
             this[TransactionsTable.userId] = entity.userId
             this[TransactionsTable.accountId] = entity.accountId
             this[TransactionsTable.isIncome] = entity.isIncome

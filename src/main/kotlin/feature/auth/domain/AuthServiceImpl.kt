@@ -19,6 +19,7 @@ import com.fintrack.feature.user.domain.UserRepository
 import feature.category.domain.CategoryRepository
 import feature.category.domain.model.Category
 import core.PasswordHasher
+import core.util.IdGenerator
 import com.fintrack.core.data.dbQuery
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -247,9 +248,9 @@ class AuthServiceImpl(
         val baseTime = Instant.parse("2024-01-01T00:00:00Z")
         var offset = 0
         val categories = incomeCategories.map { (name, icon) ->
-            Category(UUID.randomUUID(), userId, name, isExpense = false, iconName = icon, isDefault = true, createdAt = baseTime.plus(kotlin.time.Duration.parse("${offset++}s")))
+            Category(IdGenerator.nextId(), userId, name, isExpense = false, iconName = icon, isDefault = true, createdAt = baseTime.plus(kotlin.time.Duration.parse("${offset++}s")))
         } + expenseCategories.map { (name, icon) ->
-            Category(UUID.randomUUID(), userId, name, isExpense = true, iconName = icon, isDefault = true, createdAt = baseTime.plus(kotlin.time.Duration.parse("${offset++}s")))
+            Category(IdGenerator.nextId(), userId, name, isExpense = true, iconName = icon, isDefault = true, createdAt = baseTime.plus(kotlin.time.Duration.parse("${offset++}s")))
         }
 
         categoryRepository.addAll(categories)
