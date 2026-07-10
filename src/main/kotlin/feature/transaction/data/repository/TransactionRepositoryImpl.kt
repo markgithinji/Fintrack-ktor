@@ -1,6 +1,6 @@
 package feature.transaction.data.repository
 
-import core.dbQuery
+import com.fintrack.core.data.dbQuery
 import feature.transaction.data.table.TransactionsTable
 import feature.transaction.domain.TransactionRepository
 import feature.transaction.domain.model.Transaction

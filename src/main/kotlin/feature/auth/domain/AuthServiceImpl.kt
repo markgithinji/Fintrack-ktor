@@ -19,7 +19,7 @@ import com.fintrack.feature.user.domain.UserRepository
 import feature.category.domain.CategoryRepository
 import feature.category.domain.model.Category
 import core.PasswordHasher
-import core.dbQuery
+import com.fintrack.core.data.dbQuery
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import java.util.*

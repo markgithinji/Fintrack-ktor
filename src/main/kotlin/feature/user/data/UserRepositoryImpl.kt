@@ -3,7 +3,7 @@ package com.fintrack.feature.user.data
 import com.fintrack.feature.user.UsersTable
 import com.fintrack.feature.user.domain.User
 import core.PasswordHasher
-import core.dbQuery
+import com.fintrack.core.data.dbQuery
 import com.fintrack.feature.user.domain.UserRepository
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq

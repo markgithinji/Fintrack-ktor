@@ -7,8 +7,6 @@ import com.fintrack.core.data.DatabaseFactory
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.doublereceive.*
-import plugins.configureStatusPages
-import plugins.configureValidation
 
 fun main(args: Array<String>) {
     EngineMain.main(args)

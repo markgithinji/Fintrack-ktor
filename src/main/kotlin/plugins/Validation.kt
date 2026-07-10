@@ -1,4 +1,4 @@
-package plugins
+package com.fintrack.plugins
 
 import com.fintrack.feature.accounts.configureAccountValidation
 import com.fintrack.feature.auth.configureAuthValidation

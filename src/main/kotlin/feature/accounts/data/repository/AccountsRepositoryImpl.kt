@@ -1,7 +1,7 @@
 package com.fintrack.feature.accounts.data.repository
 
 import com.fintrack.feature.user.UsersTable
-import core.dbQuery
+import com.fintrack.core.data.dbQuery
 import com.fintrack.feature.accounts.data.table.AccountsTable
 import com.fintrack.feature.accounts.domain.model.Account
 import com.fintrack.feature.accounts.domain.model.TransactionSummary

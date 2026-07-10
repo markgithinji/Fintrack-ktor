@@ -1,7 +1,7 @@
 package feature.category.data.repository
 
 import com.fintrack.feature.user.UsersTable
-import core.dbQuery
+import com.fintrack.core.data.dbQuery
 import feature.category.data.table.CategoriesTable
 import feature.category.domain.CategoryRepository
 import feature.category.domain.model.Category

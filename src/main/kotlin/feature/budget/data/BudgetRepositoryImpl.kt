@@ -1,13 +1,14 @@
 package feature.budget.data
 
 import com.fintrack.feature.user.UsersTable
-import core.dbQuery
+import com.fintrack.core.data.dbQuery
 import com.fintrack.feature.accounts.data.table.AccountsTable
 import feature.budget.domain.BudgetRepository
 import feature.budget.domain.model.Budget
 import feature.transaction.data.table.TransactionsTable
 import kotlinx.datetime.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq

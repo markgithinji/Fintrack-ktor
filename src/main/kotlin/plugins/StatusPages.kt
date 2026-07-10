@@ -1,4 +1,4 @@
-package plugins
+package com.fintrack.plugins
 
 import com.fintrack.core.domain.ErrorResponse
 import com.fintrack.core.logger
