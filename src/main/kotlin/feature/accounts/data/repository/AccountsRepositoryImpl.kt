@@ -10,9 +10,12 @@ import feature.transaction.data.table.TransactionsTable
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.Case
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
@@ -91,9 +94,13 @@ class AccountsRepositoryImpl : AccountsRepository {
         accountId: UUID?
     ): TransactionSummary =
         dbQuery {
-            val amountSum = TransactionsTable.amount.sum()
+            val netAmount = Case()
+                .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+                .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
+
+            val totalSum = netAmount.sum()
             val query = TransactionsTable
-                .select(TransactionsTable.isIncome, amountSum)
+                .select(TransactionsTable.isIncome, totalSum)
                 .where { TransactionsTable.userId eq EntityID(userId, UsersTable) }
 
             accountId?.let {
@@ -101,7 +108,7 @@ class AccountsRepositoryImpl : AccountsRepository {
             }
 
             val results = query.groupBy(TransactionsTable.isIncome).associate {
-                it[TransactionsTable.isIncome] to (it[amountSum] ?: 0.0)
+                it[TransactionsTable.isIncome] to (it[totalSum] ?: 0.0)
             }
 
             TransactionSummary(
@@ -112,15 +119,19 @@ class AccountsRepositoryImpl : AccountsRepository {
 
     override suspend fun getTransactionSummaries(userId: UUID): Map<UUID?, TransactionSummary> =
         dbQuery {
-            val amountSum = TransactionsTable.amount.sum()
+            val netAmount = Case()
+                .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+                .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
+
+            val totalSum = netAmount.sum()
             TransactionsTable
-                .select(TransactionsTable.accountId, TransactionsTable.isIncome, amountSum)
+                .select(TransactionsTable.accountId, TransactionsTable.isIncome, totalSum)
                 .where { TransactionsTable.userId eq EntityID(userId, UsersTable) }
                 .groupBy(TransactionsTable.accountId, TransactionsTable.isIncome)
                 .map {
                     val accountId = it[TransactionsTable.accountId].value
                     val isIncome = it[TransactionsTable.isIncome]
-                    val sum = it[amountSum] ?: 0.0
+                    val sum = it[totalSum] ?: 0.0
                     Triple(accountId, isIncome, sum)
                 }
                 .groupBy { it.first }

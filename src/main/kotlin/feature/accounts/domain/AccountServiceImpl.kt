@@ -56,11 +56,22 @@ class AccountServiceImpl(
 
         val result = accounts.map { account ->
             val summary = summaries[account.id] ?: TransactionSummary(0.0, 0.0)
+
+            // If it's a linked account (M-Pesa/Equity), we might have a latest balance from sync.
+            // If not, or if it's a general account, we use income - expense as the derived balance.
+            // We prioritize the balance stored in the account table if it's non-zero,
+            // as that might have been explicitly set during a sync.
+            val derivedBalance = if (account.balance != 0.0) {
+                account.balance
+            } else {
+                summary.income - summary.expense
+            }
+
             account.toDto(
                 id = account.id.toString(),
                 income = summary.income,
                 expense = summary.expense,
-                balance = account.balance
+                balance = derivedBalance
             )
         }
 

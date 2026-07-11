@@ -773,20 +773,19 @@ class StatisticsServiceImpl(
         
         val netWorth = accounts.sumOf { it.balance }
 
-        // Use global highlights (period = null) logic to get overall savings/essential ratios
-        val allTransactions = statisticsRepository.getTransactions(userId, null, null, null, null)
+        // Use global summaries from repository instead of fetching ALL transactions
+        val overallSummary = statisticsRepository.getCategoryTotals(userId, null, null, null, null)
+        val incomeTotals = statisticsRepository.getCategoryTotals(userId, null, null, null, isIncome = true)
+        val expenseTotals = statisticsRepository.getCategoryTotals(userId, null, null, null, isIncome = false)
 
-        val incomeTxns = allTransactions.filter { it.isIncome }
-        val expenseTxns = allTransactions.filter { !it.isIncome }
-
-        val totalIncome = incomeTxns.sumOf { it.totalAmount }
-        val totalExpense = expenseTxns.sumOf { it.totalAmount }
+        val totalIncome = incomeTotals.values.sum()
+        val totalExpense = expenseTotals.values.sum()
 
         val savingsRate = if (totalIncome > 0) ((totalIncome - totalExpense) / totalIncome) * 100 else null
 
-        val essentialSpend = expenseTxns
-            .filter { txn -> essentialCategories.any { it.equals(txn.category.trim(), ignoreCase = true) } }
-            .sumOf { it.totalAmount }
+        val essentialSpend = expenseTotals
+            .filter { (cat, _) -> essentialCategories.any { it.equals(cat.trim(), ignoreCase = true) } }
+            .values.sum()
         val essentialSpendRatio = if (totalExpense > 0) (essentialSpend / totalExpense) * 100 else null
 
         return Result.Success(ProfileMetricsDto(
