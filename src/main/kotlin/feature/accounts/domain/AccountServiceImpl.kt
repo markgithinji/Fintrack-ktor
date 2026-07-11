@@ -10,13 +10,18 @@ import com.fintrack.feature.accounts.data.model.UpdateAccountRequest
 import com.fintrack.feature.accounts.data.model.toDomain
 import com.fintrack.feature.accounts.data.model.toDto
 import com.fintrack.feature.accounts.domain.model.TransactionSummary
+import com.fintrack.feature.accounts.domain.model.AccountType
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
+import feature.transaction.domain.TransactionRepository
+import feature.budget.domain.BudgetRepository
 import com.fintrack.feature.summary.data.model.AccountAggregates
 import kotlinx.datetime.Clock
 import java.util.UUID
 
 class AccountServiceImpl(
     private val accountsRepository: AccountsRepository,
+    private val transactionRepository: TransactionRepository,
+    private val budgetRepository: BudgetRepository
 ) : AccountService {
 
     private val log = logger<AccountServiceImpl>()
@@ -183,27 +188,57 @@ class AccountServiceImpl(
 
     override suspend fun deleteAccount(userId: UUID, accountId: UUID): Result<Unit> {
         log.withContext("userId" to userId, "accountId" to accountId)
-            .info { "Deleting account" }
+            .info { "Deleting account and cleaning up associated data" }
 
-        val account = accountsRepository.getAccountById(accountId)
+        val accountToDelete = accountsRepository.getAccountById(accountId)
             ?: return Result.Failure(AppError.NotFound("Account not found"))
 
-        if (account.userId != userId) {
+        if (accountToDelete.userId != userId) {
             log.withContext(
                 "attemptedUserId" to userId,
-                "actualUserId" to account.userId,
+                "actualUserId" to accountToDelete.userId,
                 "accountId" to accountId
             ).warn { "Unauthorized account deletion attempt" }
             return Result.Failure(AppError.Unauthorized("Account does not belong to user"))
         }
 
-        if (account.isDefault) {
+        if (accountToDelete.isDefault) {
             return Result.Failure(AppError.Validation("Cannot delete a system default account"))
         }
 
+        // 1. Delete all transactions associated with this account
+        transactionRepository.clearAll(userId, listOf(accountId))
+        log.withContext("userId" to userId, "accountId" to accountId).debug { "Deleted transactions for account" }
+
+        // 2. Handle Budgets
+        val userAccounts = accountsRepository.getAllAccounts(userId)
+        val mpesaAccount = userAccounts.find { it.type == AccountType.MPESA }
+        
+        val userBudgets = budgetRepository.getAllByUser(userId, null, 1000, 0)
+        userBudgets.forEach { budget ->
+            if (budget.accountIds.contains(accountId)) {
+                val updatedAccountIds = budget.accountIds.filter { it != accountId }.toMutableList()
+                
+                if (updatedAccountIds.isEmpty()) {
+                    // If it was the only account, reassign to M-Pesa account if available
+                    mpesaAccount?.id?.let { updatedAccountIds.add(it) }
+                }
+
+                if (updatedAccountIds.isNotEmpty()) {
+                    budgetRepository.update(userId, budget.id!!, budget.copy(accountIds = updatedAccountIds))
+                } else {
+                    // If no M-Pesa account and no other accounts, we might have to delete the budget or leave it empty-handed.
+                    // User said "reassign to mpesa account", so if it's missing, we might want to delete it or just log a warning.
+                    budgetRepository.delete(userId, budget.id!!)
+                }
+            }
+        }
+
+        // 3. Delete the account itself
         accountsRepository.deleteAccount(accountId)
+        
         log.withContext("userId" to userId, "accountId" to accountId)
-            .info { "Account deleted successfully" }
+            .info { "Account deleted successfully along with associated data" }
         return Result.Success(Unit)
     }
 }

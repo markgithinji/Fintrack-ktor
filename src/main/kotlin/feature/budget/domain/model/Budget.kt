@@ -5,7 +5,7 @@ import java.util.*
 
 data class Budget(
     val id: UUID? = null,
-    val accountId: UUID,
+    val accountIds: List<UUID>,
     val name: String,
     val categories: List<String>,
     val limit: Double,

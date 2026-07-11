@@ -56,7 +56,7 @@ class BudgetServiceImpl(
             ?: return Result.Failure(AppError.NotFound("Budget $id not found"))
 
         val spent = budgetRepository.getSpentAmount(
-            accountId = budget.accountId,
+            accountIds = budget.accountIds,
             categories = budget.categories,
             isExpense = budget.isExpense,
             start = budget.startDate.atStartOfDay(TimeZone.UTC),
@@ -81,7 +81,7 @@ class BudgetServiceImpl(
             "userId" to userId,
             "budgetName" to request.name,
             "limit" to request.limit,
-            "accountId" to request.accountId
+            "accountIds" to request.accountIds
         ).info { "Creating budget" }
 
         val budget = budgetRepository.add(request.toDomain())
@@ -129,7 +129,7 @@ class BudgetServiceImpl(
             ?: return Result.Failure(AppError.Internal("Failed to update budget $id"))
 
         val spent = budgetRepository.getSpentAmount(
-            accountId = updatedBudget.accountId,
+            accountIds = updatedBudget.accountIds,
             categories = updatedBudget.categories,
             isExpense = updatedBudget.isExpense,
             start = updatedBudget.startDate.atStartOfDay(TimeZone.UTC),

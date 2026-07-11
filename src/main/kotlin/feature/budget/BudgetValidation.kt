@@ -10,6 +10,10 @@ fun RequestValidationConfig.configureBudgetValidation() {
     validate<CreateBudgetRequest> { request ->
         val violations = mutableListOf<String>()
 
+        if (request.accountIds.isEmpty()) {
+            violations.add("Budget must be associated with at least one account")
+        }
+
         when {
             request.name.isBlank() -> violations.add("Budget name cannot be blank")
             request.name.length > 100 -> violations.add("Budget name cannot exceed 100 characters")
@@ -37,8 +41,8 @@ fun RequestValidationConfig.configureBudgetValidation() {
     validate<UpdateBudgetRequest> { request ->
         val violations = mutableListOf<String>()
 
-        if (request.accountId.isBlank()) {
-            violations.add("Account ID cannot be blank")
+        if (request.accountIds.isEmpty()) {
+            violations.add("Budget must be associated with at least one account")
         }
 
         when {

@@ -8,7 +8,7 @@ group = "com.fintrack"
 version = "0.0.1"
 
 application {
-    mainClass = "io.ktor.server.netty.EngineMain"
+    mainClass = "com.fintrack.ApplicationKt"
 }
 
 dependencies {

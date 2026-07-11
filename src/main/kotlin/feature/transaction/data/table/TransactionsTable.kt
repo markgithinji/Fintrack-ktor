@@ -11,7 +11,7 @@ import org.jetbrains.exposed.sql.kotlin.datetime.timestamp
 object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
     val userId =
         reference(TransactionsColumns.USER_ID, UsersTable, onDelete = ReferenceOption.CASCADE).index()
-    val accountId = reference(TransactionsColumns.ACCOUNT_ID, AccountsTable).index()
+    val accountId = reference(TransactionsColumns.ACCOUNT_ID, AccountsTable, onDelete = ReferenceOption.CASCADE).index()
     val isIncome = bool(TransactionsColumns.IS_INCOME)
     val amount = double(TransactionsColumns.AMOUNT)
     val transactionCost = double(TransactionsColumns.TRANSACTION_COST).default(0.0)

@@ -10,7 +10,7 @@ import java.util.UUID
 fun Budget.toDto(): BudgetDto =
     BudgetDto(
         id = id.toString(),
-        accountId = accountId.toString(),
+        accountIds = accountIds.map { it.toString() },
         name = name,
         categories = categories,
         limit = limit,
@@ -33,7 +33,7 @@ fun BudgetWithStatus.toDto(): BudgetWithStatusDto =
     )
 
 fun CreateBudgetRequest.toDomain(): Budget = Budget(
-    accountId = UUID.fromString(accountId),
+    accountIds = accountIds.map { UUID.fromString(it) },
     name = name,
     categories = categories,
     limit = limit,
@@ -44,7 +44,7 @@ fun CreateBudgetRequest.toDomain(): Budget = Budget(
 
 fun UpdateBudgetRequest.toDomain(budgetId: UUID): Budget = Budget(
     id = budgetId,
-    accountId = UUID.fromString(accountId),
+    accountIds = accountIds.map { UUID.fromString(it) },
     name = name,
     categories = categories,
     limit = limit,

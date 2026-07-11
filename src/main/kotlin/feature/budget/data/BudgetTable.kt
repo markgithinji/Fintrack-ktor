@@ -10,7 +10,8 @@ import org.jetbrains.exposed.sql.kotlin.datetime.timestamp
 
 object BudgetsTable : UUIDTable(TableNames.BUDGETS) {
     val userId = reference(BudgetsColumns.USER_ID, UsersTable, onDelete = ReferenceOption.CASCADE)
-    val accountId = reference(BudgetsColumns.ACCOUNT_ID, AccountsTable)
+    val accountId = reference(BudgetsColumns.ACCOUNT_ID, AccountsTable, onDelete = ReferenceOption.CASCADE).nullable()
+    val accountIds = text(BudgetsColumns.ACCOUNT_IDS)
     val name = varchar(BudgetsColumns.NAME, 100)
     val categories = text(BudgetsColumns.CATEGORIES)
     val limit = double(BudgetsColumns.LIMIT)

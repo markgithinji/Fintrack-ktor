@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class BudgetDto(
     val id: String,
-    val accountId: String,
+    val accountIds: List<String>,
     val name: String,
     val categories: List<String>,
     val limit: Double,

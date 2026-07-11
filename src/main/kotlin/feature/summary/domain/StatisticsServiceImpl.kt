@@ -154,8 +154,8 @@ class StatisticsServiceImpl(
 
                 val currentIncomeTotal = currentIncomeByCat.values.sum()
                 val currentExpenseTotal = currentExpenseByCat.values.sum()
-                val prevIncomeTotal = prevIncomeByCat!!.values.sum()
-                val prevExpenseTotal = prevExpenseByCat!!.values.sum()
+                val prevIncomeTotal = prevIncomeByCat.values.sum()
+                val prevExpenseTotal = prevExpenseByCat.values.sum()
 
                 ytdIncomeChange = calculateChange(currentIncomeTotal, prevIncomeTotal)
                 ytdExpenseChange = calculateChange(currentExpenseTotal, prevExpenseTotal)
@@ -261,7 +261,7 @@ class StatisticsServiceImpl(
         )
 
         val correlationInsights = mutableListOf<CorrelationDto>()
-        if (monthMode && targetPeriod != null) {
+        if (monthMode) {
             val hParts = targetPeriod.split("-")
             val hYear = hParts[0].toInt()
             val hMonth = hParts[1].toInt()
@@ -449,7 +449,6 @@ class StatisticsServiceImpl(
                 Triple(key, list, sum)
             }.sortedByDescending { it.third }
 
-            val topCategories = sortedCategories.take(5)
             val otherCategories = sortedCategories.drop(5)
 
             if (otherCategories.isNotEmpty()) {
@@ -774,7 +773,6 @@ class StatisticsServiceImpl(
         val netWorth = accounts.sumOf { it.balance }
 
         // Use global summaries from repository instead of fetching ALL transactions
-        val overallSummary = statisticsRepository.getCategoryTotals(userId, null, null, null, null)
         val incomeTotals = statisticsRepository.getCategoryTotals(userId, null, null, null, isIncome = true)
         val expenseTotals = statisticsRepository.getCategoryTotals(userId, null, null, null, isIncome = false)
 

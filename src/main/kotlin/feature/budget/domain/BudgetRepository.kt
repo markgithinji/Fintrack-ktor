@@ -18,7 +18,7 @@ interface BudgetRepository {
      * Decoupled from full Transaction model.
      */
     suspend fun getSpentAmount(
-        accountId: UUID,
+        accountIds: List<UUID>,
         categories: List<String>,
         isExpense: Boolean,
         start: Instant,

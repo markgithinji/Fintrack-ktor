@@ -6,7 +6,7 @@ import java.util.UUID
 
 @Serializable
 data class UpdateBudgetRequest(
-    val accountId: String,
+    val accountIds: List<String>,
     val name: String,
     val categories: List<String>,
     val limit: Double,
