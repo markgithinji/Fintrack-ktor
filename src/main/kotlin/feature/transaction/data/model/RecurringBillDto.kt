@@ -9,6 +9,7 @@ data class RecurringBillDto(
     val name: String,
     val amount: Double,
     val category: String,
+    val categoryId: String,
     val frequency: String,
     val nextDueDate: LocalDate,
     val isActive: Boolean = true

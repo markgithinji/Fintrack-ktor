@@ -13,7 +13,7 @@ object BudgetsTable : UUIDTable(TableNames.BUDGETS) {
     val accountId = reference(BudgetsColumns.ACCOUNT_ID, AccountsTable, onDelete = ReferenceOption.CASCADE).nullable()
     val accountIds = text(BudgetsColumns.ACCOUNT_IDS)
     val name = varchar(BudgetsColumns.NAME, 100)
-    val categories = text(BudgetsColumns.CATEGORIES)
+    val categoryIds = text(BudgetsColumns.CATEGORY_IDS)
     val limit = double(BudgetsColumns.LIMIT)
     val isExpense = bool(BudgetsColumns.IS_EXPENSE)
     val startDate = date(BudgetsColumns.START_DATE)

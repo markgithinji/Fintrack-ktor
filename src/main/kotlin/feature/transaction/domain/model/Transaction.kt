@@ -11,6 +11,7 @@ data class Transaction(
     val amount: Double,
     val transactionCost: Double,
     val category: String,
+    val categoryId: UUID,
     val dateTime: Instant,
     val description: String?,
     val accountId: UUID,

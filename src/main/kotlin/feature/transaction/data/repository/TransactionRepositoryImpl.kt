@@ -16,7 +16,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         userId: UUID,
         accountId: UUID?,
         isIncome: Boolean?,
-        categories: List<String>?,
+        categoryIds: List<UUID>?,
         start: Instant?,
         end: Instant?,
         sortBy: String,
@@ -32,7 +32,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         if (accountId != null) query =
             query.andWhere { TransactionsTable.accountId eq accountId }
         if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
-        if (!categories.isNullOrEmpty()) query = query.andWhere { TransactionsTable.category inList categories }
+        if (!categoryIds.isNullOrEmpty()) query = query.andWhere { TransactionsTable.categoryId inList categoryIds }
         if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start }
         if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end }
         if (hasTransactionCost == true) query = query.andWhere { TransactionsTable.transactionCost greater 0.0 }
@@ -86,6 +86,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             row[TransactionsTable.amount] = entity.amount
             row[TransactionsTable.transactionCost] = entity.transactionCost
             row[TransactionsTable.category] = entity.category
+            row[TransactionsTable.categoryId] = entity.categoryId
             row[TransactionsTable.dateTime] = entity.dateTime
             row[TransactionsTable.description] = entity.description
             row[TransactionsTable.externalId] = entity.externalId
@@ -108,6 +109,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             row[TransactionsTable.amount] = entity.amount
             row[TransactionsTable.transactionCost] = entity.transactionCost
             row[TransactionsTable.category] = entity.category
+            row[TransactionsTable.categoryId] = entity.categoryId
             row[TransactionsTable.dateTime] = entity.dateTime
             row[TransactionsTable.description] = entity.description
             row[TransactionsTable.externalId] = entity.externalId
@@ -155,6 +157,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             this[TransactionsTable.amount] = entity.amount
             this[TransactionsTable.transactionCost] = entity.transactionCost
             this[TransactionsTable.category] = entity.category
+            this[TransactionsTable.categoryId] = entity.categoryId
             this[TransactionsTable.dateTime] = entity.dateTime
             this[TransactionsTable.description] = entity.description
             this[TransactionsTable.externalId] = entity.externalId
@@ -185,6 +188,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
         category = this[TransactionsTable.category],
+        categoryId = this[TransactionsTable.categoryId].value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
         accountId = this[TransactionsTable.accountId].value,

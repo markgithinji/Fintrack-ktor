@@ -66,7 +66,7 @@ interface StatisticsService {
         userId: UUID,
         accountId: UUID?,
         isIncome: Boolean? = null,
-        category: String? = null,
+        categoryIds: List<UUID>? = null,
         hasCost: Boolean? = null,
         start: Instant? = null,
         end: Instant? = null

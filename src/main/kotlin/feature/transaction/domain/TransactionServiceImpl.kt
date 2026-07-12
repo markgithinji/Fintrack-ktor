@@ -31,7 +31,7 @@ class TransactionServiceImpl(
         accountId: UUID?,
         typeFilter: String?,
         isIncome: Boolean?,
-        categories: List<String>?,
+        categoryIds: List<UUID>?,
         startDate: String?,
         endDate: String?,
         sortBy: String,
@@ -74,7 +74,7 @@ class TransactionServiceImpl(
         }
 
         val transactions = transactionRepository.getAllCursor(
-            userId, accountId, finalIsIncome, categories,
+            userId, accountId, finalIsIncome, categoryIds,
             start, end, sortBy, sortOrder, limit, parsedAfterDateTime, afterId, hasTransactionCost
         )
 
@@ -97,7 +97,8 @@ class TransactionServiceImpl(
             "userId" to userId,
             "accountId" to request.accountId,
             "amount" to request.amount,
-            "category" to request.category
+            "category" to request.category,
+            "categoryId" to request.categoryId
         ).info { "Creating transaction" }
 
         val transaction = request.toDomain(userId)
@@ -195,7 +196,7 @@ class TransactionServiceImpl(
             userId = userId,
             accountId = null,
             isIncome = false,
-            categories = null,
+            categoryIds = null,
             start = analysisStart,
             end = now,
             sortBy = "date",
@@ -205,10 +206,10 @@ class TransactionServiceImpl(
             afterId = null
         )
 
-        // Group by normalized description and category
+        // Group by normalized description and category ID
         val groups = transactions.groupBy { 
             val normalizedDesc = it.description?.split("(Ref:")?.get(0)?.trim()?.lowercase() ?: ""
-            "${it.category.lowercase()}|$normalizedDesc"
+            "${it.categoryId}|$normalizedDesc"
         }
 
         val recurringBills = mutableListOf<RecurringBillDto>()
@@ -240,6 +241,7 @@ class TransactionServiceImpl(
                             name = name,
                             amount = avgAmount,
                             category = lastTxn.category,
+                            categoryId = lastTxn.categoryId.toString(),
                             frequency = "Monthly",
                             nextDueDate = nextDueDate,
                             isActive = true

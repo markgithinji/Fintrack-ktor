@@ -97,7 +97,7 @@ fun Route.transactionRoutes(service: TransactionService) {
             val accountId = call.request.queryParameters["accountId"]?.toUUIDOrNull()
             val typeFilter = call.request.queryParameters["type"]
             val isIncomeParam = call.request.queryParameters["isIncome"]?.toBooleanStrictOrNull()
-            val categories = call.request.queryParameters["category"]?.split(",")
+            val categoryIds = call.request.queryParameters["categoryId"]?.split(",")?.mapNotNull { it.toUUIDOrNull() }
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
             val hasCost = call.request.queryParameters["hasCost"]?.toBooleanStrictOrNull()
@@ -112,7 +112,7 @@ fun Route.transactionRoutes(service: TransactionService) {
                 accountId = accountId,
                 typeFilter = typeFilter,
                 isIncome = isIncomeParam,
-                categories = categories,
+                categoryIds = categoryIds,
                 startDate = startDate,
                 endDate = endDate,
                 sortBy = sortBy,

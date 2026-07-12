@@ -14,6 +14,7 @@ fun RequestValidationConfig.configureTransactionValidation() {
         validateTransactionFields(
             amount = request.amount,
             category = request.category,
+            categoryId = request.categoryId,
             description = request.description,
             dateTime = request.dateTime,
             transactionCost = request.transactionCost,
@@ -30,6 +31,7 @@ fun RequestValidationConfig.configureTransactionValidation() {
         val fieldResult = validateTransactionFields(
             amount = request.amount,
             category = request.category,
+            categoryId = request.categoryId,
             description = request.description,
             dateTime = request.dateTime,
             transactionCost = request.transactionCost
@@ -60,6 +62,7 @@ private fun validateList(requests: List<CreateTransactionRequest>): ValidationRe
         val result = validateTransactionFields(
             amount = req.amount,
             category = req.category,
+            categoryId = req.categoryId,
             description = req.description,
             dateTime = req.dateTime,
             transactionCost = req.transactionCost,
@@ -78,6 +81,7 @@ private fun validateList(requests: List<CreateTransactionRequest>): ValidationRe
 private fun validateTransactionFields(
     amount: Double,
     category: String,
+    categoryId: String,
     description: String,
     dateTime: Instant,
     transactionCost: Double?,
@@ -98,9 +102,13 @@ private fun validateTransactionFields(
     }
 
     // Category validation
-    when {
-        category.isBlank() -> violations.add("${p}Category cannot be blank")
-        category.length > 50 -> violations.add("${p}Category cannot exceed 50 characters")
+    if (category.isBlank()) {
+        violations.add("${p}Category name cannot be blank")
+    }
+
+    // Category ID validation
+    if (categoryId.isBlank()) {
+        violations.add("${p}Category ID cannot be blank")
     }
 
     // Description validation

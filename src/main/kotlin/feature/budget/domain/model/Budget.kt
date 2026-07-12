@@ -7,7 +7,7 @@ data class Budget(
     val id: UUID? = null,
     val accountIds: List<UUID>,
     val name: String,
-    val categories: List<String>,
+    val categoryIds: List<UUID>,
     val limit: Double,
     val isExpense: Boolean,
     val startDate: LocalDate,

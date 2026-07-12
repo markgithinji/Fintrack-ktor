@@ -10,6 +10,7 @@ data class CreateTransactionRequest(
     val amount: Double,
     val transactionCost: Double = 0.0,
     val category: String,
+    val categoryId: String,
     val dateTime: Instant,
     val description: String,
     val externalId: String? = null,

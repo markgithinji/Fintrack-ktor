@@ -19,7 +19,7 @@ interface BudgetRepository {
      */
     suspend fun getSpentAmount(
         accountIds: List<UUID>,
-        categories: List<String>,
+        categoryIds: List<UUID>,
         isExpense: Boolean,
         start: Instant,
         end: Instant

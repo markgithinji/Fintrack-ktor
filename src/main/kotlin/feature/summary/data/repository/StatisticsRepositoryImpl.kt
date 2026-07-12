@@ -151,7 +151,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         userId: UUID,
         accountId: UUID?,
         isIncome: Boolean?,
-        category: String?,
+        categoryIds: List<UUID>?,
         hasCost: Boolean?,
         start: Instant?,
         end: Instant?
@@ -164,13 +164,8 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             
             if (start != null) cond = cond and (TransactionsTable.dateTime greaterEq start)
             if (end != null) cond = cond and (TransactionsTable.dateTime lessEq end)
-            if (category != null) {
-                val categoryCond = if (category.contains(",")) {
-                    TransactionsTable.category inList category.split(",").map { it.trim() }
-                } else {
-                    TransactionsTable.category eq category
-                }
-                cond = cond and categoryCond
+            if (!categoryIds.isNullOrEmpty()) {
+                cond = cond and (TransactionsTable.categoryId inList categoryIds)
             }
             if (hasCost == true) cond = cond and (TransactionsTable.transactionCost greater 0.0)
             if (hasCost == false) cond = cond and (TransactionsTable.transactionCost eq 0.0)
@@ -220,6 +215,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
         category = this[TransactionsTable.category],
+        categoryId = this[TransactionsTable.categoryId].value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
         accountId = this[TransactionsTable.accountId].value,

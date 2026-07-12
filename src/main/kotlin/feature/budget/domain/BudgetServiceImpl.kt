@@ -57,7 +57,7 @@ class BudgetServiceImpl(
 
         val spent = budgetRepository.getSpentAmount(
             accountIds = budget.accountIds,
-            categories = budget.categories,
+            categoryIds = budget.categoryIds,
             isExpense = budget.isExpense,
             start = budget.startDate.atStartOfDay(TimeZone.UTC),
             end = budget.endDate.atEndOfDay(TimeZone.UTC)
@@ -130,7 +130,7 @@ class BudgetServiceImpl(
 
         val spent = budgetRepository.getSpentAmount(
             accountIds = updatedBudget.accountIds,
-            categories = updatedBudget.categories,
+            categoryIds = updatedBudget.categoryIds,
             isExpense = updatedBudget.isExpense,
             start = updatedBudget.startDate.atStartOfDay(TimeZone.UTC),
             end = updatedBudget.endDate.atEndOfDay(TimeZone.UTC)

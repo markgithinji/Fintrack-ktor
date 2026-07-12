@@ -4,6 +4,7 @@ import com.fintrack.core.data.TableNames
 import com.fintrack.feature.transaction.data.TransactionsColumns
 import com.fintrack.feature.user.UsersTable
 import com.fintrack.feature.accounts.data.table.AccountsTable
+import feature.category.data.table.CategoriesTable
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.kotlin.datetime.timestamp
@@ -16,6 +17,7 @@ object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
     val amount = double(TransactionsColumns.AMOUNT)
     val transactionCost = double(TransactionsColumns.TRANSACTION_COST).default(0.0)
     val category = varchar(TransactionsColumns.CATEGORY, 100)
+    val categoryId = reference(TransactionsColumns.CATEGORY_ID, CategoriesTable, onDelete = ReferenceOption.CASCADE).index()
     val dateTime = timestamp(TransactionsColumns.DATE_TIME).index()
     val description = varchar(TransactionsColumns.DESCRIPTION, 255).nullable()
     val externalId = varchar(TransactionsColumns.EXTERNAL_ID, 100).nullable()

@@ -8,7 +8,7 @@ import java.util.UUID
 data class UpdateBudgetRequest(
     val accountIds: List<String>,
     val name: String,
-    val categories: List<String>,
+    val categoryIds: List<String>,
     val limit: Double,
     val isExpense: Boolean,
     val startDate: LocalDate,

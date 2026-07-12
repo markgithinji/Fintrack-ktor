@@ -19,7 +19,7 @@ fun RequestValidationConfig.configureBudgetValidation() {
             request.name.length > 100 -> violations.add("Budget name cannot exceed 100 characters")
         }
 
-        if (request.categories.isEmpty()) {
+        if (request.categoryIds.isEmpty()) {
             violations.add("Budget must have at least one category")
         }
 
@@ -50,7 +50,7 @@ fun RequestValidationConfig.configureBudgetValidation() {
             request.name.length > 100 -> violations.add("Budget name cannot exceed 100 characters")
         }
 
-        if (request.categories.isEmpty()) {
+        if (request.categoryIds.isEmpty()) {
             violations.add("Budget must have at least one category")
         }
 
@@ -78,7 +78,7 @@ fun RequestValidationConfig.configureBudgetValidation() {
                 request.name.length > 100 -> violations.add("Budget #${index + 1}: name cannot exceed 100 characters")
             }
 
-            if (request.categories.isEmpty()) {
+            if (request.categoryIds.isEmpty()) {
                 violations.add("Budget #${index + 1}: must have at least one category")
             }
 

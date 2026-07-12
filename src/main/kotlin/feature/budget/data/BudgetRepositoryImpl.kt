@@ -70,7 +70,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                 it[accountId] = EntityID(firstAccountId, AccountsTable)
                 it[accountIds] = Json.encodeToString(budget.accountIds.map { accountId -> accountId.toString() })
                 it[name] = budget.name
-                it[categories] = Json.encodeToString(budget.categories)
+                it[categoryIds] = Json.encodeToString(budget.categoryIds.map { it.toString() })
                 it[limit] = budget.limit
                 it[isExpense] = budget.isExpense
                 it[startDate] = budget.startDate.toJavaLocalDate()
@@ -103,7 +103,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                     it[accountId] = EntityID(firstAccountId, AccountsTable)
                     it[accountIds] = Json.encodeToString(budget.accountIds.map { accountId -> accountId.toString() })
                     it[name] = budget.name
-                    it[categories] = Json.encodeToString(budget.categories)
+                    it[categoryIds] = Json.encodeToString(budget.categoryIds.map { it.toString() })
                     it[limit] = budget.limit
                     it[isExpense] = budget.isExpense
                     it[startDate] = budget.startDate.toJavaLocalDate()
@@ -132,7 +132,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                     it[accountId] = EntityID(budget.accountIds.first(), AccountsTable)
                 }
                 it[name] = budget.name
-                it[categories] = Json.encodeToString(budget.categories)
+                it[categoryIds] = Json.encodeToString(budget.categoryIds.map { it.toString() })
                 it[limit] = budget.limit
                 it[isExpense] = budget.isExpense
                 it[startDate] = budget.startDate.toJavaLocalDate()
@@ -182,7 +182,7 @@ class BudgetRepositoryImpl : BudgetRepository {
 
     override suspend fun getSpentAmount(
         accountIds: List<UUID>,
-        categories: List<String>,
+        categoryIds: List<UUID>,
         isExpense: Boolean,
         start: Instant,
         end: Instant
@@ -193,7 +193,7 @@ class BudgetRepositoryImpl : BudgetRepository {
             .where {
                 (TransactionsTable.accountId inList accountIds) and
                 (TransactionsTable.dateTime.between(start, end)) and
-                (TransactionsTable.category inList categories) and
+                (TransactionsTable.categoryId inList categoryIds) and
                 (TransactionsTable.isIncome eq !isExpense)
             }
             .map { it[amountSum] ?: 0.0 }
@@ -206,19 +206,19 @@ class BudgetRepositoryImpl : BudgetRepository {
         val allAccountIds = budgets.flatMap { it.accountIds }.distinct()
         val minStart = budgets.minOf { it.startDate }.atStartOfDay(KTimeZone.UTC)
         val maxEnd = budgets.maxOf { it.endDate }.atEndOfDay(KTimeZone.UTC)
-        val allCategories = budgets.flatMap { it.categories }.distinct()
+        val allCategoryIds = budgets.flatMap { it.categoryIds }.distinct()
 
         val transactions = TransactionsTable
             .selectAll()
             .where {
                 (TransactionsTable.accountId inList allAccountIds) and
                 (TransactionsTable.dateTime.between(minStart, maxEnd)) and
-                (TransactionsTable.category inList allCategories)
+                (TransactionsTable.categoryId inList allCategoryIds)
             }
             .map { 
                 TransactionSummary(
                     accountId = it[TransactionsTable.accountId].value,
-                    category = it[TransactionsTable.category],
+                    categoryId = it[TransactionsTable.categoryId].value,
                     isIncome = it[TransactionsTable.isIncome],
                     amount = it[TransactionsTable.amount],
                     dateTime = it[TransactionsTable.dateTime]
@@ -229,7 +229,7 @@ class BudgetRepositoryImpl : BudgetRepository {
             val spent = transactions.filter { txn ->
                 (budget.accountIds.contains(txn.accountId)) &&
                 (txn.isIncome == !budget.isExpense) &&
-                (budget.categories.contains(txn.category)) &&
+                (budget.categoryIds.contains(txn.categoryId)) &&
                 (txn.dateTime >= budget.startDate.atStartOfDay(KTimeZone.UTC)) &&
                 (txn.dateTime <= budget.endDate.atEndOfDay(KTimeZone.UTC))
             }.sumOf { it.amount }
@@ -240,7 +240,7 @@ class BudgetRepositoryImpl : BudgetRepository {
 
     private data class TransactionSummary(
         val accountId: UUID,
-        val category: String,
+        val categoryId: UUID,
         val isIncome: Boolean,
         val amount: Double,
         val dateTime: Instant
@@ -254,15 +254,15 @@ class BudgetRepositoryImpl : BudgetRepository {
 }
 
 private fun ResultRow.toBudget(): Budget {
-    val categoriesJson = this[BudgetsTable.categories]
-    val categories: List<String> = Json.decodeFromString(categoriesJson)
+    val categoryIdsJson = this[BudgetsTable.categoryIds]
+    val categoryIds: List<UUID> = Json.decodeFromString<List<String>>(categoryIdsJson).map { UUID.fromString(it) }
     val accountIdsJson = this[BudgetsTable.accountIds]
     val accountIds: List<UUID> = Json.decodeFromString<List<String>>(accountIdsJson).map { UUID.fromString(it) }
     return Budget(
         id = this[BudgetsTable.id].value,
         accountIds = accountIds,
         name = this[BudgetsTable.name],
-        categories = categories,
+        categoryIds = categoryIds,
         limit = this[BudgetsTable.limit],
         isExpense = this[BudgetsTable.isExpense],
         startDate = this[BudgetsTable.startDate].toKotlinLocalDate(),

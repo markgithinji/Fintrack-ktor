@@ -10,6 +10,7 @@ data class TransactionDto(
     val amount: Double,
     val transactionCost: Double,
     val category: String,
+    val categoryId: String,
     val dateTime: String,
     val description: String? = null,
     val externalId: String? = null,

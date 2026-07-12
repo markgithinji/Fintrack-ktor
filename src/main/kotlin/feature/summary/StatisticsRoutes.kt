@@ -170,7 +170,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
             val userId = call.userIdOrThrow()
             val accountId = call.request.queryParameters["accountId"]?.toUUIDOrNull()
             val isIncome = call.request.queryParameters["isIncome"]?.toBooleanStrictOrNull()
-            val category = call.request.queryParameters["category"]
+            val categoryIds = call.request.queryParameters["categoryId"]?.split(",")?.mapNotNull { it.toUUIDOrNull() }
             val hasCost = call.request.queryParameters["hasCost"]?.toBooleanStrictOrNull()
             val startDate = call.request.queryParameters["start"]
             val endDate = call.request.queryParameters["end"]
@@ -186,7 +186,7 @@ fun Route.summaryRoutes(service: StatisticsService) {
                 userId = userId,
                 accountId = accountId,
                 isIncome = isIncome,
-                category = category,
+                categoryIds = categoryIds,
                 hasCost = hasCost,
                 start = start,
                 end = end,

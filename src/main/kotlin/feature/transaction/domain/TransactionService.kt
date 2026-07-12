@@ -15,7 +15,7 @@ interface TransactionService {
         accountId: UUID?,
         typeFilter: String?,
         isIncome: Boolean? = null,
-        categories: List<String>?,
+        categoryIds: List<UUID>?,
         startDate: String?,
         endDate: String?,
         sortBy: String,

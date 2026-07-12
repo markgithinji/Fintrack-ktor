@@ -757,10 +757,10 @@ class StatisticsServiceImpl(
     }
 
     override suspend fun getTransactionCountSummary(
-        userId: UUID, accountId: UUID?, isIncome: Boolean?, category: String?, hasCost: Boolean?, start: Instant?, end: Instant?
+        userId: UUID, accountId: UUID?, isIncome: Boolean?, categoryIds: List<UUID>?, hasCost: Boolean?, start: Instant?, end: Instant?
     ): Result<TransactionCountSummaryDto> {
         if (accountId == null) return Result.Failure(AppError.Validation("Account ID is required"))
-        val counts = statisticsRepository.getTransactionCounts(userId, accountId, isIncome, category, hasCost, start, end)
+        val counts = statisticsRepository.getTransactionCounts(userId, accountId, isIncome, categoryIds, hasCost, start, end)
         return Result.Success(TransactionCountSummaryDto(counts.incomeCount, counts.expenseCount, counts.totalCount, counts.totalTransactionCost))
     }
 

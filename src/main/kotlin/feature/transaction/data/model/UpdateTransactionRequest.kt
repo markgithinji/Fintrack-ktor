@@ -10,6 +10,7 @@ data class UpdateTransactionRequest(
     val amount: Double,
     val transactionCost: Double? = null,
     val category: String,
+    val categoryId: String,
     val dateTime: Instant,
     val description: String,
     val externalId: String? = null,

@@ -11,7 +11,7 @@ interface TransactionRepository {
         userId: UUID,
         accountId: UUID?,
         isIncome: Boolean?,
-        categories: List<String>?,
+        categoryIds: List<UUID>?,
         start: Instant?,
         end: Instant?,
         sortBy: String,
