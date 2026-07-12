@@ -148,6 +148,16 @@ class TransactionServiceImpl(
         val transactions = requests.map { it.toDomain(userId) }
         val result = transactionRepository.addBulk(transactions)
 
+        // Account Balance Update (match logic in syncEquityTransactions)
+        val mostRecentWithBalance = requests
+            .filter { it.balance != null }
+            .maxByOrNull { it.dateTime }
+
+        if (mostRecentWithBalance != null) {
+            val accountId = UUID.fromString(mostRecentWithBalance.accountId)
+            accountsRepository.updateBalance(accountId, mostRecentWithBalance.balance!!)
+        }
+
         return Result.Success(result.map { it.toDto() })
     }
 
