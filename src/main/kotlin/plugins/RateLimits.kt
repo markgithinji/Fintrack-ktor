@@ -5,7 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.ratelimit.*
-import io.ktor.server.request.receiveNullable
+import io.ktor.server.request.receive
 import io.ktor.server.routing.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -61,7 +61,8 @@ fun Application.configureRateLimiting() {
             requestKey { call ->
                 try {
                     // Peek into the body for email (requires DoubleReceive)
-                    call.receiveNullable<AuthRequest>()?.email ?: call.request.origin.remoteHost
+                    // In Ktor 3.0.x, using receive() is more reliable than receiveNullable() with DoubleReceive
+                    call.receive<AuthRequest>().email
                 } catch (_: Exception) {
                     call.request.origin.remoteHost
                 }

@@ -116,21 +116,6 @@ fun Application.configureStatusPages() {
             )
         }
 
-        status(HttpStatusCode.Unauthorized) { call, _ ->
-            log.withContext(
-                "statusCode" to 401,
-                "path" to call.request.uri,
-                "method" to call.request.httpMethod.value
-            ).info { "401 Unauthorized" }
-            call.respond(
-                HttpStatusCode.Unauthorized,
-                ApiResponse.Error(
-                    message = "Unauthorized access",
-                    errorCode = "UNAUTHORIZED"
-                )
-            )
-        }
-
         exception<Throwable> { call, cause ->
             log.withContext(
                 "path" to call.request.uri,

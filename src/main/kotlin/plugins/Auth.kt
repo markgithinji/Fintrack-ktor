@@ -1,12 +1,15 @@
 package com.fintrack.plugins
 
+import com.fintrack.core.domain.ApiResponse
 import com.fintrack.feature.auth.JwtConfig
 import com.fintrack.feature.auth.domain.repository.TokenBlacklistRepository
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
+import io.ktor.server.response.respond
 import org.koin.ktor.ext.inject
 import java.util.UUID
 
@@ -35,6 +38,15 @@ fun Application.configureAuth() {
                 } else {
                     null
                 }
+            }
+            challenge { _, _ ->
+                call.respond(
+                    HttpStatusCode.Unauthorized,
+                    ApiResponse.Error(
+                        message = "Unauthorized access",
+                        errorCode = "UNAUTHORIZED"
+                    )
+                )
             }
         }
     }
