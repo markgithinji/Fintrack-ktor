@@ -12,7 +12,8 @@ data class Account(
     val isDefault: Boolean = false,
     val type: AccountType = AccountType.GENERAL,
     val balance: Double = 0.0,
-    val createdAt: Instant? = null
+    val createdAt: Instant? = null,
+    val lastSyncedAt: Instant? = null
 )
 
 @Serializable

@@ -7,4 +7,5 @@ object AccountsColumns {
     const val TYPE = "type"
     const val BALANCE = "balance"
     const val CREATED_AT = "created_at"
+    const val LAST_SYNCED_AT = "last_synced_at"
 }

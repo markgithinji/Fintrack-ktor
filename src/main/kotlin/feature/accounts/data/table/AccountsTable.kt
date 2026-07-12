@@ -14,4 +14,5 @@ object AccountsTable : UUIDTable(TableNames.ACCOUNTS) {
     val type = enumerationByName(AccountsColumns.TYPE, 20, AccountType::class).default(AccountType.GENERAL)
     val balance = double(AccountsColumns.BALANCE).default(0.0)
     val createdAt = timestamp(AccountsColumns.CREATED_AT)
+    val lastSyncedAt = timestamp(AccountsColumns.LAST_SYNCED_AT).nullable()
 }

@@ -6,12 +6,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class AccountDto(
-    val id: String,
+    val id: String? = null,
     val name: String,
-    val income: Double,
-    val expense: Double,
-    val balance: Double,
-    val isDefault: Boolean = false,
-    val type: AccountType = AccountType.GENERAL,
-    val createdAt: Instant? = null
+    val balance: Double? = null,
+    val income: Double? = null,
+    val expense: Double? = null,
+    val isDefault: Boolean? = false,
+    val type: AccountType? = AccountType.GENERAL,
+    val createdAt: Instant? = null,
+    val lastSyncedAt: Instant? = null
 )

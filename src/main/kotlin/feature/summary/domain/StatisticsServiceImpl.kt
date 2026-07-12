@@ -770,7 +770,7 @@ class StatisticsServiceImpl(
         if (accountsResult is Result.Failure) return Result.Failure(accountsResult.error)
         val accounts = (accountsResult as Result.Success).value
         
-        val netWorth = accounts.sumOf { it.balance }
+        val netWorth = accounts.sumOf { it.balance ?: 0.0 }
 
         // Use global summaries from repository instead of fetching ALL transactions
         val incomeTotals = statisticsRepository.getCategoryTotals(userId, null, null, null, isIncome = true)

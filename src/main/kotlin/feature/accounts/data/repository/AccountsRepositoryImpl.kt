@@ -82,6 +82,7 @@ class AccountsRepositoryImpl : AccountsRepository {
         row[AccountsTable.type] = account.type
         row[AccountsTable.balance] = account.balance
         row[AccountsTable.createdAt] = account.createdAt ?: now
+        row[AccountsTable.lastSyncedAt] = account.lastSyncedAt
     }
 
     override suspend fun deleteAccount(id: UUID): Unit =
@@ -175,6 +176,7 @@ class AccountsRepositoryImpl : AccountsRepository {
         isDefault = row[AccountsTable.isDefault],
         type = row[AccountsTable.type],
         balance = row[AccountsTable.balance],
-        createdAt = row[AccountsTable.createdAt]
+        createdAt = row[AccountsTable.createdAt],
+        lastSyncedAt = row[AccountsTable.lastSyncedAt]
     )
 }
