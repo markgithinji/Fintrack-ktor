@@ -238,8 +238,7 @@ class StatisticsServiceImpl(
             savingsRate = savingsRate
         )
 
-        val correlationInsights = mutableListOf<CorrelationDto>()
-        if (monthMode && finalParsedPeriod is TimePeriod.Month) {
+        val correlationInsights = if (monthMode && finalParsedPeriod is TimePeriod.Month) {
             val hCurrentStart = LocalDate(finalParsedPeriod.year, finalParsedPeriod.month, 1)
 
             val historicalStart = hCurrentStart.minus(DatePeriod(months = 6))
@@ -254,54 +253,55 @@ class StatisticsServiceImpl(
             val monthlyData = hTxns.groupBy {
                 TimePeriod.fromInstant(it.dateTime, "month").toString()
             }.mapValues { (_, mTxns) ->
-                val inc = mTxns.filter { it.isIncome }.sumOf { it.totalAmount }
-                val exp = mTxns.filter { !it.isIncome }.groupBy { it.category.trim().lowercase() }
+                val inc = mTxns.asSequence().filter { it.isIncome }.sumOf { it.totalAmount }
+                val exp = mTxns.asSequence().filter { !it.isIncome }.groupBy { it.category.trim().lowercase() }
                     .mapValues { it.value.sumOf { t -> t.totalAmount } }
                 Pair(inc, exp)
             }.toSortedMap()
 
             val targetCats = setOf("shopping", "entertainment", "dining out")
             val keys = monthlyData.keys.toList()
-            for (i in 1 until keys.size) {
-                val prevMonth = monthlyData[keys[i - 1]]!!
-                val currMonth = monthlyData[keys[i]]!!
-                val nextMonth = if (i + 1 < keys.size) monthlyData[keys[i + 1]] else null
+            buildList {
+                for (i in 1 until keys.size) {
+                    val prevMonth = monthlyData[keys[i - 1]]!!
+                    val currMonth = monthlyData[keys[i]]!!
+                    val nextMonth = if (i + 1 < keys.size) monthlyData[keys[i + 1]] else null
 
-                if (prevMonth.first > 0) {
-                    val incomeIncrease = (currMonth.first - prevMonth.first) / prevMonth.first
-                    if (incomeIncrease > 0.10) {
-                        targetCats.forEach { cat ->
-                            val prevExp = prevMonth.second[cat] ?: 0.0
-                            val currExp = currMonth.second[cat] ?: 0.0
-                            val nextExp = nextMonth?.second?.get(cat) ?: 0.0
+                    if (prevMonth.first > 0) {
+                        val incomeIncrease = (currMonth.first - prevMonth.first) / prevMonth.first
+                        if (incomeIncrease > 0.10) {
+                            targetCats.forEach { cat ->
+                                val prevExp = prevMonth.second[cat] ?: 0.0
+                                val currExp = currMonth.second[cat] ?: 0.0
+                                val nextExp = nextMonth?.second?.get(cat) ?: 0.0
 
-                            if (prevExp > 0 && (currExp - prevExp) / prevExp > 0.15) {
-                                val incPct = (incomeIncrease * 100).toInt()
-                                val expPct = (((currExp - prevExp) / prevExp) * 100).toInt()
-                                correlationInsights.add(
-                                    CorrelationDto(
-                                        source = "Income",
-                                        target = cat.replaceFirstChar { it.uppercase() },
-                                        insight = "When your income increases by $incPct%, your '${cat.replaceFirstChar { it.uppercase() }}' spend tends to increase by $expPct% in the same month."
+                                if (prevExp > 0 && (currExp - prevExp) / prevExp > 0.15) {
+                                    val incPct = (incomeIncrease * 100).toInt()
+                                    val expPct = (((currExp - prevExp) / prevExp) * 100).toInt()
+                                    add(
+                                        CorrelationDto(
+                                            source = "Income",
+                                            target = cat.replaceFirstChar { it.uppercase() },
+                                            insight = "When your income increases by $incPct%, your '${cat.replaceFirstChar { it.uppercase() }}' spend tends to increase by $expPct% in the same month."
+                                        )
                                     )
-                                )
-                            }
-                            else if (currExp > 0 && nextExp > 0 && (nextExp - currExp) / currExp > 0.15) {
-                                val incPct = (incomeIncrease * 100).toInt()
-                                val expPct = (((nextExp - currExp) / currExp) * 100).toInt()
-                                correlationInsights.add(
-                                    CorrelationDto(
-                                        source = "Income",
-                                        target = cat.replaceFirstChar { it.uppercase() },
-                                        insight = "Following a $incPct% income increase, your '${cat.replaceFirstChar { it.uppercase() }}' spend tended to increase by $expPct% the next month."
+                                } else if (currExp > 0 && nextExp > 0 && (nextExp - currExp) / currExp > 0.15) {
+                                    val incPct = (incomeIncrease * 100).toInt()
+                                    val expPct = (((nextExp - currExp) / currExp) * 100).toInt()
+                                    add(
+                                        CorrelationDto(
+                                            source = "Income",
+                                            target = cat.replaceFirstChar { it.uppercase() },
+                                            insight = "Following a $incPct% income increase, your '${cat.replaceFirstChar { it.uppercase() }}' spend tended to increase by $expPct% the next month."
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
+        } else emptyList()
 
         val expenseHighlights = HighlightsDto(
             highestMonth = highestMonth(expenseTxns),
@@ -605,59 +605,59 @@ class StatisticsServiceImpl(
                 }
             }
         } else {
-            val topExpenseCategory = thisMonthExpenseTotals.keys.filter { it != "Transaction Fees" && it != "Transaction Cost" }
+            val topExpenseCategory = thisMonthExpenseTotals.keys.asSequence()
+                .filter { it != "Transaction Fees" && it != "Transaction Cost" }
                 .maxByOrNull { thisMonthExpenseTotals[it] ?: 0.0 }
-                ?: lastMonthExpenseTotals.keys.filter { it != "Transaction Fees" && it != "Transaction Cost" }
+                ?: lastMonthExpenseTotals.keys.asSequence()
+                .filter { it != "Transaction Fees" && it != "Transaction Cost" }
                 .maxByOrNull { lastMonthExpenseTotals[it] ?: 0.0 }
 
-            val topIncomeCategory = thisMonthIncomeTotals.keys
+            val topIncomeCategory = thisMonthIncomeTotals.keys.asSequence()
                 .maxByOrNull { thisMonthIncomeTotals[it] ?: 0.0 }
-                ?: lastMonthIncomeTotals.keys
+                ?: lastMonthIncomeTotals.keys.asSequence()
                 .maxByOrNull { lastMonthIncomeTotals[it] ?: 0.0 }
 
-            val results = mutableListOf<CategoryComparisonDto>()
-
-            val incomeCategory = topIncomeCategory ?: "Salary"
-            val curInc = thisMonthIncomeTotals[incomeCategory] ?: 0.0
-            val prevInc = lastMonthIncomeTotals[incomeCategory] ?: 0.0
-            val weekCurInc = thisWeekTotals[incomeCategory] ?: 0.0
-            val weekPrevInc = lastWeekTotals[incomeCategory] ?: 0.0
-            
-            results.add(CategoryComparisonDto(
-                category = incomeCategory,
-                currentTotal = curInc,
-                previousTotal = prevInc,
-                changePercentage = calculateChange(curInc, prevInc),
-                isIncome = true,
-                period = targetPeriodString,
-                weeklyCurrentTotal = weekCurInc,
-                weeklyChangePercentage = calculateChange(weekCurInc, weekPrevInc)
-            ))
-
-            if (topExpenseCategory != null) {
-                val curExp = thisMonthExpenseTotals[topExpenseCategory] ?: 0.0
-                val prevExp = lastMonthExpenseTotals[topExpenseCategory] ?: 0.0
-                val weekCurExp = thisWeekTotals[topExpenseCategory] ?: 0.0
-                val weekPrevExp = lastWeekTotals[topExpenseCategory] ?: 0.0
+            buildList {
+                val incomeCategory = topIncomeCategory ?: "Salary"
+                val curInc = thisMonthIncomeTotals[incomeCategory] ?: 0.0
+                val prevInc = lastMonthIncomeTotals[incomeCategory] ?: 0.0
+                val weekCurInc = thisWeekTotals[incomeCategory] ?: 0.0
+                val weekPrevInc = lastWeekTotals[incomeCategory] ?: 0.0
                 
-                results.add(CategoryComparisonDto(
-                    category = topExpenseCategory,
-                    currentTotal = curExp,
-                    previousTotal = prevExp,
-                    changePercentage = calculateChange(curExp, prevExp),
-                    isIncome = false,
+                add(CategoryComparisonDto(
+                    category = incomeCategory,
+                    currentTotal = curInc,
+                    previousTotal = prevInc,
+                    changePercentage = calculateChange(curInc, prevInc),
+                    isIncome = true,
                     period = targetPeriodString,
-                    weeklyCurrentTotal = weekCurExp,
-                    weeklyChangePercentage = calculateChange(weekCurExp, weekPrevExp)
+                    weeklyCurrentTotal = weekCurInc,
+                    weeklyChangePercentage = calculateChange(weekCurInc, weekPrevInc)
                 ))
-            } else {
-                results.add(calculateTransactionCostComparison(
-                    userId, accountId, currentMonthStart, currentMonthEnd, previousMonthStart, previousMonthEnd, 
-                    thisWeekStart, thisWeekEnd, lastWeekStart, lastWeekEnd
-                ))
-            }
 
-            results
+                if (topExpenseCategory != null) {
+                    val curExp = thisMonthExpenseTotals[topExpenseCategory] ?: 0.0
+                    val prevExp = lastMonthExpenseTotals[topExpenseCategory] ?: 0.0
+                    val weekCurExp = thisWeekTotals[topExpenseCategory] ?: 0.0
+                    val weekPrevExp = lastWeekTotals[topExpenseCategory] ?: 0.0
+                    
+                    add(CategoryComparisonDto(
+                        category = topExpenseCategory,
+                        currentTotal = curExp,
+                        previousTotal = prevExp,
+                        changePercentage = calculateChange(curExp, prevExp),
+                        isIncome = false,
+                        period = targetPeriodString,
+                        weeklyCurrentTotal = weekCurExp,
+                        weeklyChangePercentage = calculateChange(weekCurExp, weekPrevExp)
+                    ))
+                } else {
+                    add(calculateTransactionCostComparison(
+                        userId, accountId, currentMonthStart, currentMonthEnd, previousMonthStart, previousMonthEnd, 
+                        thisWeekStart, thisWeekEnd, lastWeekStart, lastWeekEnd
+                    ))
+                }
+            }
         }
 
         Result.Success(CategoryComparisonSummaryDto(
