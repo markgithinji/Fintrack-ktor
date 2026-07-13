@@ -186,7 +186,7 @@ class BudgetRepositoryImpl : BudgetRepository {
         isExpense: Boolean,
         start: Instant,
         end: Instant
-    ): Double = dbQuery {
+    ): java.math.BigDecimal = dbQuery {
         val amountSum = TransactionsTable.amount.sum()
         TransactionsTable
             .select(amountSum)
@@ -196,11 +196,11 @@ class BudgetRepositoryImpl : BudgetRepository {
                 (TransactionsTable.categoryId inList categoryIds) and
                 (TransactionsTable.isIncome eq !isExpense)
             }
-            .map { it[amountSum] ?: 0.0 }
+            .map { it[amountSum] ?: java.math.BigDecimal.ZERO }
             .single()
     }
 
-    override suspend fun getSpentAmounts(budgets: List<Budget>): Map<UUID, Double> = dbQuery {
+    override suspend fun getSpentAmounts(budgets: List<Budget>): Map<UUID, java.math.BigDecimal> = dbQuery {
         if (budgets.isEmpty()) return@dbQuery emptyMap()
         
         val allAccountIds = budgets.flatMap { it.accountIds }.distinct()
@@ -232,7 +232,7 @@ class BudgetRepositoryImpl : BudgetRepository {
                 (budget.categoryIds.contains(txn.categoryId)) &&
                 (txn.dateTime >= budget.startDate.atStartOfDay(KTimeZone.UTC)) &&
                 (txn.dateTime <= budget.endDate.atEndOfDay(KTimeZone.UTC))
-            }.sumOf { it.amount }
+            }.fold(java.math.BigDecimal.ZERO) { acc, txn -> acc + txn.amount }
             
             (budget.id ?: IdGenerator.nextId()) to spent
         }
@@ -242,7 +242,7 @@ class BudgetRepositoryImpl : BudgetRepository {
         val accountId: UUID,
         val categoryId: UUID,
         val isIncome: Boolean,
-        val amount: Double,
+        val amount: java.math.BigDecimal,
         val dateTime: Instant
     )
     

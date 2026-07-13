@@ -109,12 +109,12 @@ class AccountsRepositoryImpl : AccountsRepository {
             }
 
             val results = query.groupBy(TransactionsTable.isIncome).associate {
-                it[TransactionsTable.isIncome] to (it[totalSum] ?: 0.0)
+                it[TransactionsTable.isIncome] to (it[totalSum] ?: java.math.BigDecimal.ZERO)
             }
 
             TransactionSummary(
-                income = results[true] ?: 0.0,
-                expense = results[false] ?: 0.0
+                income = results[true] ?: java.math.BigDecimal.ZERO,
+                expense = results[false] ?: java.math.BigDecimal.ZERO
             )
         }
 
@@ -132,18 +132,18 @@ class AccountsRepositoryImpl : AccountsRepository {
                 .map {
                     val accountId = it[TransactionsTable.accountId].value
                     val isIncome = it[TransactionsTable.isIncome]
-                    val sum = it[totalSum] ?: 0.0
+                    val sum = it[totalSum] ?: java.math.BigDecimal.ZERO
                     Triple(accountId, isIncome, sum)
                 }
                 .groupBy { it.first }
                 .mapValues { (_, values) ->
-                    val income = values.find { it.second }?.third ?: 0.0
-                    val expense = values.find { !it.second }?.third ?: 0.0
+                    val income = values.find { it.second }?.third ?: java.math.BigDecimal.ZERO
+                    val expense = values.find { !it.second }?.third ?: java.math.BigDecimal.ZERO
                     TransactionSummary(income, expense)
                 }
         }
 
-    override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double? =
+    override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): java.math.BigDecimal? =
         dbQuery {
             val query = TransactionsTable
                 .select(TransactionsTable.balance)
@@ -162,7 +162,7 @@ class AccountsRepositoryImpl : AccountsRepository {
                 .singleOrNull()
         }
 
-    override suspend fun updateBalance(accountId: UUID, balance: Double): Unit =
+    override suspend fun updateBalance(accountId: UUID, balance: java.math.BigDecimal): Unit =
         dbQuery {
             AccountsTable.update({ AccountsTable.id eq EntityID(accountId, AccountsTable) }) {
                 it[AccountsTable.balance] = balance

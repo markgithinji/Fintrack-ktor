@@ -1,6 +1,7 @@
 package feature.summary.domain.model
 
 import kotlinx.datetime.LocalDate
+import java.math.BigDecimal
 
 data class OverviewSummary(
     val period: String,
@@ -11,6 +12,6 @@ data class OverviewSummary(
 
 data class DaySummary(
     val date: LocalDate,
-    val income: Double,
-    val expense: Double
+    val income: BigDecimal,
+    val expense: BigDecimal
 )

@@ -116,7 +116,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         end: LocalDate?,
         accountId: UUID?,
         isIncome: Boolean?
-    ): Map<String, Double> =
+    ): Map<String, java.math.BigDecimal> =
         dbQuery {
             val netAmount = Case()
                 .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
@@ -144,7 +144,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
             query
                 .groupBy(TransactionsTable.category)
-                .associateBy({ it[TransactionsTable.category] }, { it[totalSum] ?: 0.0 })
+                .associateBy({ it[TransactionsTable.category] }, { it[totalSum] ?: java.math.BigDecimal.ZERO })
         }
 
     override suspend fun getTransactionCounts(
@@ -167,8 +167,8 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             if (!categoryIds.isNullOrEmpty()) {
                 cond = cond and (TransactionsTable.categoryId inList categoryIds)
             }
-            if (hasCost == true) cond = cond and (TransactionsTable.transactionCost greater 0.0)
-            if (hasCost == false) cond = cond and (TransactionsTable.transactionCost eq 0.0)
+            if (hasCost == true) cond = cond and (TransactionsTable.transactionCost greater java.math.BigDecimal.ZERO)
+            if (hasCost == false) cond = cond and (TransactionsTable.transactionCost eq java.math.BigDecimal.ZERO)
             cond
         }
 
@@ -198,7 +198,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                 // We just need to make sure we don't double filter isIncome if it was already handled.
                 if (isIncome != null) cond and (TransactionsTable.isIncome eq isIncome) else cond
             }
-            .singleOrNull()?.get(costSum) ?: 0.0
+            .singleOrNull()?.get(costSum) ?: java.math.BigDecimal.ZERO
 
         TransactionCounts(
             incomeCount = incomeCount.toInt(),

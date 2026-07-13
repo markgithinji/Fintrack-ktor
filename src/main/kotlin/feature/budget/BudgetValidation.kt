@@ -5,6 +5,7 @@ import com.fintrack.feature.budget.data.model.CreateBudgetRequest
 import com.fintrack.feature.budget.data.model.UpdateBudgetRequest
 import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
 import io.ktor.server.plugins.requestvalidation.ValidationResult
+import java.math.BigDecimal
 
 fun RequestValidationConfig.configureBudgetValidation() {
     validate<CreateBudgetRequest> { request ->
@@ -23,7 +24,7 @@ fun RequestValidationConfig.configureBudgetValidation() {
             violations.add("Budget must have at least one category")
         }
 
-        if (request.limit <= 0) {
+        if (request.limit <= BigDecimal.ZERO) {
             violations.add("Budget limit must be greater than 0")
         }
 
@@ -54,7 +55,7 @@ fun RequestValidationConfig.configureBudgetValidation() {
             violations.add("Budget must have at least one category")
         }
 
-        if (request.limit <= 0) {
+        if (request.limit <= BigDecimal.ZERO) {
             violations.add("Budget limit must be greater than 0")
         }
 
@@ -82,7 +83,7 @@ fun RequestValidationConfig.configureBudgetValidation() {
                 violations.add("Budget #${index + 1}: must have at least one category")
             }
 
-            if (request.limit <= 0) {
+            if (request.limit <= BigDecimal.ZERO) {
                 violations.add("Budget #${index + 1}: limit must be greater than 0")
             }
 

@@ -2,6 +2,7 @@ package feature.budget.domain
 
 import feature.budget.domain.model.Budget
 import kotlinx.datetime.Instant
+import java.math.BigDecimal
 import java.util.*
 
 interface BudgetRepository {
@@ -23,10 +24,10 @@ interface BudgetRepository {
         isExpense: Boolean,
         start: Instant,
         end: Instant
-    ): Double
+    ): BigDecimal
 
     /**
      * Batch calculates spent amounts for multiple budgets to fix N+1 query issue.
      */
-    suspend fun getSpentAmounts(budgets: List<Budget>): Map<UUID, Double>
+    suspend fun getSpentAmounts(budgets: List<Budget>): Map<UUID, BigDecimal>
 }

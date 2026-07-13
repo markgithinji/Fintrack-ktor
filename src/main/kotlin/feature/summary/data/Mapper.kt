@@ -68,6 +68,7 @@ fun Highlight.toDto(): HighlightDto =
 // Distribution summary
 fun DistributionSummary.toDto(): DistributionSummaryDto = DistributionSummaryDto(
     period = period,
+    totalTransactionCost = totalTransactionCost,
     incomeCategories = incomeCategories.map { it.toDto() },
     expenseCategories = expenseCategories.map { it.toDto() },
     othersInsightSummary = othersInsightSummary
@@ -100,11 +101,14 @@ fun DaySummary.toDto() = DaySummaryDto(
 
 // Category comparison
 fun CategoryComparison.toDto() = CategoryComparisonDto(
-    period = period,
     category = category,
     currentTotal = currentTotal,
     previousTotal = previousTotal,
-    changePercentage = changePercentage
+    changePercentage = changePercentage,
+    isIncome = isIncome,
+    period = period,
+    weeklyChangePercentage = weeklyChangePercentage,
+    weeklyCurrentTotal = weeklyCurrentTotal
 )
 
 // Years, weeks, months

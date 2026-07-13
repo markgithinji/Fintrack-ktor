@@ -7,6 +7,7 @@ import io.ktor.server.plugins.requestvalidation.RequestValidationConfig
 import io.ktor.server.plugins.requestvalidation.ValidationResult
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import java.math.BigDecimal
 import kotlin.time.Duration.Companion.seconds
 
 fun RequestValidationConfig.configureTransactionValidation() {
@@ -79,12 +80,12 @@ private fun validateList(requests: List<CreateTransactionRequest>): ValidationRe
 }
 
 private fun validateTransactionFields(
-    amount: Double,
+    amount: BigDecimal,
     category: String,
-    categoryId: String,
+    categoryId: String?,
     description: String,
     dateTime: Instant,
-    transactionCost: Double?,
+    transactionCost: BigDecimal?,
     prefix: String? = null
 ): ValidationResult {
     val violations = mutableListOf<String>()
@@ -92,12 +93,12 @@ private fun validateTransactionFields(
 
     // Amount validation
     when {
-        amount <= 0 -> violations.add("${p}Amount must be greater than 0")
-        amount > 1_000_000 -> violations.add("${p}Amount cannot exceed 1,000,000")
+        amount <= BigDecimal.ZERO -> violations.add("${p}Amount must be greater than 0")
+        amount > BigDecimal.valueOf(1_000_000) -> violations.add("${p}Amount cannot exceed 1,000,000")
     }
 
     // Transaction cost validation
-    if (transactionCost != null && transactionCost < 0) {
+    if (transactionCost != null && transactionCost < BigDecimal.ZERO) {
         violations.add("${p}Transaction cost cannot be negative")
     }
 
@@ -106,8 +107,8 @@ private fun validateTransactionFields(
         violations.add("${p}Category name cannot be blank")
     }
 
-    // Category ID validation
-    if (categoryId.isBlank()) {
+    // Category ID validation (Make it optional for backward compatibility if needed, but here we still check if provided)
+    if (categoryId != null && categoryId.isBlank()) {
         violations.add("${p}Category ID cannot be blank")
     }
 

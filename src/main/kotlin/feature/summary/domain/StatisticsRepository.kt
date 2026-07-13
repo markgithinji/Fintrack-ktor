@@ -3,6 +3,7 @@ package feature.summary.domain
 import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Instant
+import java.math.BigDecimal
 
 import java.util.UUID
 
@@ -34,7 +35,7 @@ interface StatisticsRepository {
         end: LocalDate?,
         accountId: UUID?,
         isIncome: Boolean? = null
-    ): Map<String, Double>
+    ): Map<String, BigDecimal>
 
     suspend fun getTransactionCounts(
         userId: UUID,
@@ -51,5 +52,5 @@ data class TransactionCounts(
     val incomeCount: Int,
     val expenseCount: Int,
     val totalCount: Int,
-    val totalTransactionCost: Double = 0.0
+    val totalTransactionCost: BigDecimal = BigDecimal.ZERO
 )

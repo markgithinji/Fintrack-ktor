@@ -3,6 +3,7 @@ package feature.transaction.data.model
 import com.fintrack.feature.transaction.data.model.CreateTransactionRequest
 import com.fintrack.feature.transaction.data.model.UpdateTransactionRequest
 import feature.transaction.domain.model.Transaction
+import java.math.BigDecimal
 import java.util.UUID
 
 fun Transaction.toDto() = TransactionDto(
@@ -27,7 +28,7 @@ fun CreateTransactionRequest.toDomain(userId: UUID): Transaction = Transaction(
     amount = amount,
     transactionCost = transactionCost,
     category = category,
-    categoryId = UUID.fromString(categoryId),
+    categoryId = if (categoryId.isBlank()) UUID(0, 0) else UUID.fromString(categoryId),
     dateTime = dateTime,
     description = description,
     externalId = externalId,
@@ -40,9 +41,9 @@ fun UpdateTransactionRequest.toDomain(userId: UUID, transactionId: UUID): Transa
     accountId = UUID.fromString(this.accountId),
     isIncome = isIncome,
     amount = amount,
-    transactionCost = transactionCost ?: 0.0,
+    transactionCost = transactionCost ?: BigDecimal.ZERO,
     category = category,
-    categoryId = UUID.fromString(categoryId),
+    categoryId = if (categoryId.isBlank()) UUID(0, 0) else UUID.fromString(categoryId),
     dateTime = dateTime,
     description = description,
     externalId = externalId,

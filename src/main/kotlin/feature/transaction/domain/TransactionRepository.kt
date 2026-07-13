@@ -28,5 +28,5 @@ interface TransactionRepository {
     suspend fun delete(id: UUID, userId: UUID): Boolean
     suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): Boolean
     suspend fun addBulk(entities: List<Transaction>): List<Transaction>
-    suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double?
+    suspend fun getLatestBalance(userId: UUID, accountId: UUID?): java.math.BigDecimal?
 }

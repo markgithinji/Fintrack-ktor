@@ -2,6 +2,7 @@ package com.fintrack.feature.accounts.domain.repository
 
 import com.fintrack.feature.accounts.domain.model.Account
 import com.fintrack.feature.accounts.domain.model.TransactionSummary
+import java.math.BigDecimal
 import java.util.UUID
 
 interface AccountsRepository {
@@ -13,6 +14,6 @@ interface AccountsRepository {
     suspend fun deleteAccount(id: UUID)
     suspend fun getTransactionSummary(userId: UUID, accountId: UUID?): TransactionSummary
     suspend fun getTransactionSummaries(userId: UUID): Map<UUID?, TransactionSummary>
-    suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double?
-    suspend fun updateBalance(accountId: UUID, balance: Double)
+    suspend fun getLatestBalance(userId: UUID, accountId: UUID?): BigDecimal?
+    suspend fun updateBalance(accountId: UUID, balance: BigDecimal)
 }

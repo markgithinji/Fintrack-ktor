@@ -16,6 +16,7 @@ import feature.transaction.domain.TransactionRepository
 import feature.budget.domain.BudgetRepository
 import com.fintrack.feature.summary.data.model.AccountAggregates
 import kotlinx.datetime.Clock
+import java.math.BigDecimal
 import java.util.UUID
 
 class AccountServiceImpl(
@@ -60,7 +61,7 @@ class AccountServiceImpl(
         val now = Clock.System.now()
 
         val result = accounts.map { account ->
-            val summary = summaries[account.id] ?: TransactionSummary(0.0, 0.0)
+            val summary = summaries[account.id] ?: TransactionSummary(BigDecimal.ZERO, BigDecimal.ZERO)
 
             // Prioritize the balance from the most recent transaction (Source of Truth)
             // Fall back to calculated income - expense only if no transaction balance exists
@@ -129,9 +130,9 @@ class AccountServiceImpl(
         // New account has zero aggregates
         val accountDto = createdAccount.toDto(
             id = createdAccount.id.toString(),
-            income = 0.0,
-            expense = 0.0,
-            balance = 0.0
+            income = BigDecimal.ZERO,
+            expense = BigDecimal.ZERO,
+            balance = BigDecimal.ZERO
         )
 
         log.withContext("userId" to userId, "accountId" to createdAccount.id)

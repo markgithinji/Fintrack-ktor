@@ -3,6 +3,7 @@ package com.fintrack.feature.accounts.domain.model
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.math.BigDecimal
 import java.util.UUID
 
 data class Account(
@@ -11,7 +12,7 @@ data class Account(
     val name: String,
     val isDefault: Boolean = false,
     val type: AccountType = AccountType.GENERAL,
-    val balance: Double = 0.0,
+    val balance: BigDecimal = BigDecimal.ZERO,
     val createdAt: Instant? = null,
     val lastSyncedAt: Instant? = null
 )

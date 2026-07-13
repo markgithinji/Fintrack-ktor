@@ -5,4 +5,5 @@ import kotlinx.serialization.modules.contextual
 
 val appSerializersModule = SerializersModule {
     contextual(UUIDSerializer)
+    contextual(BigDecimalSerializer)
 }

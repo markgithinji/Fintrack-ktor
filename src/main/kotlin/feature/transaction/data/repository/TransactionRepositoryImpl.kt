@@ -35,8 +35,8 @@ class TransactionRepositoryImpl : TransactionRepository {
         if (!categoryIds.isNullOrEmpty()) query = query.andWhere { TransactionsTable.categoryId inList categoryIds }
         if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start }
         if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end }
-        if (hasTransactionCost == true) query = query.andWhere { TransactionsTable.transactionCost greater 0.0 }
-        if (hasTransactionCost == false) query = query.andWhere { TransactionsTable.transactionCost eq 0.0 }
+        if (hasTransactionCost == true) query = query.andWhere { TransactionsTable.transactionCost greater java.math.BigDecimal.ZERO }
+        if (hasTransactionCost == false) query = query.andWhere { TransactionsTable.transactionCost eq java.math.BigDecimal.ZERO }
 
         if (afterDateTime != null && afterId != null) {
             query = if (order == SortOrder.DESC) {
@@ -165,7 +165,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         }.map { it.toTransaction() }
     }
 
-    override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): Double? = dbQuery {
+    override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): java.math.BigDecimal? = dbQuery {
         val query = TransactionsTable.selectAll()
             .where { TransactionsTable.userId eq userId }
             .andWhere { TransactionsTable.balance.isNotNull() }

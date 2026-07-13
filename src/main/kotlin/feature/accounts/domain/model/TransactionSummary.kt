@@ -1,3 +1,5 @@
 package com.fintrack.feature.accounts.domain.model
 
-data class TransactionSummary(val income: Double, val expense: Double)
+import java.math.BigDecimal
+
+data class TransactionSummary(val income: BigDecimal, val expense: BigDecimal)

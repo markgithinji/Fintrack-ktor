@@ -1,9 +1,14 @@
 package feature.summary.domain.model
 
+import java.math.BigDecimal
+
 data class CategoryComparison(
-    val period: String,        // "weekly" or "monthly"
-    val category: String,      // category name
-    val currentTotal: Double,  // total amount for this period
-    val previousTotal: Double, // total amount for last period
-    val changePercentage: Double // ((current - previous)/previous)*100
+    val category: String,
+    val currentTotal: BigDecimal,
+    val previousTotal: BigDecimal,
+    val changePercentage: Double,
+    val isIncome: Boolean = false,
+    val period: String = "monthly",
+    val weeklyChangePercentage: Double? = null,
+    val weeklyCurrentTotal: BigDecimal? = null
 )

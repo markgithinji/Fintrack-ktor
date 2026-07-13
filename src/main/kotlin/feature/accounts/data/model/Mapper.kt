@@ -1,9 +1,10 @@
 package com.fintrack.feature.accounts.data.model
 
 import com.fintrack.feature.accounts.domain.model.Account
+import java.math.BigDecimal
 import java.util.UUID
 
-fun Account.toDto(id: String, income: Double, expense: Double, balance: Double): AccountDto =
+fun Account.toDto(id: String, income: BigDecimal, expense: BigDecimal, balance: BigDecimal): AccountDto =
     AccountDto(
         id = id,
         name = name,

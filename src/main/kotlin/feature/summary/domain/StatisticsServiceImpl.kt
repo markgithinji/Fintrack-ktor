@@ -12,6 +12,8 @@ import feature.transaction.domain.model.Transaction
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.*
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.UUID
 
 class StatisticsServiceImpl(
@@ -94,10 +96,10 @@ class StatisticsServiceImpl(
 
         var ytdIncomeChange: Double? = null
         var ytdExpenseChange: Double? = null
-        var incomeProjectedTotal: Double? = null
-        var expenseProjectedTotal: Double? = null
-        var prevIncomeByCat: Map<String, Double>? = null
-        var prevExpenseByCat: Map<String, Double>? = null
+        var incomeProjectedTotal: BigDecimal? = null
+        var expenseProjectedTotal: BigDecimal? = null
+        var prevIncomeByCat: Map<String, BigDecimal>? = null
+        var prevExpenseByCat: Map<String, BigDecimal>? = null
 
         if (yearMode) {
             val requestedYear = finalParsedPeriod.year
@@ -132,18 +134,20 @@ class StatisticsServiceImpl(
             prevIncomeByCat = prevIncomeByCatAsync
             prevExpenseByCat = prevExpenseByCatAsync
 
-            val currentIncomeTotal = currentIncomeByCat.values.sum()
-            val currentExpenseTotal = currentExpenseByCat.values.sum()
-            val prevIncomeTotal = prevIncomeByCat.values.sum()
-            val prevExpenseTotal = prevExpenseByCat.values.sum()
+            val currentIncomeTotal = currentIncomeByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
+            val currentExpenseTotal = currentExpenseByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
+            val prevIncomeTotal = prevIncomeByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
+            val prevExpenseTotal = prevExpenseByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
 
             ytdIncomeChange = calculateChange(currentIncomeTotal, prevIncomeTotal)
             ytdExpenseChange = calculateChange(currentExpenseTotal, prevExpenseTotal)
 
             if (isCurrentYear) {
                 val monthNumber = now.monthNumber.coerceAtLeast(1)
-                incomeProjectedTotal = (currentIncomeTotal / monthNumber) * 12
-                expenseProjectedTotal = (currentExpenseTotal / monthNumber) * 12
+                incomeProjectedTotal = currentIncomeTotal.multiply(BigDecimal.valueOf(12))
+                    .divide(BigDecimal.valueOf(monthNumber.toLong()), 2, RoundingMode.HALF_UP)
+                expenseProjectedTotal = currentExpenseTotal.multiply(BigDecimal.valueOf(12))
+                    .divide(BigDecimal.valueOf(monthNumber.toLong()), 2, RoundingMode.HALF_UP)
             }
         }
 
@@ -154,13 +158,13 @@ class StatisticsServiceImpl(
             txns.groupBy {
                 TimePeriod.fromInstant(it.dateTime, "month").toString()
             }
-                .mapValues { it.value.sumOf { t -> t.totalAmount } }
+                .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
                 .maxByOrNull { it.value }
                 ?.let { HighlightDto(label = it.key, value = it.key, amount = it.value) }
 
-        fun highestCategory(txns: List<Transaction>, prevTotals: Map<String, Double>?) =
+        fun highestCategory(txns: List<Transaction>, prevTotals: Map<String, BigDecimal>?) =
             txns.groupBy { it.category.trim().lowercase() }
-                .mapValues { it.value.sumOf { t -> t.totalAmount } }
+                .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
                 .maxByOrNull { it.value }
                 ?.let { entry ->
                     val displayName =
@@ -168,7 +172,7 @@ class StatisticsServiceImpl(
                             ?: entry.key
                     
                     val volatility = prevTotals?.let { totals ->
-                        val prevAmount = totals.entries.find { it.key.trim().lowercase() == entry.key }?.value ?: 0.0
+                        val prevAmount = totals.entries.find { it.key.trim().lowercase() == entry.key }?.value ?: BigDecimal.ZERO
                         calculateChange(entry.value, prevAmount)
                     }
 
@@ -182,7 +186,7 @@ class StatisticsServiceImpl(
 
         fun highestDay(txns: List<Transaction>) =
             txns.groupBy { it.dateTime.toLocalDateTime(TimeZone.UTC).date }
-                .mapValues { it.value.sumOf { t -> t.totalAmount } }
+                .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
                 .maxByOrNull { it.value }
                 ?.let {
                     HighlightDto(
@@ -194,33 +198,37 @@ class StatisticsServiceImpl(
 
         fun averagePerDay(txns: List<Transaction>): Double {
             val days = txns.groupBy { it.dateTime.toLocalDateTime(TimeZone.UTC).date }.size.coerceAtLeast(1)
-            val total = txns.sumOf { it.totalAmount }
-            return total / days
+            val total = txns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
+            return total.divide(BigDecimal.valueOf(days.toLong()), 4, RoundingMode.HALF_UP).toDouble()
         }
 
-        val totalIncome = incomeTxns.sumOf { it.totalAmount }
-        val totalExpense = expenseTxns.sumOf { it.totalAmount }
+        val totalIncome = incomeTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
+        val totalExpense = expenseTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
 
-        val savingsRate = if (totalIncome > 0) ((totalIncome - totalExpense) / totalIncome) * 100 else null
+        val savingsRate = if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
+            (totalIncome - totalExpense).divide(totalIncome, 4, RoundingMode.HALF_UP).toDouble() * 100
+        } else null
 
         val essentialSpend = expenseTxns
             .filter { txn -> essentialCategories.any { it.equals(txn.category.trim(), ignoreCase = true) } }
-            .sumOf { it.totalAmount }
-        val essentialSpendRatio = if (totalExpense > 0) (essentialSpend / totalExpense) * 100 else null
+            .fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
+        val essentialSpendRatio = if (totalExpense.compareTo(BigDecimal.ZERO) > 0) {
+            essentialSpend.divide(totalExpense, 4, RoundingMode.HALF_UP).toDouble() * 100
+        } else null
 
         var projectedExceedMonth: String? = null
         if (yearMode && expenseProjectedTotal != null) {
             val budgets = budgetRepository.getAllByUser(userId, accountId, limit = Int.MAX_VALUE, offset = 0).filter { it.isExpense }
-            val totalMonthlyLimit = budgets.sumOf { it.limit }
-            val yearlyLimit = totalMonthlyLimit * 12
+            val totalMonthlyLimit = budgets.fold(BigDecimal.ZERO) { acc, b -> acc + b.limit }
+            val yearlyLimit = totalMonthlyLimit.multiply(BigDecimal.valueOf(12))
 
-            if (expenseProjectedTotal > yearlyLimit && yearlyLimit > 0) {
+            if (expenseProjectedTotal.compareTo(yearlyLimit) > 0 && yearlyLimit.compareTo(BigDecimal.ZERO) > 0) {
                 val currentMonth = Clock.System.now().toLocalDateTime(TimeZone.UTC).monthNumber
-                val averagePerMonth = totalExpense / currentMonth
+                val averagePerMonth = totalExpense.divide(BigDecimal.valueOf(currentMonth.toLong()), 4, RoundingMode.HALF_UP)
 
                 for (m in (currentMonth + 1)..12) {
-                    val accumulatedSpend = totalExpense + averagePerMonth * (m - currentMonth)
-                    if (accumulatedSpend > yearlyLimit) {
+                    val accumulatedSpend = totalExpense + averagePerMonth.multiply(BigDecimal.valueOf((m - currentMonth).toLong()))
+                    if (accumulatedSpend.compareTo(yearlyLimit) > 0) {
                         projectedExceedMonth = monthNames.getOrNull(m - 1)
                         break
                     }
@@ -253,9 +261,9 @@ class StatisticsServiceImpl(
             val monthlyData = hTxns.groupBy {
                 TimePeriod.fromInstant(it.dateTime, "month").toString()
             }.mapValues { (_, mTxns) ->
-                val inc = mTxns.asSequence().filter { it.isIncome }.sumOf { it.totalAmount }
+                val inc = mTxns.asSequence().filter { it.isIncome }.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
                 val exp = mTxns.asSequence().filter { !it.isIncome }.groupBy { it.category.trim().lowercase() }
-                    .mapValues { it.value.sumOf { t -> t.totalAmount } }
+                    .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
                 Pair(inc, exp)
             }.toSortedMap()
 
@@ -267,17 +275,17 @@ class StatisticsServiceImpl(
                     val currMonth = monthlyData[keys[i]]!!
                     val nextMonth = if (i + 1 < keys.size) monthlyData[keys[i + 1]] else null
 
-                    if (prevMonth.first > 0) {
-                        val incomeIncrease = (currMonth.first - prevMonth.first) / prevMonth.first
+                    if (prevMonth.first.compareTo(BigDecimal.ZERO) > 0) {
+                        val incomeIncrease = (currMonth.first - prevMonth.first).divide(prevMonth.first, 4, RoundingMode.HALF_UP).toDouble()
                         if (incomeIncrease > 0.10) {
                             targetCats.forEach { cat ->
-                                val prevExp = prevMonth.second[cat] ?: 0.0
-                                val currExp = currMonth.second[cat] ?: 0.0
-                                val nextExp = nextMonth?.second?.get(cat) ?: 0.0
+                                val prevExp = prevMonth.second[cat] ?: BigDecimal.ZERO
+                                val currExp = currMonth.second[cat] ?: BigDecimal.ZERO
+                                val nextExp = nextMonth?.second?.get(cat) ?: BigDecimal.ZERO
 
-                                if (prevExp > 0 && (currExp - prevExp) / prevExp > 0.15) {
+                                if (prevExp.compareTo(BigDecimal.ZERO) > 0 && (currExp - prevExp).divide(prevExp, 4, RoundingMode.HALF_UP).toDouble() > 0.15) {
                                     val incPct = (incomeIncrease * 100).toInt()
-                                    val expPct = (((currExp - prevExp) / prevExp) * 100).toInt()
+                                    val expPct = ((currExp - prevExp).divide(prevExp, 4, RoundingMode.HALF_UP).toDouble() * 100).toInt()
                                     add(
                                         CorrelationDto(
                                             source = "Income",
@@ -285,9 +293,9 @@ class StatisticsServiceImpl(
                                             insight = "When your income increases by $incPct%, your '${cat.replaceFirstChar { it.uppercase() }}' spend tends to increase by $expPct% in the same month."
                                         )
                                     )
-                                } else if (currExp > 0 && nextExp > 0 && (nextExp - currExp) / currExp > 0.15) {
+                                } else if (currExp.compareTo(BigDecimal.ZERO) > 0 && nextExp.compareTo(BigDecimal.ZERO) > 0 && (nextExp - currExp).divide(currExp, 4, RoundingMode.HALF_UP).toDouble() > 0.15) {
                                     val incPct = (incomeIncrease * 100).toInt()
-                                    val expPct = (((nextExp - currExp) / currExp) * 100).toInt()
+                                    val expPct = ((nextExp - currExp).divide(currExp, 4, RoundingMode.HALF_UP).toDouble() * 100).toInt()
                                     add(
                                         CorrelationDto(
                                             source = "Income",
@@ -318,12 +326,12 @@ class StatisticsServiceImpl(
         return Result.Success(StatisticsSummaryDto(
             period = targetPeriodString ?: "",
             isCurrent = isCurrent,
-            income = incomeTxns.sumOf { it.totalAmount },
-            expense = expenseTxns.sumOf { it.totalAmount },
-            balance = incomeTxns.sumOf { it.totalAmount } - expenseTxns.sumOf { it.totalAmount },
+            income = incomeTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount },
+            expense = expenseTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount },
+            balance = incomeTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } - expenseTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount },
             incomeHighlights = incomeHighlights,
             expenseHighlights = expenseHighlights,
-            totalTransactionCost = txnsForHighlights.sumOf { it.transactionCost }
+            totalTransactionCost = txnsForHighlights.fold(BigDecimal.ZERO) { acc, t -> acc + t.transactionCost }
         ))
     }
 
@@ -395,11 +403,11 @@ class StatisticsServiceImpl(
         var othersInsight: String? = null
 
         fun categorySummary(txns: List<Transaction>): List<CategorySummaryDto> {
-            val totalAmountAll = txns.sumOf { it.totalAmount }
+            val totalAmountAll = txns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
             val grouped = txns.groupBy { it.category.trim().lowercase() }
             
             val sortedCategories = grouped.map { (key, list) ->
-                val sum = list.sumOf { it.totalAmount }
+                val sum = list.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
                 Triple(key, list, sum)
             }.sortedByDescending { it.third }
 
@@ -414,7 +422,7 @@ class StatisticsServiceImpl(
                         } else null
                     }
                     .groupBy({ it.first }, { it.second })
-                    .mapValues { it.value.sum() }
+                    .mapValues { it.value.fold(BigDecimal.ZERO, BigDecimal::add) }
                     .maxByOrNull { it.value }
                     ?.key
             }
@@ -424,11 +432,11 @@ class StatisticsServiceImpl(
 
                 val count = list.size
                 val momentum = if (parsedPeriod is TimePeriod.Month && previousMonthsData != null) {
-                    val prev1 = previousMonthsData.first[key] ?: 0.0
-                    val prev2 = previousMonthsData.second[key] ?: 0.0
+                    val prev1 = previousMonthsData.first[key] ?: BigDecimal.ZERO
+                    val prev2 = previousMonthsData.second[key] ?: BigDecimal.ZERO
                     when {
-                        sum > prev1 && prev1 > prev2 -> "UP"
-                        sum < prev1 && prev1 < prev2 -> "DOWN"
+                        sum.compareTo(prev1) > 0 && prev1.compareTo(prev2) > 0 -> "UP"
+                        sum.compareTo(prev1) < 0 && prev1.compareTo(prev2) < 0 -> "DOWN"
                         else -> "STABLE"
                     }
                 } else null
@@ -440,7 +448,7 @@ class StatisticsServiceImpl(
                         } else null
                     }
                     .groupBy({ it.first }, { it.second })
-                    .mapValues { it.value.sum() }
+                    .mapValues { it.value.fold(BigDecimal.ZERO, BigDecimal::add) }
                     .entries
                     .sortedByDescending { it.value }
                     .take(3)
@@ -449,7 +457,9 @@ class StatisticsServiceImpl(
                 CategorySummaryDto(
                     category = displayName,
                     total = sum,
-                    percentage = if (totalAmountAll > 0) (sum / totalAmountAll) * 100 else 0.0,
+                    percentage = if (totalAmountAll.compareTo(BigDecimal.ZERO) > 0) {
+                        sum.divide(totalAmountAll, 4, RoundingMode.HALF_UP).toDouble() * 100
+                    } else 0.0,
                     transactionCount = count,
                     averageTransactionCount = historicalCounts?.get(key),
                     momentumTrend = momentum,
@@ -464,7 +474,7 @@ class StatisticsServiceImpl(
 
         Result.Success(DistributionSummaryDto(
             period = period,
-            totalTransactionCost = txnsInPeriod.sumOf { it.transactionCost },
+            totalTransactionCost = txnsInPeriod.fold(BigDecimal.ZERO) { acc, t -> acc + t.transactionCost },
             incomeCategories = incomeCategoriesFinal,
             expenseCategories = expenseCategoriesFinal,
             othersInsightSummary = othersInsight
@@ -523,8 +533,8 @@ class StatisticsServiceImpl(
 
         val summaries = dates.map { date ->
             val dayTxs = transactions.filter { it.dateTime.toLocalDateTime(TimeZone.UTC).date == date }
-            val income = dayTxs.filter { it.isIncome }.sumOf { it.totalAmount }
-            val expense = dayTxs.filter { !it.isIncome }.sumOf { it.totalAmount }
+            val income = dayTxs.filter { it.isIncome }.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
+            val expense = dayTxs.filter { !it.isIncome }.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
             DaySummaryDto(date = date, income = income, expense = expense)
         }
         return Result.Success(summaries)
@@ -587,10 +597,10 @@ class StatisticsServiceImpl(
                     val currentTotals = if (isInc) thisMonthIncomeTotals else thisMonthExpenseTotals
                     val previousTotals = if (isInc) lastMonthIncomeTotals else lastMonthExpenseTotals
 
-                    val cur = currentTotals[category] ?: 0.0
-                    val prev = previousTotals[category] ?: 0.0
-                    val weekCur = thisWeekTotals[category] ?: 0.0
-                    val weekPrev = lastWeekTotals[category] ?: 0.0
+                    val cur = currentTotals[category] ?: BigDecimal.ZERO
+                    val prev = previousTotals[category] ?: BigDecimal.ZERO
+                    val weekCur = thisWeekTotals[category] ?: BigDecimal.ZERO
+                    val weekPrev = lastWeekTotals[category] ?: BigDecimal.ZERO
 
                     CategoryComparisonDto(
                         category = category,
@@ -607,22 +617,22 @@ class StatisticsServiceImpl(
         } else {
             val topExpenseCategory = thisMonthExpenseTotals.keys.asSequence()
                 .filter { it != "Transaction Fees" && it != "Transaction Cost" }
-                .maxByOrNull { thisMonthExpenseTotals[it] ?: 0.0 }
+                .maxByOrNull { thisMonthExpenseTotals[it] ?: BigDecimal.ZERO }
                 ?: lastMonthExpenseTotals.keys.asSequence()
                 .filter { it != "Transaction Fees" && it != "Transaction Cost" }
-                .maxByOrNull { lastMonthExpenseTotals[it] ?: 0.0 }
+                .maxByOrNull { lastMonthExpenseTotals[it] ?: BigDecimal.ZERO }
 
             val topIncomeCategory = thisMonthIncomeTotals.keys.asSequence()
-                .maxByOrNull { thisMonthIncomeTotals[it] ?: 0.0 }
+                .maxByOrNull { thisMonthIncomeTotals[it] ?: BigDecimal.ZERO }
                 ?: lastMonthIncomeTotals.keys.asSequence()
-                .maxByOrNull { lastMonthIncomeTotals[it] ?: 0.0 }
+                .maxByOrNull { lastMonthIncomeTotals[it] ?: BigDecimal.ZERO }
 
             buildList {
                 val incomeCategory = topIncomeCategory ?: "Salary"
-                val curInc = thisMonthIncomeTotals[incomeCategory] ?: 0.0
-                val prevInc = lastMonthIncomeTotals[incomeCategory] ?: 0.0
-                val weekCurInc = thisWeekTotals[incomeCategory] ?: 0.0
-                val weekPrevInc = lastWeekTotals[incomeCategory] ?: 0.0
+                val curInc = thisMonthIncomeTotals[incomeCategory] ?: BigDecimal.ZERO
+                val prevInc = lastMonthIncomeTotals[incomeCategory] ?: BigDecimal.ZERO
+                val weekCurInc = thisWeekTotals[incomeCategory] ?: BigDecimal.ZERO
+                val weekPrevInc = lastWeekTotals[incomeCategory] ?: BigDecimal.ZERO
                 
                 add(CategoryComparisonDto(
                     category = incomeCategory,
@@ -636,10 +646,10 @@ class StatisticsServiceImpl(
                 ))
 
                 if (topExpenseCategory != null) {
-                    val curExp = thisMonthExpenseTotals[topExpenseCategory] ?: 0.0
-                    val prevExp = lastMonthExpenseTotals[topExpenseCategory] ?: 0.0
-                    val weekCurExp = thisWeekTotals[topExpenseCategory] ?: 0.0
-                    val weekPrevExp = lastWeekTotals[topExpenseCategory] ?: 0.0
+                    val curExp = thisMonthExpenseTotals[topExpenseCategory] ?: BigDecimal.ZERO
+                    val prevExp = lastMonthExpenseTotals[topExpenseCategory] ?: BigDecimal.ZERO
+                    val weekCurExp = thisWeekTotals[topExpenseCategory] ?: BigDecimal.ZERO
+                    val weekPrevExp = lastWeekTotals[topExpenseCategory] ?: BigDecimal.ZERO
                     
                     add(CategoryComparisonDto(
                         category = topExpenseCategory,
@@ -667,8 +677,14 @@ class StatisticsServiceImpl(
         ))
     }
 
-    private fun calculateChange(current: Double, previous: Double): Double =
-        if (previous != 0.0) (current - previous) / previous * 100 else if (current > 0) 100.0 else 0.0
+    private fun calculateChange(current: BigDecimal, previous: BigDecimal): Double =
+        if (previous.compareTo(BigDecimal.ZERO) != 0) {
+            (current - previous).divide(previous, 4, RoundingMode.HALF_UP).toDouble() * 100
+        } else if (current.compareTo(BigDecimal.ZERO) > 0) {
+            100.0
+        } else {
+            0.0
+        }
 
     private suspend fun calculateTransactionCostComparison(
         userId: UUID,
@@ -685,14 +701,14 @@ class StatisticsServiceImpl(
         val curTxns = statisticsRepository.getTransactionsByDateRange(userId, currentStart, currentEnd, accountId)
         val prevTxns = statisticsRepository.getTransactionsByDateRange(userId, previousStart, previousEnd, accountId)
 
-        val curCost = curTxns.sumOf { it.transactionCost }
-        val prevCost = prevTxns.sumOf { it.transactionCost }
+        val curCost = curTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.transactionCost }
+        val prevCost = prevTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.transactionCost }
 
-        var weekCurCost = 0.0
-        var weekPrevCost = 0.0
+        var weekCurCost = BigDecimal.ZERO
+        var weekPrevCost = BigDecimal.ZERO
         if (thisWeekStart != null && thisWeekEnd != null && lastWeekStart != null && lastWeekEnd != null) {
-            weekCurCost = statisticsRepository.getTransactionsByDateRange(userId, thisWeekStart, thisWeekEnd, accountId).sumOf { it.transactionCost }
-            weekPrevCost = statisticsRepository.getTransactionsByDateRange(userId, lastWeekStart, lastWeekEnd, accountId).sumOf { it.transactionCost }
+            weekCurCost = statisticsRepository.getTransactionsByDateRange(userId, thisWeekStart, thisWeekEnd, accountId).fold(BigDecimal.ZERO) { acc, t -> acc + t.transactionCost }
+            weekPrevCost = statisticsRepository.getTransactionsByDateRange(userId, lastWeekStart, lastWeekEnd, accountId).fold(BigDecimal.ZERO) { acc, t -> acc + t.transactionCost }
         }
 
         return CategoryComparisonDto(
@@ -721,21 +737,25 @@ class StatisticsServiceImpl(
         if (accountsResult is Result.Failure) return Result.Failure(accountsResult.error)
         val accounts = (accountsResult as Result.Success).value
         
-        val netWorth = accounts.sumOf { it.balance ?: 0.0 }
+        val netWorth = accounts.fold(BigDecimal.ZERO) { acc, a -> acc + (a.balance ?: BigDecimal.ZERO) }
 
         // Use global summaries from repository instead of fetching ALL transactions
         val incomeTotals = statisticsRepository.getCategoryTotals(userId, null, null, null, isIncome = true)
         val expenseTotals = statisticsRepository.getCategoryTotals(userId, null, null, null, isIncome = false)
 
-        val totalIncome = incomeTotals.values.sum()
-        val totalExpense = expenseTotals.values.sum()
+        val totalIncome = incomeTotals.values.fold(BigDecimal.ZERO, BigDecimal::add)
+        val totalExpense = expenseTotals.values.fold(BigDecimal.ZERO, BigDecimal::add)
 
-        val savingsRate = if (totalIncome > 0) ((totalIncome - totalExpense) / totalIncome) * 100 else null
+        val savingsRate = if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
+            (totalIncome - totalExpense).divide(totalIncome, 4, RoundingMode.HALF_UP).toDouble() * 100
+        } else null
 
         val essentialSpend = expenseTotals
             .filter { (cat, _) -> essentialCategories.any { it.equals(cat.trim(), ignoreCase = true) } }
-            .values.sum()
-        val essentialSpendRatio = if (totalExpense > 0) (essentialSpend / totalExpense) * 100 else null
+            .values.fold(BigDecimal.ZERO, BigDecimal::add)
+        val essentialSpendRatio = if (totalExpense.compareTo(BigDecimal.ZERO) > 0) {
+            essentialSpend.divide(totalExpense, 4, RoundingMode.HALF_UP).toDouble() * 100
+        } else null
 
         return Result.Success(ProfileMetricsDto(
             name = user.name,

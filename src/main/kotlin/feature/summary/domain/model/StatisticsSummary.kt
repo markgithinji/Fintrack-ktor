@@ -1,12 +1,14 @@
 package feature.summary.domain.model
 
+import java.math.BigDecimal
+
 data class StatisticsSummary(
     val period: String = "",
     val isCurrent: Boolean = true,
-    val income: Double = 0.0,
-    val expense: Double = 0.0,
-    val balance: Double = 0.0,
-    val totalTransactionCost: Double = 0.0,
+    val income: BigDecimal = BigDecimal.ZERO,
+    val expense: BigDecimal = BigDecimal.ZERO,
+    val balance: BigDecimal = BigDecimal.ZERO,
+    val totalTransactionCost: BigDecimal = BigDecimal.ZERO,
     val incomeHighlights: Highlights = Highlights(),
     val expenseHighlights: Highlights = Highlights()
 )
@@ -17,7 +19,7 @@ data class Highlights(
     val highestDay: Highlight? = null,
     val averagePerDay: Double = 0.0,
     val ytdChangePercentage: Double? = null,
-    val projectedTotal: Double? = null,
+    val projectedTotal: BigDecimal? = null,
     val savingsRate: Double? = null,
     val essentialSpendRatio: Double? = null,
     val projectedExceedMonth: String? = null,
@@ -33,6 +35,6 @@ data class Correlation(
 data class Highlight(
     val label: String = "",
     val value: String = "",
-    val amount: Double = 0.0,
+    val amount: BigDecimal = BigDecimal.ZERO,
     val volatilityPercentage: Double? = null
 )

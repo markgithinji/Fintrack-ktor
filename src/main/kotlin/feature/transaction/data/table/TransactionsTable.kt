@@ -14,14 +14,14 @@ object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
         reference(TransactionsColumns.USER_ID, UsersTable, onDelete = ReferenceOption.CASCADE).index()
     val accountId = reference(TransactionsColumns.ACCOUNT_ID, AccountsTable, onDelete = ReferenceOption.CASCADE).index()
     val isIncome = bool(TransactionsColumns.IS_INCOME)
-    val amount = double(TransactionsColumns.AMOUNT)
-    val transactionCost = double(TransactionsColumns.TRANSACTION_COST).default(0.0)
+    val amount = decimal(TransactionsColumns.AMOUNT, precision = 19, scale = 4)
+    val transactionCost = decimal(TransactionsColumns.TRANSACTION_COST, precision = 19, scale = 4).default(java.math.BigDecimal.ZERO)
     val category = varchar(TransactionsColumns.CATEGORY, 100)
     val categoryId = reference(TransactionsColumns.CATEGORY_ID, CategoriesTable, onDelete = ReferenceOption.CASCADE).index()
     val dateTime = timestamp(TransactionsColumns.DATE_TIME).index()
     val description = varchar(TransactionsColumns.DESCRIPTION, 255).nullable()
     val externalId = varchar(TransactionsColumns.EXTERNAL_ID, 100).nullable()
-    val balance = double(TransactionsColumns.BALANCE).nullable()
+    val balance = decimal(TransactionsColumns.BALANCE, precision = 19, scale = 4).nullable()
 
     init {
         uniqueIndex(externalId, userId)

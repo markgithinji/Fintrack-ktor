@@ -1,15 +1,17 @@
 package feature.summary.data.model
 
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import java.math.BigDecimal
 
 @Serializable
 data class StatisticsSummaryDto(
     val period: String = "",
     val isCurrent: Boolean = true,
-    val income: Double = 0.0,
-    val expense: Double = 0.0,
-    val balance: Double = 0.0,
-    val totalTransactionCost: Double = 0.0,
+    @Contextual val income: BigDecimal = BigDecimal.ZERO,
+    @Contextual val expense: BigDecimal = BigDecimal.ZERO,
+    @Contextual val balance: BigDecimal = BigDecimal.ZERO,
+    @Contextual val totalTransactionCost: BigDecimal = BigDecimal.ZERO,
     val incomeHighlights: HighlightsDto = HighlightsDto(),
     val expenseHighlights: HighlightsDto = HighlightsDto()
 )
@@ -21,7 +23,7 @@ data class HighlightsDto(
     val highestDay: HighlightDto? = null,
     val averagePerDay: Double = 0.0,
     val ytdChangePercentage: Double? = null,
-    val projectedTotal: Double? = null,
+    @Contextual val projectedTotal: BigDecimal? = null,
     val savingsRate: Double? = null,
     val essentialSpendRatio: Double? = null,
     val projectedExceedMonth: String? = null,
@@ -39,6 +41,6 @@ data class CorrelationDto(
 data class HighlightDto(
     val label: String = "",
     val value: String = "",
-    val amount: Double = 0.0,
+    @Contextual val amount: BigDecimal = BigDecimal.ZERO,
     val volatilityPercentage: Double? = null
 )

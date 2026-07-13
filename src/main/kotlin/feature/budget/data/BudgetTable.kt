@@ -14,7 +14,7 @@ object BudgetsTable : UUIDTable(TableNames.BUDGETS) {
     val accountIds = text(BudgetsColumns.ACCOUNT_IDS)
     val name = varchar(BudgetsColumns.NAME, 100)
     val categoryIds = text(BudgetsColumns.CATEGORY_IDS)
-    val limit = double(BudgetsColumns.LIMIT)
+    val limit = decimal(BudgetsColumns.LIMIT, precision = 19, scale = 4)
     val isExpense = bool(BudgetsColumns.IS_EXPENSE)
     val startDate = date(BudgetsColumns.START_DATE)
     val endDate = date(BudgetsColumns.END_DATE)

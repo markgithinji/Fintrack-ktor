@@ -14,6 +14,8 @@ import feature.budget.domain.model.BudgetWithStatus
 import com.fintrack.feature.transaction.data.model.DeleteResponse
 import feature.budget.domain.model.Budget
 import kotlinx.datetime.*
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.UUID
 
 class BudgetServiceImpl(
@@ -36,7 +38,7 @@ class BudgetServiceImpl(
         val spentAmounts = budgetRepository.getSpentAmounts(budgets)
 
         val result: List<BudgetWithStatusDto> = budgets.map { budget ->
-            val spent = spentAmounts[budget.id] ?: 0.0
+            val spent = spentAmounts[budget.id] ?: BigDecimal.ZERO
             BudgetWithStatus(
                 budget = budget,
                 status = assembleBudgetStatus(budget, spent)
@@ -89,7 +91,7 @@ class BudgetServiceImpl(
         // New budget starts with 0 spent
         val budgetWithStatus = BudgetWithStatus(
             budget = budget,
-            status = assembleBudgetStatus(budget, 0.0)
+            status = assembleBudgetStatus(budget, BigDecimal.ZERO)
         ).toDto()
 
         log.withContext("userId" to userId, "budgetId" to budget.id)
@@ -108,7 +110,7 @@ class BudgetServiceImpl(
         val result = budgets.map { budget ->
             BudgetWithStatus(
                 budget = budget,
-                status = assembleBudgetStatus(budget, 0.0)
+                status = assembleBudgetStatus(budget, BigDecimal.ZERO)
             ).toDto()
         }
 
@@ -186,10 +188,12 @@ class BudgetServiceImpl(
         return Result.Success(result)
     }
 
-    private fun assembleBudgetStatus(budget: Budget, spent: Double): BudgetStatus {
+    private fun assembleBudgetStatus(budget: Budget, spent: BigDecimal): BudgetStatus {
         val remaining = budget.limit - spent
-        val percentageUsed = if (budget.limit > 0) (spent / budget.limit) * 100 else 0.0
-        val isExceeded = spent > budget.limit
+        val percentageUsed = if (budget.limit.compareTo(BigDecimal.ZERO) > 0) {
+            spent.divide(budget.limit, 4, RoundingMode.HALF_UP).toDouble() * 100
+        } else 0.0
+        val isExceeded = spent.compareTo(budget.limit) > 0
 
         return BudgetStatus(
             limit = budget.limit,

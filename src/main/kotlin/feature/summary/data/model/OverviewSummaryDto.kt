@@ -1,7 +1,9 @@
 package feature.summary.data.model
 
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import java.math.BigDecimal
 
 @Serializable
 data class OverviewSummaryDto(
@@ -14,6 +16,6 @@ data class OverviewSummaryDto(
 @Serializable
 data class DaySummaryDto(
     val date: LocalDate,
-    val income: Double,
-    val expense: Double
+    @Contextual val income: BigDecimal,
+    @Contextual val expense: BigDecimal
 )

@@ -1,7 +1,9 @@
 package com.fintrack.feature.summary.data.model
 
+import java.math.BigDecimal
+
 data class AccountAggregates(
-    val income: Double = 0.0,
-    val expense: Double = 0.0,
-    val balance: Double = 0.0
+    val income: BigDecimal = BigDecimal.ZERO,
+    val expense: BigDecimal = BigDecimal.ZERO,
+    val balance: BigDecimal = BigDecimal.ZERO
 )

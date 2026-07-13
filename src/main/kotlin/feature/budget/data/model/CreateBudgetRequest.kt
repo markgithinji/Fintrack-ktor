@@ -1,16 +1,16 @@
 package com.fintrack.feature.budget.data.model
 
-import com.fintrack.core.serialization.UUIDSerializer
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import java.util.UUID
+import java.math.BigDecimal
 
 @Serializable
 data class CreateBudgetRequest(
     val accountIds: List<String>,
     val name: String,
     val categoryIds: List<String>,
-    val limit: Double,
+    @Contextual val limit: BigDecimal,
     val isExpense: Boolean,
     val startDate: LocalDate,
     val endDate: LocalDate
