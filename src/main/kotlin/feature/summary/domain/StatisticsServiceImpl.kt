@@ -99,7 +99,7 @@ class StatisticsServiceImpl(
         var prevIncomeByCat: Map<String, Double>? = null
         var prevExpenseByCat: Map<String, Double>? = null
 
-        if (yearMode && finalParsedPeriod is TimePeriod.Year) {
+        if (yearMode) {
             val requestedYear = finalParsedPeriod.year
             val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
             val isCurrentYear = requestedYear == now.year
