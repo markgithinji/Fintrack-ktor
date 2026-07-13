@@ -18,6 +18,7 @@ fun Application.module() {
 
     DatabaseFactory.init(databaseConfig)
     install(DoubleReceive)
+    configureSecurity()
     configureLogging()
     configureDI()
     configureValidation()

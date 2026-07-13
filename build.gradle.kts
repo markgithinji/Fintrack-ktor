@@ -41,6 +41,8 @@ dependencies {
     implementation(libs.ktor.server.metrics.micrometer)
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.ktor.server.rate.limit)
+    implementation(libs.ktor.server.defaultheaders)
+    implementation(libs.ktor.server.hsts)
     implementation(libs.ktor.server.doublereceive)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.jedis)
