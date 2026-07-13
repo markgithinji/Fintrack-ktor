@@ -82,7 +82,6 @@ class StatisticsServiceImpl(
         }
 
         val finalParsedPeriod = targetPeriodString?.let { TimePeriod.parse(it) }
-        val weekMode = finalParsedPeriod is TimePeriod.Week
         val yearMode = finalParsedPeriod is TimePeriod.Year
         val monthMode = finalParsedPeriod is TimePeriod.Month
 
@@ -94,230 +93,48 @@ class StatisticsServiceImpl(
             "yearMode" to yearMode
         ).debug { "Retrieved transactions for statistics highlights" }
 
-        var ytdIncomeChange: Double? = null
-        var ytdExpenseChange: Double? = null
-        var incomeProjectedTotal: BigDecimal? = null
-        var expenseProjectedTotal: BigDecimal? = null
-        var prevIncomeByCat: Map<String, BigDecimal>? = null
-        var prevExpenseByCat: Map<String, BigDecimal>? = null
-
-        if (yearMode) {
-            val requestedYear = finalParsedPeriod.year
-            val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
-            val isCurrentYear = requestedYear == now.year
-            val lastYear = requestedYear - 1
-
-            val (currentStart, currentEnd) = if (isCurrentYear) {
-                LocalDate(requestedYear, 1, 1) to now.date
-            } else {
-                LocalDate(requestedYear, 1, 1) to LocalDate(requestedYear, 12, 31)
-            }
-
-            val (prevStart, prevEnd) = if (isCurrentYear) {
-                val month = now.monthNumber
-                val day = now.dayOfMonth
-                val lastYearDay = if (month == 2 && day == 29) 28 else day
-                LocalDate(lastYear, 1, 1) to LocalDate(lastYear, month, lastYearDay)
-            } else {
-                LocalDate(lastYear, 1, 1) to LocalDate(lastYear, 12, 31)
-            }
-
-            val (currentIncomeByCat, currentExpenseByCat, prevIncomeByCatAsync, prevExpenseByCatAsync) = coroutineScope {
-                val currentInc = async { statisticsRepository.getCategoryTotals(userId, currentStart, currentEnd, accountId, true) }
-                val currentExp = async { statisticsRepository.getCategoryTotals(userId, currentStart, currentEnd, accountId, false) }
-                val prevInc = async { statisticsRepository.getCategoryTotals(userId, prevStart, prevEnd, accountId, true) }
-                val prevExp = async { statisticsRepository.getCategoryTotals(userId, prevStart, prevEnd, accountId, false) }
-                
-                listOf(currentInc.await(), currentExp.await(), prevInc.await(), prevExp.await())
-            }
-
-            prevIncomeByCat = prevIncomeByCatAsync
-            prevExpenseByCat = prevExpenseByCatAsync
-
-            val currentIncomeTotal = currentIncomeByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
-            val currentExpenseTotal = currentExpenseByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
-            val prevIncomeTotal = prevIncomeByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
-            val prevExpenseTotal = prevExpenseByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
-
-            ytdIncomeChange = calculateChange(currentIncomeTotal, prevIncomeTotal)
-            ytdExpenseChange = calculateChange(currentExpenseTotal, prevExpenseTotal)
-
-            if (isCurrentYear) {
-                val monthNumber = now.monthNumber.coerceAtLeast(1)
-                incomeProjectedTotal = currentIncomeTotal.multiply(BigDecimal.valueOf(12))
-                    .divide(BigDecimal.valueOf(monthNumber.toLong()), 2, RoundingMode.HALF_UP)
-                expenseProjectedTotal = currentExpenseTotal.multiply(BigDecimal.valueOf(12))
-                    .divide(BigDecimal.valueOf(monthNumber.toLong()), 2, RoundingMode.HALF_UP)
-            }
-        }
+        val yearlyMetrics = if (yearMode) {
+            calculateYearlyMetrics(userId, accountId, finalParsedPeriod.year)
+        } else null
 
         val incomeTxns = txnsForHighlights.filter { it.isIncome }
         val expenseTxns = txnsForHighlights.filter { !it.isIncome }
 
-        fun highestMonth(txns: List<Transaction>) =
-            txns.groupBy {
-                TimePeriod.fromInstant(it.dateTime, "month").toString()
-            }
-                .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
-                .maxByOrNull { it.value }
-                ?.let { HighlightDto(label = it.key, value = it.key, amount = it.value) }
-
-        fun highestCategory(txns: List<Transaction>, prevTotals: Map<String, BigDecimal>?) =
-            txns.groupBy { it.category.trim().lowercase() }
-                .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
-                .maxByOrNull { it.value }
-                ?.let { entry ->
-                    val displayName =
-                        txns.firstOrNull { it.category.trim().lowercase() == entry.key }?.category
-                            ?: entry.key
-                    
-                    val volatility = prevTotals?.let { totals ->
-                        val prevAmount = totals.entries.find { it.key.trim().lowercase() == entry.key }?.value ?: BigDecimal.ZERO
-                        calculateChange(entry.value, prevAmount)
-                    }
-
-                    HighlightDto(
-                        label = displayName,
-                        value = displayName,
-                        amount = entry.value,
-                        volatilityPercentage = volatility
-                    )
-                }
-
-        fun highestDay(txns: List<Transaction>) =
-            txns.groupBy { it.dateTime.toLocalDateTime(TimeZone.UTC).date }
-                .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
-                .maxByOrNull { it.value }
-                ?.let {
-                    HighlightDto(
-                        label = it.key.toString(),
-                        value = it.key.toString(),
-                        amount = it.value
-                    )
-                }
-
-        fun averagePerDay(txns: List<Transaction>): Double {
-            val days = txns.groupBy { it.dateTime.toLocalDateTime(TimeZone.UTC).date }.size.coerceAtLeast(1)
-            val total = txns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
-            return total.divide(BigDecimal.valueOf(days.toLong()), 4, RoundingMode.HALF_UP).toDouble()
-        }
-
         val totalIncome = incomeTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
         val totalExpense = expenseTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
 
-        val savingsRate = if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
+        val savingsRate = if (totalIncome > BigDecimal.ZERO) {
             (totalIncome - totalExpense).divide(totalIncome, 4, RoundingMode.HALF_UP).toDouble() * 100
         } else null
 
         val essentialSpend = expenseTxns
             .filter { txn -> essentialCategories.any { it.equals(txn.category.trim(), ignoreCase = true) } }
             .fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
-        val essentialSpendRatio = if (totalExpense.compareTo(BigDecimal.ZERO) > 0) {
+        val essentialSpendRatio = if (totalExpense > BigDecimal.ZERO) {
             essentialSpend.divide(totalExpense, 4, RoundingMode.HALF_UP).toDouble() * 100
         } else null
 
-        var projectedExceedMonth: String? = null
-        if (yearMode && expenseProjectedTotal != null) {
-            val budgets = budgetRepository.getAllByUser(userId, accountId, limit = Int.MAX_VALUE, offset = 0).filter { it.isExpense }
-            val totalMonthlyLimit = budgets.fold(BigDecimal.ZERO) { acc, b -> acc + b.limit }
-            val yearlyLimit = totalMonthlyLimit.multiply(BigDecimal.valueOf(12))
+        val projectedExceedMonth = if (yearMode && yearlyMetrics?.expenseProjectedTotal != null) {
+            calculateProjectedExceedMonth(userId, accountId, totalExpense, yearlyMetrics.expenseProjectedTotal)
+        } else null
 
-            if (expenseProjectedTotal.compareTo(yearlyLimit) > 0 && yearlyLimit.compareTo(BigDecimal.ZERO) > 0) {
-                val currentMonth = Clock.System.now().toLocalDateTime(TimeZone.UTC).monthNumber
-                val averagePerMonth = totalExpense.divide(BigDecimal.valueOf(currentMonth.toLong()), 4, RoundingMode.HALF_UP)
-
-                for (m in (currentMonth + 1)..12) {
-                    val accumulatedSpend = totalExpense + averagePerMonth.multiply(BigDecimal.valueOf((m - currentMonth).toLong()))
-                    if (accumulatedSpend.compareTo(yearlyLimit) > 0) {
-                        projectedExceedMonth = monthNames.getOrNull(m - 1)
-                        break
-                    }
-                }
-            }
-        }
-
-        val incomeHighlights = HighlightsDto(
-            highestMonth = highestMonth(incomeTxns),
-            highestCategory = highestCategory(incomeTxns, prevIncomeByCat),
-            highestDay = highestDay(incomeTxns),
-            averagePerDay = averagePerDay(incomeTxns),
-            ytdChangePercentage = ytdIncomeChange,
-            projectedTotal = incomeProjectedTotal,
+        val incomeHighlights = assembleHighlights(
+            txns = incomeTxns,
+            prevTotals = yearlyMetrics?.prevIncomeByCat,
+            ytdChange = yearlyMetrics?.ytdIncomeChange,
+            projectedTotal = yearlyMetrics?.incomeProjectedTotal,
             savingsRate = savingsRate
         )
 
-        val correlationInsights = if (monthMode && finalParsedPeriod is TimePeriod.Month) {
-            val hCurrentStart = LocalDate(finalParsedPeriod.year, finalParsedPeriod.month, 1)
-
-            val historicalStart = hCurrentStart.minus(DatePeriod(months = 6))
-            val historicalEnd = hCurrentStart.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
-
-            val hTxns = statisticsRepository.getTransactions(
-                userId, accountId, null,
-                historicalStart.atStartOfDayIn(TimeZone.UTC),
-                historicalEnd.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
-            )
-
-            val monthlyData = hTxns.groupBy {
-                TimePeriod.fromInstant(it.dateTime, "month").toString()
-            }.mapValues { (_, mTxns) ->
-                val inc = mTxns.asSequence().filter { it.isIncome }.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
-                val exp = mTxns.asSequence().filter { !it.isIncome }.groupBy { it.category.trim().lowercase() }
-                    .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
-                Pair(inc, exp)
-            }.toSortedMap()
-
-            val targetCats = setOf("shopping", "entertainment", "dining out")
-            val keys = monthlyData.keys.toList()
-            buildList {
-                for (i in 1 until keys.size) {
-                    val prevMonth = monthlyData[keys[i - 1]]!!
-                    val currMonth = monthlyData[keys[i]]!!
-                    val nextMonth = if (i + 1 < keys.size) monthlyData[keys[i + 1]] else null
-
-                    if (prevMonth.first.compareTo(BigDecimal.ZERO) > 0) {
-                        val incomeIncrease = (currMonth.first - prevMonth.first).divide(prevMonth.first, 4, RoundingMode.HALF_UP).toDouble()
-                        if (incomeIncrease > 0.10) {
-                            targetCats.forEach { cat ->
-                                val prevExp = prevMonth.second[cat] ?: BigDecimal.ZERO
-                                val currExp = currMonth.second[cat] ?: BigDecimal.ZERO
-                                val nextExp = nextMonth?.second?.get(cat) ?: BigDecimal.ZERO
-
-                                if (prevExp.compareTo(BigDecimal.ZERO) > 0 && (currExp - prevExp).divide(prevExp, 4, RoundingMode.HALF_UP).toDouble() > 0.15) {
-                                    val incPct = (incomeIncrease * 100).toInt()
-                                    val expPct = ((currExp - prevExp).divide(prevExp, 4, RoundingMode.HALF_UP).toDouble() * 100).toInt()
-                                    add(
-                                        CorrelationDto(
-                                            source = "Income",
-                                            target = cat.replaceFirstChar { it.uppercase() },
-                                            insight = "When your income increases by $incPct%, your '${cat.replaceFirstChar { it.uppercase() }}' spend tends to increase by $expPct% in the same month."
-                                        )
-                                    )
-                                } else if (currExp.compareTo(BigDecimal.ZERO) > 0 && nextExp.compareTo(BigDecimal.ZERO) > 0 && (nextExp - currExp).divide(currExp, 4, RoundingMode.HALF_UP).toDouble() > 0.15) {
-                                    val incPct = (incomeIncrease * 100).toInt()
-                                    val expPct = ((nextExp - currExp).divide(currExp, 4, RoundingMode.HALF_UP).toDouble() * 100).toInt()
-                                    add(
-                                        CorrelationDto(
-                                            source = "Income",
-                                            target = cat.replaceFirstChar { it.uppercase() },
-                                            insight = "Following a $incPct% income increase, your '${cat.replaceFirstChar { it.uppercase() }}' spend tended to increase by $expPct% the next month."
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        val correlationInsights = if (monthMode) {
+            calculateCorrelations(userId, accountId, finalParsedPeriod)
         } else emptyList()
 
-        val expenseHighlights = HighlightsDto(
-            highestMonth = highestMonth(expenseTxns),
-            highestCategory = highestCategory(expenseTxns, prevExpenseByCat),
-            highestDay = highestDay(expenseTxns),
-            averagePerDay = averagePerDay(expenseTxns),
-            ytdChangePercentage = ytdExpenseChange,
-            projectedTotal = expenseProjectedTotal,
+        val expenseHighlights = assembleHighlights(
+            txns = expenseTxns,
+            prevTotals = yearlyMetrics?.prevExpenseByCat,
+            ytdChange = yearlyMetrics?.ytdExpenseChange,
+            projectedTotal = yearlyMetrics?.expenseProjectedTotal,
             essentialSpendRatio = essentialSpendRatio,
             projectedExceedMonth = projectedExceedMonth,
             correlations = correlationInsights.distinctBy { it.target }.take(3)
@@ -326,13 +143,214 @@ class StatisticsServiceImpl(
         return Result.Success(StatisticsSummaryDto(
             period = targetPeriodString ?: "",
             isCurrent = isCurrent,
-            income = incomeTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount },
-            expense = expenseTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount },
-            balance = incomeTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } - expenseTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount },
+            income = totalIncome,
+            expense = totalExpense,
+            balance = totalIncome - totalExpense,
             incomeHighlights = incomeHighlights,
             expenseHighlights = expenseHighlights,
             totalTransactionCost = txnsForHighlights.fold(BigDecimal.ZERO) { acc, t -> acc + t.transactionCost }
         ))
+    }
+
+    private suspend fun calculateYearlyMetrics(
+        userId: UUID,
+        accountId: UUID?,
+        requestedYear: Int
+    ): YearlyMetrics {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+        val isCurrentYear = requestedYear == now.year
+        val lastYear = requestedYear - 1
+
+        val (currentStart, currentEnd) = if (isCurrentYear) {
+            LocalDate(requestedYear, 1, 1) to now.date
+        } else {
+            LocalDate(requestedYear, 1, 1) to LocalDate(requestedYear, 12, 31)
+        }
+
+        val (prevStart, prevEnd) = if (isCurrentYear) {
+            val month = now.monthNumber
+            val day = now.dayOfMonth
+            val lastYearDay = if (month == 2 && day == 29) 28 else day
+            LocalDate(lastYear, 1, 1) to LocalDate(lastYear, month, lastYearDay)
+        } else {
+            LocalDate(lastYear, 1, 1) to LocalDate(lastYear, 12, 31)
+        }
+
+        val (currentIncByCat, currentExpByCat, prevIncByCat, prevExpByCat) = coroutineScope {
+            val cInc = async { statisticsRepository.getCategoryTotals(userId, currentStart, currentEnd, accountId, true) }
+            val cExp = async { statisticsRepository.getCategoryTotals(userId, currentStart, currentEnd, accountId, false) }
+            val pInc = async { statisticsRepository.getCategoryTotals(userId, prevStart, prevEnd, accountId, true) }
+            val pExp = async { statisticsRepository.getCategoryTotals(userId, prevStart, prevEnd, accountId, false) }
+
+            listOf(cInc.await(), cExp.await(), pInc.await(), pExp.await())
+        }
+
+        val currentIncomeTotal = currentIncByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
+        val currentExpenseTotal = currentExpByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
+        val prevIncomeTotal = prevIncByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
+        val prevExpenseTotal = prevExpByCat.values.fold(BigDecimal.ZERO, BigDecimal::add)
+
+        val incomeProjectedTotal = if (isCurrentYear) {
+            currentIncomeTotal.multiply(BigDecimal.valueOf(12))
+                .divide(BigDecimal.valueOf(now.monthNumber.toLong().coerceAtLeast(1)), 2, RoundingMode.HALF_UP)
+        } else null
+
+        val expenseProjectedTotal = if (isCurrentYear) {
+            currentExpenseTotal.multiply(BigDecimal.valueOf(12))
+                .divide(BigDecimal.valueOf(now.monthNumber.toLong().coerceAtLeast(1)), 2, RoundingMode.HALF_UP)
+        } else null
+
+        return YearlyMetrics(
+            ytdIncomeChange = calculateChange(currentIncomeTotal, prevIncomeTotal),
+            ytdExpenseChange = calculateChange(currentExpenseTotal, prevExpenseTotal),
+            incomeProjectedTotal = incomeProjectedTotal,
+            expenseProjectedTotal = expenseProjectedTotal,
+            prevIncomeByCat = prevIncByCat,
+            prevExpenseByCat = prevExpByCat
+        )
+    }
+
+    private suspend fun calculateProjectedExceedMonth(
+        userId: UUID,
+        accountId: UUID?,
+        totalExpense: BigDecimal,
+        expenseProjectedTotal: BigDecimal
+    ): String? {
+        val budgets = budgetRepository.getAllByUser(userId, accountId, limit = Int.MAX_VALUE, offset = 0).filter { it.isExpense }
+        val totalMonthlyLimit = budgets.fold(BigDecimal.ZERO) { acc, b -> acc + b.limit }
+        val yearlyLimit = totalMonthlyLimit.multiply(BigDecimal.valueOf(12))
+
+        if (expenseProjectedTotal > yearlyLimit && yearlyLimit > BigDecimal.ZERO) {
+            val currentMonth = Clock.System.now().toLocalDateTime(TimeZone.UTC).monthNumber
+            val averagePerMonth = totalExpense.divide(BigDecimal.valueOf(currentMonth.toLong()), 4, RoundingMode.HALF_UP)
+
+            for (m in (currentMonth + 1)..12) {
+                val accumulatedSpend = totalExpense + averagePerMonth.multiply(BigDecimal.valueOf((m - currentMonth).toLong()))
+                if (accumulatedSpend > yearlyLimit) {
+                    return monthNames.getOrNull(m - 1)
+                }
+            }
+        }
+        return null
+    }
+
+    private fun assembleHighlights(
+        txns: List<Transaction>,
+        prevTotals: Map<String, BigDecimal>? = null,
+        ytdChange: Double? = null,
+        projectedTotal: BigDecimal? = null,
+        savingsRate: Double? = null,
+        essentialSpendRatio: Double? = null,
+        projectedExceedMonth: String? = null,
+        correlations: List<CorrelationDto>? = null
+    ): HighlightsDto {
+        return HighlightsDto(
+            highestMonth = calculateHighestMonth(txns),
+            highestCategory = calculateHighestCategory(txns, prevTotals),
+            highestDay = calculateHighestDay(txns),
+            averagePerDay = calculateAveragePerDay(txns),
+            ytdChangePercentage = ytdChange,
+            projectedTotal = projectedTotal,
+            savingsRate = savingsRate,
+            essentialSpendRatio = essentialSpendRatio,
+            projectedExceedMonth = projectedExceedMonth,
+            correlations = correlations
+        )
+    }
+
+    private fun calculateHighestMonth(txns: List<Transaction>): HighlightDto? =
+        txns.groupBy { TimePeriod.fromInstant(it.dateTime, "month").toString() }
+            .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
+            .maxByOrNull { it.value }
+            ?.let { HighlightDto(label = it.key, value = it.key, amount = it.value) }
+
+    private fun calculateHighestCategory(txns: List<Transaction>, prevTotals: Map<String, BigDecimal>?): HighlightDto? =
+        txns.groupBy { it.category.trim().lowercase() }
+            .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
+            .maxByOrNull { it.value }
+            ?.let { entry ->
+                val displayName = txns.firstOrNull { it.category.trim().lowercase() == entry.key }?.category ?: entry.key
+                val volatility = prevTotals?.let { totals ->
+                    val prevAmount = totals.entries.find { it.key.trim().lowercase() == entry.key }?.value ?: BigDecimal.ZERO
+                    calculateChange(entry.value, prevAmount)
+                }
+                HighlightDto(label = displayName, value = displayName, amount = entry.value, volatilityPercentage = volatility)
+            }
+
+    private fun calculateHighestDay(txns: List<Transaction>): HighlightDto? =
+        txns.groupBy { it.dateTime.toLocalDateTime(TimeZone.UTC).date }
+            .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
+            .maxByOrNull { it.value }
+            ?.let { HighlightDto(label = it.key.toString(), value = it.key.toString(), amount = it.value) }
+
+    private fun calculateAveragePerDay(txns: List<Transaction>): Double {
+        val days = txns.groupBy { it.dateTime.toLocalDateTime(TimeZone.UTC).date }.size.coerceAtLeast(1)
+        val total = txns.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
+        return total.divide(BigDecimal.valueOf(days.toLong()), 4, RoundingMode.HALF_UP).toDouble()
+    }
+
+    private suspend fun calculateCorrelations(
+        userId: UUID,
+        accountId: UUID?,
+        period: TimePeriod.Month
+    ): List<CorrelationDto> {
+        val hCurrentStart = LocalDate(period.year, period.month, 1)
+        val historicalStart = hCurrentStart.minus(DatePeriod(months = 6))
+        val historicalEnd = hCurrentStart.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
+
+        val hTxns = statisticsRepository.getTransactions(
+            userId, accountId, null,
+            historicalStart.atStartOfDayIn(TimeZone.UTC),
+            historicalEnd.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
+        )
+
+        val monthlyData = hTxns.groupBy {
+            TimePeriod.fromInstant(it.dateTime, "month").toString()
+        }.mapValues { (_, mTxns) ->
+            val inc = mTxns.asSequence().filter { it.isIncome }.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount }
+            val exp = mTxns.asSequence().filter { !it.isIncome }.groupBy { it.category.trim().lowercase() }
+                .mapValues { it.value.fold(BigDecimal.ZERO) { acc, t -> acc + t.totalAmount } }
+            Pair(inc, exp)
+        }.toSortedMap()
+
+        val targetCats = setOf("shopping", "entertainment", "dining out")
+        val keys = monthlyData.keys.toList()
+        return buildList {
+            for (i in 1 until keys.size) {
+                val prevMonth = monthlyData[keys[i - 1]]!!
+                val currMonth = monthlyData[keys[i]]!!
+                val nextMonth = if (i + 1 < keys.size) monthlyData[keys[i + 1]] else null
+
+                if (prevMonth.first > BigDecimal.ZERO) {
+                    val incomeIncrease = (currMonth.first - prevMonth.first).divide(prevMonth.first, 4, RoundingMode.HALF_UP).toDouble()
+                    if (incomeIncrease > 0.10) {
+                        targetCats.forEach { cat ->
+                            val prevExp = prevMonth.second[cat] ?: BigDecimal.ZERO
+                            val currExp = currMonth.second[cat] ?: BigDecimal.ZERO
+                            val nextExp = nextMonth?.second?.get(cat) ?: BigDecimal.ZERO
+
+                            if (prevExp > BigDecimal.ZERO && (currExp - prevExp).divide(prevExp, 4, RoundingMode.HALF_UP).toDouble() > 0.15) {
+                                val incPct = (incomeIncrease * 100).toInt()
+                                val expPct = ((currExp - prevExp).divide(prevExp, 4, RoundingMode.HALF_UP).toDouble() * 100).toInt()
+                                add(CorrelationDto(
+                                    source = "Income",
+                                    target = cat.replaceFirstChar { it.uppercase() },
+                                    insight = "When your income increases by $incPct%, your '${cat.replaceFirstChar { it.uppercase() }}' spend tends to increase by $expPct% in the same month."
+                                ))
+                            } else if (currExp > BigDecimal.ZERO && nextExp > BigDecimal.ZERO && (nextExp - currExp).divide(currExp, 4, RoundingMode.HALF_UP).toDouble() > 0.15) {
+                                val incPct = (incomeIncrease * 100).toInt()
+                                val expPct = ((nextExp - currExp).divide(currExp, 4, RoundingMode.HALF_UP).toDouble() * 100).toInt()
+                                add(CorrelationDto(
+                                    source = "Income",
+                                    target = cat.replaceFirstChar { it.uppercase() },
+                                    insight = "Following a $incPct% income increase, your '${cat.replaceFirstChar { it.uppercase() }}' spend tended to increase by $expPct% the next month."
+                                ))
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     override suspend fun getDistributionSummary(
@@ -615,16 +633,16 @@ class StatisticsServiceImpl(
                 }
             }
         } else {
-            val topExpenseCategory = thisMonthExpenseTotals.keys.asSequence()
+            val topExpenseCategory = thisMonthExpenseTotals.keys
                 .filter { it != "Transaction Fees" && it != "Transaction Cost" }
                 .maxByOrNull { thisMonthExpenseTotals[it] ?: BigDecimal.ZERO }
-                ?: lastMonthExpenseTotals.keys.asSequence()
+                ?: lastMonthExpenseTotals.keys
                 .filter { it != "Transaction Fees" && it != "Transaction Cost" }
                 .maxByOrNull { lastMonthExpenseTotals[it] ?: BigDecimal.ZERO }
 
-            val topIncomeCategory = thisMonthIncomeTotals.keys.asSequence()
+            val topIncomeCategory = thisMonthIncomeTotals.keys
                 .maxByOrNull { thisMonthIncomeTotals[it] ?: BigDecimal.ZERO }
-                ?: lastMonthIncomeTotals.keys.asSequence()
+                ?: lastMonthIncomeTotals.keys
                 .maxByOrNull { lastMonthIncomeTotals[it] ?: BigDecimal.ZERO }
 
             buildList {
@@ -799,4 +817,13 @@ class StatisticsServiceImpl(
             Result.Failure(AppError.Validation("Invalid date format. Use YYYY-MM-DD"))
         }
     }
+
+    private data class YearlyMetrics(
+        val ytdIncomeChange: Double?,
+        val ytdExpenseChange: Double?,
+        val incomeProjectedTotal: BigDecimal?,
+        val expenseProjectedTotal: BigDecimal?,
+        val prevIncomeByCat: Map<String, BigDecimal>?,
+        val prevExpenseByCat: Map<String, BigDecimal>?
+    )
 }
