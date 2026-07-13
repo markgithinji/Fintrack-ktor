@@ -3,6 +3,7 @@ package feature.summary.domain
 import com.fintrack.core.*
 import com.fintrack.core.domain.AppError
 import com.fintrack.core.domain.Result
+import com.fintrack.core.domain.TimePeriod
 import com.fintrack.feature.accounts.domain.AccountService
 import com.fintrack.feature.user.domain.UserRepository
 import feature.budget.domain.BudgetRepository
@@ -11,7 +12,6 @@ import feature.transaction.domain.model.Transaction
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.*
-import java.time.temporal.WeekFields
 import java.util.UUID
 
 class StatisticsServiceImpl(
@@ -51,62 +51,43 @@ class StatisticsServiceImpl(
 
         val allTransactions = statisticsRepository.getTransactions(userId, accountId, isIncome, start, end)
 
-        var targetPeriod = period
+        var targetPeriodString = period
         var isCurrent = true
 
-        val initialWeekMode = targetPeriod?.contains("W") == true
-        val initialYearMode = targetPeriod != null && !initialWeekMode && targetPeriod.length == 4
-        val initialMonthMode = targetPeriod != null && !initialWeekMode && !initialYearMode
+        val parsedPeriod = targetPeriodString?.let { TimePeriod.parse(it) }
 
-        fun getPeriodString(dateTime: Instant, week: Boolean, month: Boolean, year: Boolean): String {
-            val dt = dateTime.toLocalDateTime(TimeZone.UTC)
-            return when {
-                week -> {
-                    val javaDateTime = dt.toJavaLocalDateTime()
-                    val w = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
-                    "${javaDateTime.year}-W${w.toString().padStart(2, '0')}"
-                }
-                month -> "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
-                year -> dt.year.toString()
-                else -> ""
-            }
-        }
-
-        var txnsForHighlights = if (targetPeriod != null) {
-            allTransactions.filter { getPeriodString(it.dateTime, initialWeekMode, initialMonthMode, initialYearMode) == targetPeriod }
+        var txnsForHighlights = if (parsedPeriod != null) {
+            allTransactions.filter { parsedPeriod.matches(it.dateTime) }
         } else {
             allTransactions
         }
 
-        if (txnsForHighlights.isEmpty() && targetPeriod != null) {
-            val periodType = when {
-                initialWeekMode -> "weeks"
-                initialMonthMode -> "months"
-                initialYearMode -> "years"
-                else -> null
+        if (txnsForHighlights.isEmpty() && targetPeriodString != null && parsedPeriod != null) {
+            val periodType = when (parsedPeriod) {
+                is TimePeriod.Week -> "weeks"
+                is TimePeriod.Month -> "months"
+                is TimePeriod.Year -> "years"
             }
             
-            if (periodType != null) {
-                val availablePeriods = statisticsRepository.getAvailablePeriods(userId, accountId, periodType)
-                val latestPeriod = availablePeriods.firstOrNull()
-                if (latestPeriod != null && latestPeriod != targetPeriod) {
-                    targetPeriod = latestPeriod
-                    isCurrent = false
-                    txnsForHighlights = allTransactions.filter { 
-                        getPeriodString(it.dateTime, initialWeekMode, initialMonthMode, initialYearMode) == targetPeriod 
-                    }
-                }
+            val availablePeriods = statisticsRepository.getAvailablePeriods(userId, accountId, periodType)
+            val latestPeriod = availablePeriods.firstOrNull()
+            if (latestPeriod != null && latestPeriod != targetPeriodString) {
+                targetPeriodString = latestPeriod
+                isCurrent = false
+                val newParsedPeriod = TimePeriod.parse(latestPeriod)
+                txnsForHighlights = allTransactions.filter { newParsedPeriod.matches(it.dateTime) }
             }
         }
 
-        val weekMode = targetPeriod?.contains("W") == true
-        val yearMode = targetPeriod != null && !weekMode && targetPeriod.length == 4
-        val monthMode = targetPeriod != null && !weekMode && !yearMode
+        val finalParsedPeriod = targetPeriodString?.let { TimePeriod.parse(it) }
+        val weekMode = finalParsedPeriod is TimePeriod.Week
+        val yearMode = finalParsedPeriod is TimePeriod.Year
+        val monthMode = finalParsedPeriod is TimePeriod.Month
 
         log.withContext(
             "userId" to userId,
             "transactionCount" to txnsForHighlights.size,
-            "targetPeriod" to targetPeriod,
+            "targetPeriod" to targetPeriodString,
             "isCurrent" to isCurrent,
             "yearMode" to yearMode
         ).debug { "Retrieved transactions for statistics highlights" }
@@ -118,53 +99,51 @@ class StatisticsServiceImpl(
         var prevIncomeByCat: Map<String, Double>? = null
         var prevExpenseByCat: Map<String, Double>? = null
 
-        if (yearMode) {
-            val requestedYear = targetPeriod.toIntOrNull()
-            if (requestedYear != null) {
-                val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
-                val isCurrentYear = requestedYear == now.year
-                val lastYear = requestedYear - 1
+        if (yearMode && finalParsedPeriod is TimePeriod.Year) {
+            val requestedYear = finalParsedPeriod.year
+            val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+            val isCurrentYear = requestedYear == now.year
+            val lastYear = requestedYear - 1
 
-                val (currentStart, currentEnd) = if (isCurrentYear) {
-                    LocalDate(requestedYear, 1, 1) to now.date
-                } else {
-                    LocalDate(requestedYear, 1, 1) to LocalDate(requestedYear, 12, 31)
-                }
+            val (currentStart, currentEnd) = if (isCurrentYear) {
+                LocalDate(requestedYear, 1, 1) to now.date
+            } else {
+                LocalDate(requestedYear, 1, 1) to LocalDate(requestedYear, 12, 31)
+            }
 
-                val (prevStart, prevEnd) = if (isCurrentYear) {
-                    val month = now.monthNumber
-                    val day = now.dayOfMonth
-                    val lastYearDay = if (month == 2 && day == 29) 28 else day
-                    LocalDate(lastYear, 1, 1) to LocalDate(lastYear, month, lastYearDay)
-                } else {
-                    LocalDate(lastYear, 1, 1) to LocalDate(lastYear, 12, 31)
-                }
+            val (prevStart, prevEnd) = if (isCurrentYear) {
+                val month = now.monthNumber
+                val day = now.dayOfMonth
+                val lastYearDay = if (month == 2 && day == 29) 28 else day
+                LocalDate(lastYear, 1, 1) to LocalDate(lastYear, month, lastYearDay)
+            } else {
+                LocalDate(lastYear, 1, 1) to LocalDate(lastYear, 12, 31)
+            }
 
-                val (currentIncomeByCat, currentExpenseByCat, prevIncomeByCatAsync, prevExpenseByCatAsync) = coroutineScope {
-                    val currentInc = async { statisticsRepository.getCategoryTotals(userId, currentStart, currentEnd, accountId, true) }
-                    val currentExp = async { statisticsRepository.getCategoryTotals(userId, currentStart, currentEnd, accountId, false) }
-                    val prevInc = async { statisticsRepository.getCategoryTotals(userId, prevStart, prevEnd, accountId, true) }
-                    val prevExp = async { statisticsRepository.getCategoryTotals(userId, prevStart, prevEnd, accountId, false) }
-                    
-                    listOf(currentInc.await(), currentExp.await(), prevInc.await(), prevExp.await())
-                }
+            val (currentIncomeByCat, currentExpenseByCat, prevIncomeByCatAsync, prevExpenseByCatAsync) = coroutineScope {
+                val currentInc = async { statisticsRepository.getCategoryTotals(userId, currentStart, currentEnd, accountId, true) }
+                val currentExp = async { statisticsRepository.getCategoryTotals(userId, currentStart, currentEnd, accountId, false) }
+                val prevInc = async { statisticsRepository.getCategoryTotals(userId, prevStart, prevEnd, accountId, true) }
+                val prevExp = async { statisticsRepository.getCategoryTotals(userId, prevStart, prevEnd, accountId, false) }
+                
+                listOf(currentInc.await(), currentExp.await(), prevInc.await(), prevExp.await())
+            }
 
-                prevIncomeByCat = prevIncomeByCatAsync
-                prevExpenseByCat = prevExpenseByCatAsync
+            prevIncomeByCat = prevIncomeByCatAsync
+            prevExpenseByCat = prevExpenseByCatAsync
 
-                val currentIncomeTotal = currentIncomeByCat.values.sum()
-                val currentExpenseTotal = currentExpenseByCat.values.sum()
-                val prevIncomeTotal = prevIncomeByCat.values.sum()
-                val prevExpenseTotal = prevExpenseByCat.values.sum()
+            val currentIncomeTotal = currentIncomeByCat.values.sum()
+            val currentExpenseTotal = currentExpenseByCat.values.sum()
+            val prevIncomeTotal = prevIncomeByCat.values.sum()
+            val prevExpenseTotal = prevExpenseByCat.values.sum()
 
-                ytdIncomeChange = calculateChange(currentIncomeTotal, prevIncomeTotal)
-                ytdExpenseChange = calculateChange(currentExpenseTotal, prevExpenseTotal)
+            ytdIncomeChange = calculateChange(currentIncomeTotal, prevIncomeTotal)
+            ytdExpenseChange = calculateChange(currentExpenseTotal, prevExpenseTotal)
 
-                if (isCurrentYear) {
-                    val monthNumber = now.monthNumber.coerceAtLeast(1)
-                    incomeProjectedTotal = (currentIncomeTotal / monthNumber) * 12
-                    expenseProjectedTotal = (currentExpenseTotal / monthNumber) * 12
-                }
+            if (isCurrentYear) {
+                val monthNumber = now.monthNumber.coerceAtLeast(1)
+                incomeProjectedTotal = (currentIncomeTotal / monthNumber) * 12
+                expenseProjectedTotal = (currentExpenseTotal / monthNumber) * 12
             }
         }
 
@@ -173,8 +152,7 @@ class StatisticsServiceImpl(
 
         fun highestMonth(txns: List<Transaction>) =
             txns.groupBy {
-                val dt = it.dateTime.toLocalDateTime(TimeZone.UTC)
-                "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
+                TimePeriod.fromInstant(it.dateTime, "month").toString()
             }
                 .mapValues { it.value.sumOf { t -> t.totalAmount } }
                 .maxByOrNull { it.value }
@@ -261,11 +239,8 @@ class StatisticsServiceImpl(
         )
 
         val correlationInsights = mutableListOf<CorrelationDto>()
-        if (monthMode) {
-            val hParts = targetPeriod.split("-")
-            val hYear = hParts[0].toInt()
-            val hMonth = hParts[1].toInt()
-            val hCurrentStart = LocalDate(hYear, hMonth, 1)
+        if (monthMode && finalParsedPeriod is TimePeriod.Month) {
+            val hCurrentStart = LocalDate(finalParsedPeriod.year, finalParsedPeriod.month, 1)
 
             val historicalStart = hCurrentStart.minus(DatePeriod(months = 6))
             val historicalEnd = hCurrentStart.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
@@ -277,8 +252,7 @@ class StatisticsServiceImpl(
             )
 
             val monthlyData = hTxns.groupBy {
-                val dt = it.dateTime.toLocalDateTime(TimeZone.UTC)
-                "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
+                TimePeriod.fromInstant(it.dateTime, "month").toString()
             }.mapValues { (_, mTxns) ->
                 val inc = mTxns.filter { it.isIncome }.sumOf { it.totalAmount }
                 val exp = mTxns.filter { !it.isIncome }.groupBy { it.category.trim().lowercase() }
@@ -342,7 +316,7 @@ class StatisticsServiceImpl(
         )
 
         return Result.Success(StatisticsSummaryDto(
-            period = targetPeriod ?: "",
+            period = targetPeriodString ?: "",
             isCurrent = isCurrent,
             income = incomeTxns.sumOf { it.totalAmount },
             expense = expenseTxns.sumOf { it.totalAmount },
@@ -361,7 +335,9 @@ class StatisticsServiceImpl(
         start: Instant?,
         end: Instant?
     ): Result<DistributionSummaryDto> = coroutineScope {
-        if (!period.matches(Regex("^(\\d{4}-W\\d{2}|\\d{4}-\\d{2}|\\d{4})$"))) {
+        val parsedPeriod = try {
+            TimePeriod.parse(period)
+        } catch (e: Exception) {
             return@coroutineScope Result.Failure(AppError.Validation("Period must be in format: YYYY-Www, YYYY-MM, or YYYY"))
         }
 
@@ -376,32 +352,11 @@ class StatisticsServiceImpl(
 
         val filtered = statisticsRepository.getTransactions(userId, accountId, isIncome, start, end)
 
-        val weekMode = period.contains("W")
-        val yearMode = !weekMode && period.length == 4
-        val monthMode = !weekMode && !yearMode
+        val txnsInPeriod = filtered.filter { parsedPeriod.matches(it.dateTime) }
 
-        fun getPeriodString(dateTime: Instant): String {
-            val dt = dateTime.toLocalDateTime(TimeZone.UTC)
-            return when {
-                weekMode -> {
-                    val javaDateTime = dt.toJavaLocalDateTime()
-                    val week = javaDateTime.get(WeekFields.ISO.weekOfWeekBasedYear())
-                    "${javaDateTime.year}-W${week.toString().padStart(2, '0')}"
-                }
-                monthMode -> "${dt.year}-${dt.monthNumber.toString().padStart(2, '0')}"
-                yearMode -> dt.year.toString()
-                else -> ""
-            }
-        }
+        val (currentMonthStart, _) = parsedPeriod.toDateRange()
 
-        val txnsInPeriod = filtered.filter { getPeriodString(it.dateTime) == period }
-
-        val parts = period.split("-")
-        val year = if (monthMode || weekMode) parts[0].toInt() else period.toInt()
-        val month = if (monthMode) parts[1].toInt() else 1
-        val currentMonthStart = LocalDate(year, month, 1)
-
-        val historicalCounts = if (monthMode) {
+        val historicalCounts = if (parsedPeriod is TimePeriod.Month) {
             val historicalStart = currentMonthStart.minus(DatePeriod(months = 6))
             val historicalEnd = currentMonthStart.minus(DatePeriod(days = 1))
 
@@ -414,14 +369,13 @@ class StatisticsServiceImpl(
             histTxns.groupBy { it.category.trim().lowercase() }
                 .mapValues { (_, txns) ->
                     val monthsWithData = txns.groupBy {
-                        val dt = it.dateTime.toLocalDateTime(TimeZone.UTC)
-                        "${dt.year}-${dt.monthNumber}"
+                        TimePeriod.fromInstant(it.dateTime, "month").toString()
                     }.size
                     txns.size.toDouble() / monthsWithData.coerceAtLeast(1)
                 }
         } else null
 
-        val previousMonthsData = if (monthMode) {
+        val previousMonthsData = if (parsedPeriod is TimePeriod.Month) {
             val m1Start = currentMonthStart.minus(DatePeriod(months = 1))
             val m1End = currentMonthStart.minus(DatePeriod(days = 1))
             val m2Start = currentMonthStart.minus(DatePeriod(months = 2))
@@ -469,7 +423,7 @@ class StatisticsServiceImpl(
                 val displayName = list.first().category
 
                 val count = list.size
-                val momentum = if (monthMode && previousMonthsData != null) {
+                val momentum = if (parsedPeriod is TimePeriod.Month && previousMonthsData != null) {
                     val prev1 = previousMonthsData.first[key] ?: 0.0
                     val prev2 = previousMonthsData.second[key] ?: 0.0
                     when {
@@ -528,18 +482,15 @@ class StatisticsServiceImpl(
 
     override suspend fun getOverviewSummary(userId: UUID, accountId: UUID?): Result<OverviewSummaryDto> = coroutineScope {
         val now = Clock.System.now().toLocalDateTime(TimeZone.UTC).date
-        val currentMonthCode = "${now.year}-${now.monthNumber.toString().padStart(2, '0')}"
+        val currentPeriod = TimePeriod.Month(now.year, now.monthNumber)
+        val currentMonthCode = currentPeriod.toString()
 
         val availableMonths = statisticsRepository.getAvailablePeriods(userId, accountId, "months")
         val targetMonthCode = availableMonths.firstOrNull() ?: currentMonthCode
         val isCurrent = targetMonthCode == currentMonthCode
 
-        val parts = targetMonthCode.split("-")
-        val year = parts[0].toInt()
-        val month = parts[1].toInt()
-
-        val monthStart = LocalDate(year, month, 1)
-        val monthEnd = monthStart.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
+        val parsedPeriod = TimePeriod.parse(targetMonthCode)
+        val (monthStart, monthEnd) = parsedPeriod.toDateRange()
 
         val trendEnd = if (isCurrent) now else monthEnd
         val weeklyStart = trendEnd.minus(DatePeriod(days = 6))
@@ -589,15 +540,15 @@ class StatisticsServiceImpl(
 
         val availableMonths = statisticsRepository.getAvailablePeriods(userId, accountId, "months")
         val now = Clock.System.now().toLocalDateTime(TimeZone.UTC).date
-        val currentMonthCode = "${now.year}-${now.monthNumber.toString().padStart(2, '0')}"
+        val currentPeriod = TimePeriod.Month(now.year, now.monthNumber)
+        val currentMonthCode = currentPeriod.toString()
 
-        val targetPeriod = period ?: availableMonths.firstOrNull() ?: currentMonthCode
-        val isCurrent = targetPeriod == currentMonthCode
+        val targetPeriodString = period ?: availableMonths.firstOrNull() ?: currentMonthCode
+        val isCurrent = targetPeriodString == currentMonthCode
         val isBackupMonth = period == null && !isCurrent
 
-        val (year, month) = targetPeriod.split("-").map { it.toInt() }
-        val currentMonthStart = LocalDate(year, month, 1)
-        val currentMonthEnd = currentMonthStart.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
+        val parsedPeriod = TimePeriod.parse(targetPeriodString)
+        val (currentMonthStart, currentMonthEnd) = parsedPeriod.toDateRange()
         val previousMonthStart = currentMonthStart.minus(DatePeriod(months = 1))
         val previousMonthEnd = currentMonthStart.minus(DatePeriod(days = 1))
 
@@ -647,7 +598,7 @@ class StatisticsServiceImpl(
                         previousTotal = prev,
                         changePercentage = calculateChange(cur, prev),
                         isIncome = isInc,
-                        period = targetPeriod,
+                        period = targetPeriodString,
                         weeklyCurrentTotal = weekCur,
                         weeklyChangePercentage = calculateChange(weekCur, weekPrev)
                     )
@@ -678,7 +629,7 @@ class StatisticsServiceImpl(
                 previousTotal = prevInc,
                 changePercentage = calculateChange(curInc, prevInc),
                 isIncome = true,
-                period = targetPeriod,
+                period = targetPeriodString,
                 weeklyCurrentTotal = weekCurInc,
                 weeklyChangePercentage = calculateChange(weekCurInc, weekPrevInc)
             ))
@@ -695,7 +646,7 @@ class StatisticsServiceImpl(
                     previousTotal = prevExp,
                     changePercentage = calculateChange(curExp, prevExp),
                     isIncome = false,
-                    period = targetPeriod,
+                    period = targetPeriodString,
                     weeklyCurrentTotal = weekCurExp,
                     weeklyChangePercentage = calculateChange(weekCurExp, weekPrevExp)
                 ))
@@ -710,7 +661,7 @@ class StatisticsServiceImpl(
         }
 
         Result.Success(CategoryComparisonSummaryDto(
-            period = targetPeriod,
+            period = targetPeriodString,
             isCurrent = isCurrent,
             data = comparisons
         ))
