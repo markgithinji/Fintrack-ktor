@@ -7,6 +7,8 @@ import com.fintrack.core.data.DatabaseFactory
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.doublereceive.*
+import org.koin.ktor.ext.inject
+import redis.clients.jedis.JedisPool
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -21,6 +23,9 @@ fun Application.module() {
     configureSecurity()
     configureLogging()
     configureDI()
+    
+    val jedisPool by inject<JedisPool>()
+
     configureValidation()
     configureAuth()
     configureSerialization()
@@ -29,4 +34,9 @@ fun Application.module() {
     configureMetrics()
     configureHealthChecks()
     configureRouting()
+
+    monitor.subscribe(ApplicationStopped) {
+        DatabaseFactory.close()
+        jedisPool.close()
+    }
 }

@@ -145,4 +145,15 @@ object DatabaseFactory {
             emptyMap()
         }
     }
+
+    fun close() {
+        synchronized(initLock) {
+            if (!initialized) return
+            log.info("Closing Database connection pool...")
+            dataSource?.close()
+            dataSource = null
+            initialized = false
+            log.info("Database connection pool closed successfully")
+        }
+    }
 }
