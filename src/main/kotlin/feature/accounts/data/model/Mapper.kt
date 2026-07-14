@@ -27,5 +27,7 @@ fun UpdateAccountRequest.toDomain(userId: UUID, accountId: UUID): Account = Acco
     id = accountId,
     userId = userId,
     name = name,
-    type = type
+    type = type,
+    balance = balance ?: BigDecimal.ZERO,
+    lastSyncedAt = lastSyncedAt
 )

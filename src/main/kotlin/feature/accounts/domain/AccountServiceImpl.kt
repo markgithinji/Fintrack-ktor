@@ -31,21 +31,39 @@ class AccountServiceImpl(
         log.withContext("userId" to userId, "accountId" to accountId)
             .debug { "Calculating account aggregates" }
 
-        val summary = accountsRepository.getTransactionSummary(userId, accountId)
-        val incomeSum = summary.income
-        val expenseSum = summary.expense
+        val (incomeSum, expenseSum, balance) = if (accountId != null) {
+            val account = accountsRepository.getAccountById(accountId)
+                ?: return Result.Failure(AppError.NotFound("Account not found"))
 
-        // Use the latest balance from transactions if available (e.g., for M-Pesa or Equity),
-        // otherwise fall back to the calculated balance.
-        val latestBalance = accountsRepository.getLatestBalance(userId, accountId)
-        val balance = latestBalance ?: (incomeSum - expenseSum)
+            val summary = accountsRepository.getTransactionSummary(userId, accountId)
+            val latestBalance = accountsRepository.getLatestBalance(userId, accountId)
+
+            // Prioritize: 1. Latest transaction balance, 2. Stored account balance, 3. Calculated balance
+            val derivedBalance = latestBalance ?: if (account.balance != BigDecimal.ZERO || account.lastSyncedAt != null) {
+                account.balance
+            } else if (summary.income != BigDecimal.ZERO || summary.expense != BigDecimal.ZERO) {
+                summary.income - summary.expense
+            } else {
+                account.balance
+            }
+            Triple(summary.income, summary.expense, derivedBalance)
+        } else {
+            // Aggregate across all accounts
+            val accountsResult = getAllAccounts(userId)
+            if (accountsResult is Result.Failure) return Result.Failure(accountsResult.error)
+            val accounts = (accountsResult as Result.Success).value
+
+            val totalIncome = accounts.fold(BigDecimal.ZERO) { acc, a -> acc + (a.income ?: BigDecimal.ZERO) }
+            val totalExpense = accounts.fold(BigDecimal.ZERO) { acc, a -> acc + (a.expense ?: BigDecimal.ZERO) }
+            val totalBalance = accounts.fold(BigDecimal.ZERO) { acc, a -> acc + (a.balance ?: BigDecimal.ZERO) }
+            Triple(totalIncome, totalExpense, totalBalance)
+        }
 
         log.withContext(
             "userId" to userId,
             "accountId" to accountId,
             "income" to incomeSum,
             "expense" to expenseSum,
-            "latestBalance" to latestBalance,
             "finalBalance" to balance
         ).debug { "Account aggregates calculated" }
 
@@ -63,10 +81,15 @@ class AccountServiceImpl(
         val result = accounts.map { account ->
             val summary = summaries[account.id] ?: TransactionSummary(BigDecimal.ZERO, BigDecimal.ZERO)
 
-            // Prioritize the balance from the most recent transaction (Source of Truth)
-            // Fall back to calculated income - expense only if no transaction balance exists
-            val latestBalance = accountsRepository.getLatestBalance(userId, account.id)
-            val derivedBalance = latestBalance ?: (summary.income - summary.expense)
+            // Prioritize: 1. Latest transaction balance, 2. Stored account balance, 3. Calculated balance
+            val latestTransactionBalance = accountsRepository.getLatestBalance(userId, account.id)
+            val derivedBalance = latestTransactionBalance ?: if (account.balance != BigDecimal.ZERO || account.lastSyncedAt != null) {
+                account.balance
+            } else if (summary.income != BigDecimal.ZERO || summary.expense != BigDecimal.ZERO) {
+                summary.income - summary.expense
+            } else {
+                account.balance
+            }
 
             account.toDto(
                 id = account.id.toString(),
@@ -162,7 +185,9 @@ class AccountServiceImpl(
 
         val account = existingAccount.copy(
             name = request.name,
-            type = request.type
+            type = request.type,
+            balance = request.balance ?: existingAccount.balance,
+            lastSyncedAt = request.lastSyncedAt ?: existingAccount.lastSyncedAt
         )
         val updatedAccount = accountsRepository.updateAccount(account)
         
