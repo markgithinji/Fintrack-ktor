@@ -135,7 +135,11 @@ class TransactionServiceImpl(
     }
 
     override suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): Result<DeleteResponse> {
+        log.withContext("userId" to userId, "accountIds" to accountIds)
+            .info { "Clearing transactions and resetting balances" }
+
         val cleared = transactionRepository.clearAll(userId, accountIds)
+        accountsRepository.resetBalances(userId, accountIds)
 
         val message = if (!accountIds.isNullOrEmpty())
             "All transactions cleared for accounts ${accountIds.joinToString()}"

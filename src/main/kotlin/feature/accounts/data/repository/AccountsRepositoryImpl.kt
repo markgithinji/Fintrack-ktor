@@ -14,8 +14,10 @@ import org.jetbrains.exposed.sql.Case
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.deleteWhere
@@ -166,6 +168,21 @@ class AccountsRepositoryImpl : AccountsRepository {
         dbQuery {
             AccountsTable.update({ AccountsTable.id eq EntityID(accountId, AccountsTable) }) {
                 it[AccountsTable.balance] = balance
+            }
+        }
+
+    override suspend fun resetBalances(userId: UUID, accountIds: List<UUID>?): Unit =
+        dbQuery {
+            AccountsTable.update({
+                val condition = AccountsTable.userId eq EntityID(userId, UsersTable)
+                if (!accountIds.isNullOrEmpty()) {
+                    condition and (AccountsTable.id inList accountIds)
+                } else {
+                    condition
+                }
+            }) {
+                it[AccountsTable.balance] = java.math.BigDecimal.ZERO
+                it[AccountsTable.lastSyncedAt] = null
             }
         }
 

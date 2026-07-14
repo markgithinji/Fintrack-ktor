@@ -16,4 +16,5 @@ interface AccountsRepository {
     suspend fun getTransactionSummaries(userId: UUID): Map<UUID?, TransactionSummary>
     suspend fun getLatestBalance(userId: UUID, accountId: UUID?): BigDecimal?
     suspend fun updateBalance(accountId: UUID, balance: BigDecimal)
+    suspend fun resetBalances(userId: UUID, accountIds: List<UUID>?)
 }
