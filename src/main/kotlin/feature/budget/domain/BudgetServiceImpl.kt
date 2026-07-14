@@ -12,10 +12,10 @@ import com.fintrack.feature.budget.data.toDto
 import feature.budget.domain.model.BudgetStatus
 import feature.budget.domain.model.BudgetWithStatus
 import com.fintrack.feature.transaction.data.model.DeleteResponse
+import com.fintrack.core.util.*
 import feature.budget.domain.model.Budget
 import kotlinx.datetime.*
 import java.math.BigDecimal
-import java.math.RoundingMode
 import java.util.UUID
 
 class BudgetServiceImpl(
@@ -190,9 +190,7 @@ class BudgetServiceImpl(
 
     private fun assembleBudgetStatus(budget: Budget, spent: BigDecimal): BudgetStatus {
         val remaining = budget.limit - spent
-        val percentageUsed = if (budget.limit.compareTo(BigDecimal.ZERO) > 0) {
-            spent.divide(budget.limit, 4, RoundingMode.HALF_UP).toDouble() * 100
-        } else 0.0
+        val percentageUsed = spent.calculateRatio(budget.limit) ?: 0.0
         val isExceeded = spent.compareTo(budget.limit) > 0
 
         return BudgetStatus(

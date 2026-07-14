@@ -3,8 +3,7 @@ package feature.summary.data.repository
 import com.fintrack.feature.user.UsersTable
 import com.fintrack.core.data.dbQuery
 import com.fintrack.feature.accounts.data.table.AccountsTable
-import feature.summary.domain.StatisticsRepository
-import feature.summary.domain.TransactionCounts
+import feature.summary.domain.*
 import feature.transaction.data.table.TransactionsTable
 import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.*
@@ -42,6 +41,137 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
             query.map { it.toTransaction() }
         }
+
+    override suspend fun getDailyTotals(
+        userId: UUID,
+        start: LocalDate,
+        end: LocalDate,
+        accountId: UUID?
+    ): Map<LocalDate, DailyTotal> = dbQuery {
+        val startInstant = start.atStartOfDayIn(TimeZone.UTC)
+        val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
+
+        val netAmount = Case()
+            .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+            .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
+
+        var query = TransactionsTable
+            .select(TransactionsTable.dateTime, TransactionsTable.isIncome, netAmount)
+            .where {
+                (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
+                        (TransactionsTable.dateTime greaterEq startInstant) and
+                        (TransactionsTable.dateTime lessEq endInstant)
+            }
+
+        if (accountId != null) {
+            query = query.andWhere {
+                TransactionsTable.accountId eq EntityID(accountId, AccountsTable)
+            }
+        }
+
+        query.map {
+            val date = it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).date
+            val isIncome = it[TransactionsTable.isIncome]
+            val amount = it[netAmount] ?: java.math.BigDecimal.ZERO
+            Triple(date, isIncome, amount)
+        }
+            .groupBy { it.first }
+            .mapValues { (_, values) ->
+                val income = values.filter { it.second }.fold(java.math.BigDecimal.ZERO) { acc, t -> acc + t.third }
+                val expense = values.filter { !it.second }.fold(java.math.BigDecimal.ZERO) { acc, t -> acc + t.third }
+                DailyTotal(income, expense)
+            }
+    }
+
+    override suspend fun getMonthlyCategoryStats(
+        userId: UUID,
+        start: LocalDate,
+        end: LocalDate,
+        accountId: UUID?
+    ): Map<String, Map<String, CategoryStats>> = dbQuery {
+        val startInstant = start.atStartOfDayIn(TimeZone.UTC)
+        val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
+
+        val netAmount = Case()
+            .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+            .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
+
+        var query = TransactionsTable
+            .select(TransactionsTable.dateTime, TransactionsTable.category, TransactionsTable.isIncome, netAmount)
+            .where {
+                (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
+                        (TransactionsTable.dateTime greaterEq startInstant) and
+                        (TransactionsTable.dateTime lessEq endInstant)
+            }
+
+        if (accountId != null) {
+            query = query.andWhere {
+                TransactionsTable.accountId eq EntityID(accountId, AccountsTable)
+            }
+        }
+
+        query.map {
+            val date = it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC)
+            val period = "%04d-%02d".format(date.year, date.monthNumber)
+            val isIncome = it[TransactionsTable.isIncome]
+            val category = if (isIncome) "__INCOME__" else it[TransactionsTable.category].trim().lowercase()
+            val amount = it[netAmount] ?: java.math.BigDecimal.ZERO
+            Triple(period, category, amount)
+        }
+            .groupBy { it.first }
+            .mapValues { (_, items) ->
+                items.groupBy { it.second }
+                    .mapValues { (_, groupItems) ->
+                        CategoryStats(
+                            totalAmount = groupItems.fold(java.math.BigDecimal.ZERO) { acc, t -> acc + t.third },
+                            count = groupItems.size
+                        )
+                    }
+            }
+    }
+
+    override suspend fun getTopDescriptions(
+        userId: UUID,
+        start: LocalDate,
+        end: LocalDate,
+        accountId: UUID?,
+        isIncome: Boolean?,
+        limit: Int
+    ): Map<String, List<DescriptionTotal>> = dbQuery {
+        val startInstant = start.atStartOfDayIn(TimeZone.UTC)
+        val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
+
+        val netAmount = Case()
+            .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+            .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
+
+        val totalSum = netAmount.sum()
+
+        var query = TransactionsTable
+            .select(TransactionsTable.category, TransactionsTable.description, totalSum)
+            .where {
+                (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
+                        (TransactionsTable.dateTime greaterEq startInstant) and
+                        (TransactionsTable.dateTime lessEq endInstant) and
+                        (TransactionsTable.description.isNotNull())
+            }
+
+        if (accountId != null) query =
+            query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
+        if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
+
+        query.groupBy(TransactionsTable.category, TransactionsTable.description)
+            .map {
+                val cat = it[TransactionsTable.category]
+                val desc = it[TransactionsTable.description]!!
+                val sum = it[totalSum] ?: java.math.BigDecimal.ZERO
+                cat to DescriptionTotal(desc, sum)
+            }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, totals) ->
+                totals.sortedByDescending { it.totalAmount }.take(limit * 2)
+            }
+    }
 
     override suspend fun getAvailablePeriods(
         userId: UUID,

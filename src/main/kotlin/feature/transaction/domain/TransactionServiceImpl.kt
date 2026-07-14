@@ -12,12 +12,12 @@ import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.RecurringBillDto
 import feature.transaction.data.model.TransactionDto
 import core.util.IdGenerator
+import com.fintrack.core.util.*
 import feature.transaction.data.model.toDomain
 import feature.transaction.data.model.toDto
 import kotlinx.datetime.*
 import org.jetbrains.exposed.sql.SortOrder
 import java.math.BigDecimal
-import java.math.RoundingMode
 import java.util.UUID
 import kotlin.math.abs
 
@@ -233,7 +233,7 @@ class TransactionServiceImpl(
                 if (isRegular) {
                     val lastTxn = sortedTxns.last()
                     val totalAmount = sortedTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.amount }
-                    val avgAmount = totalAmount.divide(BigDecimal.valueOf(sortedTxns.size.toLong()), 2, RoundingMode.HALF_UP)
+                    val avgAmount = totalAmount.calculateAverage(sortedTxns.size)
                     
                     val name = lastTxn.description?.split("(Ref:")?.get(0)?.trim() ?: lastTxn.category
                     val nextDueDate = lastTxn.dateTime.toLocalDateTime(TimeZone.UTC).date.plus(30, DateTimeUnit.DAY)

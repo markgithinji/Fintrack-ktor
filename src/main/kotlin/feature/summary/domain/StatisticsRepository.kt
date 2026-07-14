@@ -37,6 +37,29 @@ interface StatisticsRepository {
         isIncome: Boolean? = null
     ): Map<String, BigDecimal>
 
+    suspend fun getDailyTotals(
+        userId: UUID,
+        start: LocalDate,
+        end: LocalDate,
+        accountId: UUID?
+    ): Map<LocalDate, DailyTotal>
+
+    suspend fun getMonthlyCategoryStats(
+        userId: UUID,
+        start: LocalDate,
+        end: LocalDate,
+        accountId: UUID?
+    ): Map<String, Map<String, CategoryStats>>
+
+    suspend fun getTopDescriptions(
+        userId: UUID,
+        start: LocalDate,
+        end: LocalDate,
+        accountId: UUID?,
+        isIncome: Boolean?,
+        limit: Int = 5
+    ): Map<String, List<DescriptionTotal>>
+
     suspend fun getTransactionCounts(
         userId: UUID,
         accountId: UUID?,
@@ -53,4 +76,19 @@ data class TransactionCounts(
     val expenseCount: Int,
     val totalCount: Int,
     val totalTransactionCost: BigDecimal = BigDecimal.ZERO
+)
+
+data class DailyTotal(
+    val income: BigDecimal,
+    val expense: BigDecimal
+)
+
+data class CategoryStats(
+    val totalAmount: BigDecimal,
+    val count: Int
+)
+
+data class DescriptionTotal(
+    val description: String,
+    val totalAmount: BigDecimal
 )
