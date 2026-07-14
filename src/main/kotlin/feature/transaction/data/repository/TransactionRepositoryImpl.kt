@@ -188,7 +188,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
         category = this[TransactionsTable.category],
-        categoryId = this[TransactionsTable.categoryId].value,
+        categoryId = this[TransactionsTable.categoryId]?.value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
         accountId = this[TransactionsTable.accountId].value,

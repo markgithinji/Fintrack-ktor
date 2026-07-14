@@ -12,7 +12,7 @@ data class Transaction(
     val amount: BigDecimal,
     val transactionCost: BigDecimal,
     val category: String,
-    val categoryId: UUID,
+    val categoryId: UUID?,
     val dateTime: Instant,
     val description: String?,
     val accountId: UUID,

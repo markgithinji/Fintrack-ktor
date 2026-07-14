@@ -12,7 +12,7 @@ data class CreateTransactionRequest(
     @Contextual val amount: BigDecimal,
     @Contextual val transactionCost: BigDecimal = BigDecimal.ZERO,
     val category: String,
-    val categoryId: String = "",
+    val categoryId: String? = null,
     val dateTime: Instant,
     val description: String,
     val externalId: String? = null,

@@ -244,7 +244,7 @@ class TransactionServiceImpl(
                             name = name,
                             amount = avgAmount,
                             category = lastTxn.category,
-                            categoryId = lastTxn.categoryId.toString(),
+                            categoryId = lastTxn.categoryId?.toString(),
                             frequency = "Monthly",
                             nextDueDate = nextDueDate,
                             isActive = true

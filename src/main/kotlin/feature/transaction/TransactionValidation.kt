@@ -107,10 +107,8 @@ private fun validateTransactionFields(
         violations.add("${p}Category name cannot be blank")
     }
 
-    // Category ID validation (Make it optional for backward compatibility if needed, but here we still check if provided)
-    if (categoryId != null && categoryId.isBlank()) {
-        violations.add("${p}Category ID cannot be blank")
-    }
+    // Category ID is optional for backward compatibility
+    // and handled in the mapper (defaults to UUID(0,0) if null or blank)
 
     // Description validation
     if (description.length > 255) {

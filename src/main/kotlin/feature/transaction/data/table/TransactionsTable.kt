@@ -17,7 +17,7 @@ object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
     val amount = decimal(TransactionsColumns.AMOUNT, precision = 19, scale = 4)
     val transactionCost = decimal(TransactionsColumns.TRANSACTION_COST, precision = 19, scale = 4).default(java.math.BigDecimal.ZERO)
     val category = varchar(TransactionsColumns.CATEGORY, 100)
-    val categoryId = reference(TransactionsColumns.CATEGORY_ID, CategoriesTable, onDelete = ReferenceOption.CASCADE).index()
+    val categoryId = reference(TransactionsColumns.CATEGORY_ID, CategoriesTable, onDelete = ReferenceOption.CASCADE).index().nullable()
     val dateTime = timestamp(TransactionsColumns.DATE_TIME).index()
     val description = varchar(TransactionsColumns.DESCRIPTION, 255).nullable()
     val externalId = varchar(TransactionsColumns.EXTERNAL_ID, 100).nullable()

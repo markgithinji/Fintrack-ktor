@@ -187,6 +187,8 @@ class BudgetRepositoryImpl : BudgetRepository {
         start: Instant,
         end: Instant
     ): java.math.BigDecimal = dbQuery {
+        if (categoryIds.isEmpty()) return@dbQuery java.math.BigDecimal.ZERO
+        
         val amountSum = TransactionsTable.amount.sum()
         TransactionsTable
             .select(amountSum)
@@ -208,6 +210,8 @@ class BudgetRepositoryImpl : BudgetRepository {
         val maxEnd = budgets.maxOf { it.endDate }.atEndOfDay(KTimeZone.UTC)
         val allCategoryIds = budgets.flatMap { it.categoryIds }.distinct()
 
+        if (allCategoryIds.isEmpty()) return@dbQuery budgets.associate { (it.id ?: IdGenerator.nextId()) to java.math.BigDecimal.ZERO }
+
         val transactions = TransactionsTable
             .selectAll()
             .where {
@@ -218,7 +222,7 @@ class BudgetRepositoryImpl : BudgetRepository {
             .map { 
                 TransactionSummary(
                     accountId = it[TransactionsTable.accountId].value,
-                    categoryId = it[TransactionsTable.categoryId].value,
+                    categoryId = it[TransactionsTable.categoryId]?.value,
                     isIncome = it[TransactionsTable.isIncome],
                     amount = it[TransactionsTable.amount],
                     dateTime = it[TransactionsTable.dateTime]
@@ -240,7 +244,7 @@ class BudgetRepositoryImpl : BudgetRepository {
 
     private data class TransactionSummary(
         val accountId: UUID,
-        val categoryId: UUID,
+        val categoryId: UUID?,
         val isIncome: Boolean,
         val amount: java.math.BigDecimal,
         val dateTime: Instant

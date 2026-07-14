@@ -12,7 +12,7 @@ data class UpdateTransactionRequest(
     @Contextual val amount: BigDecimal,
     @Contextual val transactionCost: BigDecimal? = null,
     val category: String,
-    val categoryId: String = "",
+    val categoryId: String? = null,
     val dateTime: Instant,
     val description: String,
     val externalId: String? = null,
