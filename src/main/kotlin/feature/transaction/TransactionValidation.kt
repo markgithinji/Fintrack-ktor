@@ -14,7 +14,6 @@ fun RequestValidationConfig.configureTransactionValidation() {
     validate<CreateTransactionRequest> { request ->
         validateTransactionFields(
             amount = request.amount,
-            category = request.category,
             categoryId = request.categoryId,
             description = request.description,
             dateTime = request.dateTime,
@@ -31,7 +30,6 @@ fun RequestValidationConfig.configureTransactionValidation() {
         
         val fieldResult = validateTransactionFields(
             amount = request.amount,
-            category = request.category,
             categoryId = request.categoryId,
             description = request.description,
             dateTime = request.dateTime,
@@ -62,7 +60,6 @@ private fun validateList(requests: List<CreateTransactionRequest>): ValidationRe
     val allViolations = requests.flatMapIndexed { index, req ->
         val result = validateTransactionFields(
             amount = req.amount,
-            category = req.category,
             categoryId = req.categoryId,
             description = req.description,
             dateTime = req.dateTime,
@@ -81,8 +78,7 @@ private fun validateList(requests: List<CreateTransactionRequest>): ValidationRe
 
 private fun validateTransactionFields(
     amount: BigDecimal,
-    category: String,
-    categoryId: String?,
+    categoryId: String,
     description: String,
     dateTime: Instant,
     transactionCost: BigDecimal?,
@@ -102,13 +98,10 @@ private fun validateTransactionFields(
         violations.add("${p}Transaction cost cannot be negative")
     }
 
-    // Category validation
-    if (category.isBlank()) {
-        violations.add("${p}Category name cannot be blank")
+    // Category ID validation
+    if (categoryId.isBlank()) {
+        violations.add("${p}Category ID cannot be blank")
     }
-
-    // Category ID is optional for backward compatibility
-    // and handled in the mapper (defaults to UUID(0,0) if null or blank)
 
     // Description validation
     if (description.length > 255) {

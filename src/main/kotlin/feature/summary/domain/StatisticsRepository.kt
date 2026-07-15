@@ -84,8 +84,11 @@ data class DailyTotal(
 )
 
 data class CategoryStats(
+    val categoryId: UUID? = null,
+    val name: String = "",
     val totalAmount: BigDecimal,
-    val count: Int
+    val count: Int,
+    val isIncome: Boolean = false
 )
 
 data class DescriptionTotal(

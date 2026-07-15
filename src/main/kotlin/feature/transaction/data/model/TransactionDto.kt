@@ -11,10 +11,12 @@ data class TransactionDto(
     val isIncome: Boolean,
     @Contextual val amount: BigDecimal,
     @Contextual val transactionCost: BigDecimal,
-    val category: String,
-    val categoryId: String?,
+    val category: String? = null,
+    val categoryId: String,
     val dateTime: String,
     val description: String? = null,
     val externalId: String? = null,
-    @Contextual val balance: BigDecimal? = null
+    @Contextual val balance: BigDecimal? = null,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
 )

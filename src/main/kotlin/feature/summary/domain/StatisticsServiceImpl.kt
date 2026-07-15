@@ -332,8 +332,8 @@ class StatisticsServiceImpl(
         )
 
         val monthlyData = monthlyCategoryStats.mapValues { (_, catMap) ->
-            val inc = catMap["__INCOME__"]?.totalAmount ?: BigDecimal.ZERO
-            val exp = catMap.filterKeys { it != "__INCOME__" }.mapValues { it.value.totalAmount }
+            val inc = catMap.values.filter { it.isIncome }.sumOf { it.totalAmount }
+            val exp = catMap.filterValues { !it.isIncome }.mapValues { it.value.totalAmount }
             Pair(inc, exp)
         }.toSortedMap()
 
@@ -436,16 +436,11 @@ class StatisticsServiceImpl(
         val currentStats = currentMonthStats.values.firstOrNull() ?: emptyMap()
         val currentTopDescriptions = statisticsRepository.getTopDescriptions(userId, currentMonthStart, currentMonthEnd, accountId, isIncome)
 
-        val totalIncomeAmount = currentStats.filter { it.key == "__INCOME__" }.values.sumOf { it.totalAmount }
-        val totalExpenseAmount = currentStats.filter { it.key != "__INCOME__" }.values.sumOf { it.totalAmount }
+        val totalIncomeAmount = currentStats.values.filter { it.isIncome }.sumOf { it.totalAmount }
+        val totalExpenseAmount = currentStats.values.filter { !it.isIncome }.sumOf { it.totalAmount }
 
         fun categorySummary(isInc: Boolean): List<CategorySummaryDto> {
-            val relevantStats = if (isInc) {
-                currentStats.filterKeys { it == "__INCOME__" }
-                    .mapKeys { "Income" }
-            } else {
-                currentStats.filterKeys { it != "__INCOME__" }
-            }
+            val relevantStats = currentStats.filterValues { it.isIncome == isInc }
             
             val totalAmountAll = if (isInc) totalIncomeAmount else totalExpenseAmount
 
@@ -462,7 +457,7 @@ class StatisticsServiceImpl(
             } else null
 
             return sortedCategories.map { (key, stats) ->
-                val displayName = if (key == "__INCOME__") "Income" else key
+                val displayName = stats.name
                 val sum = stats.totalAmount
                 val count = stats.count
 
@@ -476,7 +471,7 @@ class StatisticsServiceImpl(
                     }
                 } else null
 
-                val insights = (currentTopDescriptions[key] ?: emptyList())
+                val insights = (currentTopDescriptions[displayName] ?: emptyList())
                     .filter { MerchantInsightUtils.isDescriptionMeaningful(it.description, displayName) }
                     .map { MerchantInsightUtils.cleanMerchantName(it.description) }
                     .distinct()
@@ -484,6 +479,7 @@ class StatisticsServiceImpl(
 
                 CategorySummaryDto(
                     category = displayName,
+                    categoryId = stats.categoryId?.toString(),
                     total = sum,
                     percentage = sum.calculateRatio(totalAmountAll) ?: 0.0,
                     transactionCount = count,

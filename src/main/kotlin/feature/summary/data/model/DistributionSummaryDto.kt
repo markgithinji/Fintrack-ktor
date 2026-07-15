@@ -16,6 +16,7 @@ data class DistributionSummaryDto(
 @Serializable
 data class CategorySummaryDto(
     val category: String = "",
+    val categoryId: String? = null,
     @Contextual val total: BigDecimal = BigDecimal.ZERO,
     val percentage: Double = 0.0,
     val transactionCount: Int = 0,

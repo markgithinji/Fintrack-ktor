@@ -12,6 +12,7 @@ data class DistributionSummary(
 
 data class CategorySummary(
     val category: String = "",
+    val categoryId: java.util.UUID? = null,
     val total: BigDecimal = BigDecimal.ZERO,
     val percentage: Double = 0.0,
     val transactionCount: Int = 0,

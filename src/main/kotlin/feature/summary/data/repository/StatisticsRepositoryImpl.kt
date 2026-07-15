@@ -100,7 +100,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
 
         var query = joinTable
-            .select(TransactionsTable.dateTime, CategoriesTable.name, TransactionsTable.isIncome, netAmount)
+            .select(TransactionsTable.dateTime, CategoriesTable.id, CategoriesTable.name, TransactionsTable.isIncome, netAmount)
             .where {
                 (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
                         (TransactionsTable.dateTime greaterEq startInstant) and
@@ -117,17 +117,32 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             val date = it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC)
             val period = "%04d-%02d".format(date.year, date.monthNumber)
             val isIncome = it[TransactionsTable.isIncome]
-            val category = if (isIncome) "__INCOME__" else it[CategoriesTable.name].trim().lowercase()
+            val categoryId = it[CategoriesTable.id].value
+            val categoryName = it[CategoriesTable.name].trim().lowercase()
             val amount = it[netAmount] ?: java.math.BigDecimal.ZERO
-            Triple(period, category, amount)
+            
+            val stats = CategoryStats(
+                categoryId = categoryId,
+                name = it[CategoriesTable.name],
+                totalAmount = amount,
+                count = 1,
+                isIncome = isIncome
+            )
+            
+            period to (categoryName to stats)
         }
             .groupBy { it.first }
             .mapValues { (_, items) ->
-                items.groupBy { it.second }
-                    .mapValues { (_, groupItems) ->
+                items.map { it.second }
+                    .groupBy { it.first }
+                    .mapValues { (catName, groupItems) ->
+                        val first = groupItems.first().second
                         CategoryStats(
-                            totalAmount = groupItems.fold(java.math.BigDecimal.ZERO) { acc, t -> acc + t.third },
-                            count = groupItems.size
+                            categoryId = first.categoryId,
+                            name = first.name,
+                            totalAmount = groupItems.fold(java.math.BigDecimal.ZERO) { acc, t -> acc + t.second.totalAmount },
+                            count = groupItems.size,
+                            isIncome = first.isIncome
                         )
                     }
             }
@@ -345,7 +360,6 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
-        category = this[CategoriesTable.name], // From join
         categoryId = this[TransactionsTable.categoryId].value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],

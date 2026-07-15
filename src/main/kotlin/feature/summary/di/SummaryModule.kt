@@ -5,6 +5,7 @@ import feature.summary.domain.StatisticsService
 import feature.summary.domain.StatisticsServiceImpl
 import com.fintrack.feature.user.domain.UserRepository
 import feature.budget.domain.BudgetRepository
+import feature.category.domain.CategoryRepository
 import com.fintrack.feature.accounts.domain.AccountService
 import feature.summary.data.repository.StatisticsRepositoryImpl
 import org.koin.dsl.module
@@ -16,7 +17,8 @@ val summaryModule = module {
             statisticsRepository = get<StatisticsRepository>(),
             userRepository = get<UserRepository>(),
             budgetRepository = get<BudgetRepository>(),
-            accountService = get<AccountService>()
+            categoryRepository = get<CategoryRepository>(),
+            accountService = get<AccountService>(),
         ) 
     }
 }

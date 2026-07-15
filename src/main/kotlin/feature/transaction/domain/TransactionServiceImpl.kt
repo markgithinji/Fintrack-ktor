@@ -99,7 +99,6 @@ class TransactionServiceImpl(
             "userId" to userId,
             "accountId" to request.accountId,
             "amount" to request.amount,
-            "category" to request.category,
             "categoryId" to request.categoryId
         ).info { "Creating transaction" }
 
@@ -239,7 +238,7 @@ class TransactionServiceImpl(
                     val totalAmount = sortedTxns.fold(BigDecimal.ZERO) { acc, t -> acc + t.amount }
                     val avgAmount = totalAmount.calculateAverage(sortedTxns.size)
                     
-                    val name = lastTxn.description?.split("(Ref:")?.get(0)?.trim() ?: lastTxn.category
+                    val name = lastTxn.description?.split("(Ref:")?.get(0)?.trim() ?: "Recurring Bill"
                     val nextDueDate = lastTxn.dateTime.toLocalDateTime(TimeZone.UTC).date.plus(30, DateTimeUnit.DAY)
 
                     recurringBills.add(
@@ -247,8 +246,7 @@ class TransactionServiceImpl(
                             id = IdGenerator.nextId().toString(),
                             name = name,
                             amount = avgAmount,
-                            category = lastTxn.category,
-                            categoryId = lastTxn.categoryId?.toString(),
+                            categoryId = lastTxn.categoryId.toString(),
                             frequency = "Monthly",
                             nextDueDate = nextDueDate,
                             isActive = true

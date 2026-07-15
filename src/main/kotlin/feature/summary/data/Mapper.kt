@@ -77,6 +77,7 @@ fun DistributionSummary.toDto(): DistributionSummaryDto = DistributionSummaryDto
 fun CategorySummary.toDto(): CategorySummaryDto =
     CategorySummaryDto(
         category = category,
+        categoryId = categoryId?.toString(),
         total = total,
         percentage = percentage,
         transactionCount = transactionCount,

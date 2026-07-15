@@ -13,11 +13,13 @@ fun Transaction.toDto() = TransactionDto(
     amount = this.amount,
     transactionCost = this.transactionCost,
     category = this.category,
-    categoryId = this.categoryId?.toString(),
+    categoryId = this.categoryId.toString(),
     dateTime = this.dateTime.toString(),
     description = this.description,
     externalId = this.externalId,
-    balance = this.balance
+    balance = this.balance,
+    createdAt = this.createdAt?.toString(),
+    updatedAt = this.updatedAt?.toString()
 )
 
 fun CreateTransactionRequest.toDomain(userId: UUID): Transaction = Transaction(
@@ -27,8 +29,8 @@ fun CreateTransactionRequest.toDomain(userId: UUID): Transaction = Transaction(
     isIncome = isIncome,
     amount = amount,
     transactionCost = transactionCost,
-    category = category,
-    categoryId = if (categoryId.isNullOrBlank()) null else UUID.fromString(categoryId),
+    category = "", // Resolved by repository on re-fetch
+    categoryId = UUID.fromString(categoryId),
     dateTime = dateTime,
     description = description,
     externalId = externalId,
@@ -42,8 +44,8 @@ fun UpdateTransactionRequest.toDomain(userId: UUID, transactionId: UUID): Transa
     isIncome = isIncome,
     amount = amount,
     transactionCost = transactionCost ?: BigDecimal.ZERO,
-    category = category,
-    categoryId = if (categoryId.isNullOrBlank()) null else UUID.fromString(categoryId),
+    category = "", // Resolved by repository on re-fetch
+    categoryId = UUID.fromString(categoryId),
     dateTime = dateTime,
     description = description,
     externalId = externalId,
