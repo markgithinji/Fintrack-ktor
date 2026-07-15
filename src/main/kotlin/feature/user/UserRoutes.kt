@@ -42,7 +42,7 @@ fun Route.userRoutes(userService: UserService) {
             val userId = call.userIdOrThrow()
             val request = call.receive<TrackedCategoriesRequest>()
 
-            when (val result = userService.updateTrackedCategories(userId, request.categories)) {
+            when (val result = userService.updateTrackedCategories(userId, request.categoryIds)) {
                 is Result.Success -> call.respond(HttpStatusCode.OK, ApiResponse.Success(result.value))
                 is Result.Failure -> call.respond(
                     result.error.toHttpStatusCode(),

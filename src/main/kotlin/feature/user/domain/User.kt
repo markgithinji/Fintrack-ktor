@@ -7,6 +7,6 @@ data class User(
     val email: String,
     val name: String,
     val passwordHash: String,
-    val trackedCategories: String? = null,
+    val trackedCategoryIds: List<UUID> = emptyList(),
     val isEmailVerified: Boolean = false
 )

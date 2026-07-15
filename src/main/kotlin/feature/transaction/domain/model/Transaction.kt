@@ -11,13 +11,15 @@ data class Transaction(
     val isIncome: Boolean,
     val amount: BigDecimal,
     val transactionCost: BigDecimal,
-    val category: String,
-    val categoryId: UUID?,
+    val category: String = "",
+    val categoryId: UUID,
     val dateTime: Instant,
     val description: String?,
     val accountId: UUID,
     val externalId: String? = null,
-    val balance: BigDecimal? = null
+    val balance: BigDecimal? = null,
+    val createdAt: Instant? = null,
+    val updatedAt: Instant? = null
 ) {
     val totalAmount: BigDecimal
         get() = if (isIncome) amount - transactionCost else amount + transactionCost

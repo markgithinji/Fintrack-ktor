@@ -99,10 +99,10 @@ class UserServiceImpl(
         return Result.Success(updatedUser.toDto())
     }
 
-    override suspend fun updateTrackedCategories(userId: UUID, categories: List<String>): Result<UserDto> {
-        log.withContext("userId" to userId, "categories" to categories).info { "Updating tracked categories" }
+    override suspend fun updateTrackedCategories(userId: UUID, categoryIds: List<UUID>): Result<UserDto> {
+        log.withContext("userId" to userId, "categoryIds" to categoryIds).info { "Updating tracked categories" }
 
-        val updated = userRepository.updateTrackedCategories(userId, categories.take(2))
+        val updated = userRepository.updateTrackedCategories(userId, categoryIds.take(2))
 
         if (!updated) {
             return Result.Failure(AppError.Internal("Failed to update tracked categories"))

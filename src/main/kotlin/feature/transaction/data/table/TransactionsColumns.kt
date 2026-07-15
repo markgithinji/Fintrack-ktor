@@ -12,4 +12,6 @@ object TransactionsColumns {
     const val DESCRIPTION = "description"
     const val EXTERNAL_ID = "external_id"
     const val BALANCE = "balance"
+    const val CREATED_AT = "created_at"
+    const val UPDATED_AT = "updated_at"
 }

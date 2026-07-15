@@ -5,13 +5,18 @@ import core.util.IdGenerator
 import feature.transaction.data.table.TransactionsTable
 import feature.transaction.domain.TransactionRepository
 import feature.transaction.domain.model.Transaction
+import feature.category.data.table.CategoriesTable
 import kotlinx.datetime.Instant
+import kotlinx.datetime.Clock
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import java.util.*
 
 class TransactionRepositoryImpl : TransactionRepository {
+    private val joinTable = TransactionsTable.innerJoin(CategoriesTable)
+
     override suspend fun getAllCursor(
         userId: UUID,
         accountId: UUID?,
@@ -26,8 +31,8 @@ class TransactionRepositoryImpl : TransactionRepository {
         afterId: UUID?,
         hasTransactionCost: Boolean?
     ): List<Transaction> = dbQuery {
-        var query = TransactionsTable.selectAll()
-            .andWhere { TransactionsTable.userId eq userId }
+        var query = joinTable.selectAll()
+            .where { TransactionsTable.userId eq userId }
 
         if (accountId != null) query =
             query.andWhere { TransactionsTable.accountId eq accountId }
@@ -40,14 +45,12 @@ class TransactionRepositoryImpl : TransactionRepository {
 
         if (afterDateTime != null && afterId != null) {
             query = if (order == SortOrder.DESC) {
-                // For DESC order: get records that are "less than" (older than) the cursor
                 query.andWhere {
                     (TransactionsTable.dateTime less afterDateTime) or
                             ((TransactionsTable.dateTime eq afterDateTime) and
                                     (TransactionsTable.id less afterId))
                 }
             } else {
-                // For ASC order: get records that are "greater than" (newer than) the cursor
                 query.andWhere {
                     (TransactionsTable.dateTime greater afterDateTime) or
                             ((TransactionsTable.dateTime eq afterDateTime) and
@@ -68,7 +71,7 @@ class TransactionRepositoryImpl : TransactionRepository {
     }
 
     override suspend fun getById(id: UUID, userId: UUID): Transaction? = dbQuery {
-        TransactionsTable
+        joinTable
             .selectAll().where {
                 (TransactionsTable.id eq id) and
                         (TransactionsTable.userId eq userId)
@@ -78,60 +81,58 @@ class TransactionRepositoryImpl : TransactionRepository {
     }
 
     override suspend fun add(entity: Transaction): Transaction = dbQuery {
-        val inserted = TransactionsTable.insert { row ->
-            row[TransactionsTable.id] = entity.id ?: IdGenerator.nextId()
-            row[TransactionsTable.userId] = entity.userId
-            row[TransactionsTable.accountId] = entity.accountId
+        val now = Clock.System.now()
+        val transactionId = entity.id ?: IdGenerator.nextId()
+        
+        TransactionsTable.insert { row ->
+            row[TransactionsTable.id] = EntityID(transactionId, TransactionsTable)
+            row[TransactionsTable.userId] = EntityID(entity.userId, com.fintrack.feature.user.UsersTable)
+            row[TransactionsTable.accountId] = EntityID(entity.accountId, com.fintrack.feature.accounts.data.table.AccountsTable)
             row[TransactionsTable.isIncome] = entity.isIncome
             row[TransactionsTable.amount] = entity.amount
             row[TransactionsTable.transactionCost] = entity.transactionCost
-            row[TransactionsTable.category] = entity.category
-            row[TransactionsTable.categoryId] = entity.categoryId
+            row[TransactionsTable.categoryId] = EntityID(entity.categoryId, CategoriesTable)
             row[TransactionsTable.dateTime] = entity.dateTime
             row[TransactionsTable.description] = entity.description
             row[TransactionsTable.externalId] = entity.externalId
             row[TransactionsTable.balance] = entity.balance
-        }.resultedValues?.singleOrNull()
-            ?: throw IllegalStateException("Failed to insert transaction")
+            row[TransactionsTable.createdAt] = now
+            row[TransactionsTable.updatedAt] = now
+        }
 
-        inserted.toTransaction()
+        getById(transactionId, entity.userId)
+            ?: throw IllegalStateException("Failed to retrieve inserted transaction")
     }
 
     override suspend fun update(id: UUID, userId: UUID, entity: Transaction): Transaction? = dbQuery {
+        val now = Clock.System.now()
         val updated = TransactionsTable.update(
             where = {
-                (TransactionsTable.id eq id) and
-                        (TransactionsTable.userId eq userId)
+                (TransactionsTable.id eq EntityID(id, TransactionsTable)) and
+                        (TransactionsTable.userId eq EntityID(userId, com.fintrack.feature.user.UsersTable))
             }
         ) { row ->
-            row[TransactionsTable.accountId] = entity.accountId
+            row[TransactionsTable.accountId] = EntityID(entity.accountId, com.fintrack.feature.accounts.data.table.AccountsTable)
             row[TransactionsTable.isIncome] = entity.isIncome
             row[TransactionsTable.amount] = entity.amount
             row[TransactionsTable.transactionCost] = entity.transactionCost
-            row[TransactionsTable.category] = entity.category
-            row[TransactionsTable.categoryId] = entity.categoryId
+            row[TransactionsTable.categoryId] = EntityID(entity.categoryId, CategoriesTable)
             row[TransactionsTable.dateTime] = entity.dateTime
             row[TransactionsTable.description] = entity.description
             row[TransactionsTable.externalId] = entity.externalId
             row[TransactionsTable.balance] = entity.balance
+            row[TransactionsTable.updatedAt] = now
         }
 
         if (updated == 0) return@dbQuery null
         
-        // Re-fetch the updated transaction
-        TransactionsTable
-            .selectAll().where {
-                (TransactionsTable.id eq id) and
-                        (TransactionsTable.userId eq userId)
-            }
-            .map { it.toTransaction() }
-            .singleOrNull()
+        getById(id, userId)
     }
 
     override suspend fun delete(id: UUID, userId: UUID): Boolean = dbQuery {
         val deleted = TransactionsTable.deleteWhere {
-            (TransactionsTable.id eq id) and
-                    (TransactionsTable.userId eq userId)
+            (TransactionsTable.id eq EntityID(id, TransactionsTable)) and
+                    (TransactionsTable.userId eq EntityID(userId, com.fintrack.feature.user.UsersTable))
         }
         deleted > 0
     }
@@ -139,39 +140,49 @@ class TransactionRepositoryImpl : TransactionRepository {
     override suspend fun clearAll(userId: UUID, accountIds: List<UUID>?): Boolean = dbQuery {
         val deleted = if (!accountIds.isNullOrEmpty()) {
             TransactionsTable.deleteWhere {
-                (TransactionsTable.userId eq userId) and
+                (TransactionsTable.userId eq EntityID(userId, com.fintrack.feature.user.UsersTable)) and
                         (TransactionsTable.accountId inList accountIds)
             }
         } else {
-            TransactionsTable.deleteWhere { TransactionsTable.userId eq userId }
+            TransactionsTable.deleteWhere { TransactionsTable.userId eq EntityID(userId, com.fintrack.feature.user.UsersTable) }
         }
         deleted > 0
     }
 
     override suspend fun addBulk(entities: List<Transaction>): List<Transaction> = dbQuery {
+        val now = Clock.System.now()
         TransactionsTable.batchInsert(entities, ignore = true) { entity ->
-            this[TransactionsTable.id] = entity.id ?: IdGenerator.nextId()
-            this[TransactionsTable.userId] = entity.userId
-            this[TransactionsTable.accountId] = entity.accountId
+            this[TransactionsTable.id] = EntityID(entity.id ?: IdGenerator.nextId(), TransactionsTable)
+            this[TransactionsTable.userId] = EntityID(entity.userId, com.fintrack.feature.user.UsersTable)
+            this[TransactionsTable.accountId] = EntityID(entity.accountId, com.fintrack.feature.accounts.data.table.AccountsTable)
             this[TransactionsTable.isIncome] = entity.isIncome
             this[TransactionsTable.amount] = entity.amount
             this[TransactionsTable.transactionCost] = entity.transactionCost
-            this[TransactionsTable.category] = entity.category
-            this[TransactionsTable.categoryId] = entity.categoryId
+            this[TransactionsTable.categoryId] = EntityID(entity.categoryId, CategoriesTable)
             this[TransactionsTable.dateTime] = entity.dateTime
             this[TransactionsTable.description] = entity.description
             this[TransactionsTable.externalId] = entity.externalId
             this[TransactionsTable.balance] = entity.balance
-        }.map { it.toTransaction() }
+            this[TransactionsTable.createdAt] = now
+            this[TransactionsTable.updatedAt] = now
+        }
+        
+        // Return re-fetched to get names
+        // This is a bit inefficient for bulk, but ensures correctness
+        entities.mapNotNull { it.id }.let { ids ->
+            joinTable.selectAll()
+                .where { TransactionsTable.id inList ids }
+                .map { it.toTransaction() }
+        }
     }
 
     override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): java.math.BigDecimal? = dbQuery {
         val query = TransactionsTable.selectAll()
-            .where { TransactionsTable.userId eq userId }
+            .where { TransactionsTable.userId eq EntityID(userId, com.fintrack.feature.user.UsersTable) }
             .andWhere { TransactionsTable.balance.isNotNull() }
 
         if (accountId != null) {
-            query.andWhere { TransactionsTable.accountId eq accountId }
+            query.andWhere { TransactionsTable.accountId eq EntityID(accountId, com.fintrack.feature.accounts.data.table.AccountsTable) }
         }
 
         query.orderBy(TransactionsTable.dateTime to SortOrder.DESC)
@@ -187,12 +198,14 @@ class TransactionRepositoryImpl : TransactionRepository {
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
-        category = this[TransactionsTable.category],
-        categoryId = this[TransactionsTable.categoryId]?.value,
+        category = this[CategoriesTable.name], // Fetch from joined table
+        categoryId = this[TransactionsTable.categoryId].value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
         accountId = this[TransactionsTable.accountId].value,
         externalId = this[TransactionsTable.externalId],
-        balance = this[TransactionsTable.balance]
+        balance = this[TransactionsTable.balance],
+        createdAt = this[TransactionsTable.createdAt],
+        updatedAt = this[TransactionsTable.updatedAt]
     )
 }

@@ -16,12 +16,13 @@ object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
     val isIncome = bool(TransactionsColumns.IS_INCOME)
     val amount = decimal(TransactionsColumns.AMOUNT, precision = 19, scale = 4)
     val transactionCost = decimal(TransactionsColumns.TRANSACTION_COST, precision = 19, scale = 4).default(java.math.BigDecimal.ZERO)
-    val category = varchar(TransactionsColumns.CATEGORY, 100)
-    val categoryId = reference(TransactionsColumns.CATEGORY_ID, CategoriesTable, onDelete = ReferenceOption.CASCADE).index().nullable()
+    val categoryId = reference(TransactionsColumns.CATEGORY_ID, CategoriesTable, onDelete = ReferenceOption.CASCADE).index()
     val dateTime = timestamp(TransactionsColumns.DATE_TIME).index()
     val description = varchar(TransactionsColumns.DESCRIPTION, 255).nullable()
     val externalId = varchar(TransactionsColumns.EXTERNAL_ID, 100).nullable()
     val balance = decimal(TransactionsColumns.BALANCE, precision = 19, scale = 4).nullable()
+    val createdAt = timestamp(TransactionsColumns.CREATED_AT).index()
+    val updatedAt = timestamp(TransactionsColumns.UPDATED_AT).index()
 
     init {
         uniqueIndex(externalId, userId)

@@ -5,6 +5,6 @@ import com.fintrack.feature.user.domain.User
 fun User.toDto(): UserDto = UserDto(
     name = this.name,
     email = this.email,
-    trackedCategories = this.trackedCategories?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
+    trackedCategoryIds = this.trackedCategoryIds,
     isEmailVerified = this.isEmailVerified
 )

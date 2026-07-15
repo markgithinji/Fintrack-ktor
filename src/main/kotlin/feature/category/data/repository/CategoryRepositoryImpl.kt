@@ -26,6 +26,12 @@ class CategoryRepositoryImpl : CategoryRepository {
             .singleOrNull()
     }
 
+    override suspend fun getByIds(ids: List<UUID>): List<Category> = dbQuery {
+        CategoriesTable.selectAll()
+            .where { CategoriesTable.id inList ids }
+            .map { it.toCategory() }
+    }
+
     override suspend fun add(category: Category): Category = dbQuery {
         val now = Clock.System.now()
         val inserted = CategoriesTable.insert { row ->

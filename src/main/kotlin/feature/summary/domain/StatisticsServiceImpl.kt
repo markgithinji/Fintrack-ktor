@@ -8,9 +8,11 @@ import com.fintrack.core.util.*
 import com.fintrack.feature.accounts.domain.AccountService
 import com.fintrack.feature.user.domain.UserRepository
 import feature.budget.domain.BudgetRepository
+import feature.category.domain.CategoryRepository
 import feature.summary.data.model.*
 import feature.transaction.domain.model.Transaction
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.*
 import java.math.BigDecimal
@@ -21,6 +23,7 @@ class StatisticsServiceImpl(
     private val statisticsRepository: StatisticsRepository,
     private val userRepository: UserRepository,
     private val budgetRepository: BudgetRepository,
+    private val categoryRepository: CategoryRepository,
     private val accountService: AccountService
 ) : StatisticsService {
 
@@ -439,7 +442,7 @@ class StatisticsServiceImpl(
         fun categorySummary(isInc: Boolean): List<CategorySummaryDto> {
             val relevantStats = if (isInc) {
                 currentStats.filterKeys { it == "__INCOME__" }
-                    .mapKeys { "Income" } // Simplified for now, or use actual category if needed
+                    .mapKeys { "Income" }
             } else {
                 currentStats.filterKeys { it != "__INCOME__" }
             }
@@ -501,7 +504,7 @@ class StatisticsServiceImpl(
             totalTransactionCost = counts.totalTransactionCost,
             incomeCategories = incomeCategoriesFinal,
             expenseCategories = expenseCategoriesFinal,
-            othersInsightSummary = null // Simplified for now
+            othersInsightSummary = null 
         ))
     }
 
@@ -604,7 +607,12 @@ class StatisticsServiceImpl(
         val lastWeekTotals = lwtDeferred.await()
 
         val user = userRepository.findById(userId)
-        val trackedCategories = user?.trackedCategories?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+        val trackedCategoryIds = user?.trackedCategoryIds ?: emptyList()
+        
+        // Resolve category names from IDs
+        val trackedCategories: List<String> = if (trackedCategoryIds.isNotEmpty()) {
+            categoryRepository.getByIds(trackedCategoryIds).map { it.name }
+        } else emptyList()
 
         val allTimeIncomeCategories = if (trackedCategories.isNotEmpty()) {
             statisticsRepository.getCategoryTotals(userId, null, null, accountId, isIncome = true).keys
@@ -612,30 +620,32 @@ class StatisticsServiceImpl(
 
         val comparisons = if (trackedCategories.isNotEmpty() && !isBackupMonth) {
             trackedCategories.map { category ->
-                if (category == "Transaction Fees" || category == "Transaction Cost") {
-                    calculateTransactionCostComparison(userId, accountId, currentMonthStart, currentMonthEnd, previousMonthStart, previousMonthEnd, thisWeekStart, thisWeekEnd, lastWeekStart, lastWeekEnd)
-                } else {
-                    val isInc = allTimeIncomeCategories.contains(category) || thisMonthIncomeTotals.containsKey(category)
-                    val currentTotals = if (isInc) thisMonthIncomeTotals else thisMonthExpenseTotals
-                    val previousTotals = if (isInc) lastMonthIncomeTotals else lastMonthExpenseTotals
+                async {
+                    if (category == "Transaction Fees" || category == "Transaction Cost") {
+                        calculateTransactionCostComparison(userId, accountId, currentMonthStart, currentMonthEnd, previousMonthStart, previousMonthEnd, thisWeekStart, thisWeekEnd, lastWeekStart, lastWeekEnd)
+                    } else {
+                        val isInc = allTimeIncomeCategories.contains(category) || thisMonthIncomeTotals.containsKey(category)
+                        val currentTotals = if (isInc) thisMonthIncomeTotals else thisMonthExpenseTotals
+                        val previousTotals = if (isInc) lastMonthIncomeTotals else lastMonthExpenseTotals
 
-                    val cur = currentTotals[category] ?: BigDecimal.ZERO
-                    val prev = previousTotals[category] ?: BigDecimal.ZERO
-                    val weekCur = thisWeekTotals[category] ?: BigDecimal.ZERO
-                    val weekPrev = lastWeekTotals[category] ?: BigDecimal.ZERO
+                        val cur = currentTotals[category] ?: BigDecimal.ZERO
+                        val prev = previousTotals[category] ?: BigDecimal.ZERO
+                        val weekCur = thisWeekTotals[category] ?: BigDecimal.ZERO
+                        val weekPrev = lastWeekTotals[category] ?: BigDecimal.ZERO
 
-                    CategoryComparisonDto(
-                        category = category,
-                        currentTotal = cur,
-                        previousTotal = prev,
-                        changePercentage = cur.calculatePercentageChange(prev),
-                        isIncome = isInc,
-                        period = targetPeriodString,
-                        weeklyCurrentTotal = weekCur,
-                        weeklyChangePercentage = weekCur.calculatePercentageChange(weekPrev)
-                    )
+                        CategoryComparisonDto(
+                            category = category,
+                            currentTotal = cur,
+                            previousTotal = prev,
+                            changePercentage = cur.calculatePercentageChange(prev),
+                            isIncome = isInc,
+                            period = targetPeriodString,
+                            weeklyCurrentTotal = weekCur,
+                            weeklyChangePercentage = weekCur.calculatePercentageChange(weekPrev)
+                        )
+                    }
                 }
-            }
+            }.awaitAll()
         } else {
             val topExpenseCategory = thisMonthExpenseTotals.keys
                 .filter { it != "Transaction Fees" && it != "Transaction Cost" }
@@ -765,7 +775,6 @@ class StatisticsServiceImpl(
         
         val netWorth = accounts.fold(BigDecimal.ZERO) { acc, a -> acc + (a.balance ?: BigDecimal.ZERO) }
 
-        // Use global summaries from repository instead of fetching ALL transactions
         val incomeTotals = statisticsRepository.getCategoryTotals(userId, null, null, null, isIncome = true)
         val expenseTotals = statisticsRepository.getCategoryTotals(userId, null, null, null, isIncome = false)
 

@@ -3,9 +3,7 @@ package feature.budget.data
 object BudgetsColumns {
     const val USER_ID = "user_id"
     const val ACCOUNT_ID = "account_id"
-    const val ACCOUNT_IDS = "account_ids"
     const val NAME = "name"
-    const val CATEGORY_IDS = "category_ids"
     const val LIMIT = "limit"
     const val IS_EXPENSE = "is_expense"
     const val START_DATE = "start_date"

@@ -8,13 +8,10 @@ import feature.budget.domain.BudgetRepository
 import feature.budget.domain.model.Budget
 import feature.transaction.data.table.TransactionsTable
 import kotlinx.datetime.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import java.util.UUID
 import kotlinx.datetime.TimeZone as KTimeZone
 
@@ -25,14 +22,31 @@ class BudgetRepositoryImpl : BudgetRepository {
                 .where { BudgetsTable.userId eq EntityID(userId, UsersTable) }
             
             if (accountId != null) {
-                // Search for the account ID within the JSON array string
-                query = query.andWhere { BudgetsTable.accountIds like "%$accountId%" }
+                val budgetIdsWithAccount = BudgetAccountsTable
+                    .select(BudgetAccountsTable.budgetId)
+                    .where { BudgetAccountsTable.accountId eq accountId }
+                    .map { it[BudgetAccountsTable.budgetId].value }
+                
+                query = query.andWhere { BudgetsTable.id inList budgetIdsWithAccount }
             }
             
-            query.orderBy(BudgetsTable.updatedAt, SortOrder.DESC)
+            val budgets = query.orderBy(BudgetsTable.updatedAt, SortOrder.DESC)
                 .limit(limit)
                 .offset(offset)
-                .map { it.toBudget() }
+                .map { row ->
+                    val id = row[BudgetsTable.id].value
+                    Budget(
+                        id = id,
+                        accountIds = fetchAccountIds(id),
+                        name = row[BudgetsTable.name],
+                        categoryIds = fetchCategoryIds(id),
+                        limit = row[BudgetsTable.limit],
+                        isExpense = row[BudgetsTable.isExpense],
+                        startDate = row[BudgetsTable.startDate].toKotlinLocalDate(),
+                        endDate = row[BudgetsTable.endDate].toKotlinLocalDate()
+                    )
+                }
+            budgets
         }
 
     override suspend fun getById(userId: UUID, id: UUID): Budget? =
@@ -43,13 +57,23 @@ class BudgetRepositoryImpl : BudgetRepository {
                     (BudgetsTable.id eq EntityID(id, BudgetsTable)) and 
                     (BudgetsTable.userId eq EntityID(userId, UsersTable))
                 }
-                .map { it.toBudget() }
                 .singleOrNull()
+                ?.let { row ->
+                    Budget(
+                        id = id,
+                        accountIds = fetchAccountIds(id),
+                        name = row[BudgetsTable.name],
+                        categoryIds = fetchCategoryIds(id),
+                        limit = row[BudgetsTable.limit],
+                        isExpense = row[BudgetsTable.isExpense],
+                        startDate = row[BudgetsTable.startDate].toKotlinLocalDate(),
+                        endDate = row[BudgetsTable.endDate].toKotlinLocalDate()
+                    )
+                }
         }
 
     override suspend fun add(budget: Budget): Budget =
         dbQuery {
-            // We use the first account ID to verify existence and get the user ID
             val firstAccountId = budget.accountIds.firstOrNull() 
                 ?: throw IllegalArgumentException("Budget must have at least one account")
                 
@@ -61,16 +85,13 @@ class BudgetRepositoryImpl : BudgetRepository {
                 
             val accountUserId = account[AccountsTable.userId].value
             val now = Clock.System.now()
+            val budgetIdValue = budget.id ?: IdGenerator.nextId()
             
-            val insertStatement = BudgetsTable.insert {
-                it[id] = EntityID(budget.id ?: IdGenerator.nextId(), BudgetsTable)
+            BudgetsTable.insert {
+                it[id] = EntityID(budgetIdValue, BudgetsTable)
                 it[userId] = EntityID(accountUserId, UsersTable)
-                // We keep accountId (nullable) for backward compatibility in the short term if needed, 
-                // but primary storage is now accountIds
                 it[accountId] = EntityID(firstAccountId, AccountsTable)
-                it[accountIds] = Json.encodeToString(budget.accountIds.map { accountId -> accountId.toString() })
                 it[name] = budget.name
-                it[categoryIds] = Json.encodeToString(budget.categoryIds.map { it.toString() })
                 it[limit] = budget.limit
                 it[isExpense] = budget.isExpense
                 it[startDate] = budget.startDate.toJavaLocalDate()
@@ -78,77 +99,55 @@ class BudgetRepositoryImpl : BudgetRepository {
                 it[createdAt] = now
                 it[updatedAt] = now
             }
-            val generatedId = insertStatement[BudgetsTable.id].value
-            budget.copy(id = generatedId)
-        }
 
-    override suspend fun addAll(budgets: List<Budget>): List<Budget> =
-        dbQuery {
-            val now = Clock.System.now()
-            budgets.map { budget ->
-                val firstAccountId = budget.accountIds.firstOrNull()
-                    ?: throw IllegalArgumentException("Budget ${budget.name} must have at least one account")
-                    
-                val account = AccountsTable
-                    .selectAll()
-                    .where { AccountsTable.id eq EntityID(firstAccountId, AccountsTable) }
-                    .singleOrNull()
-                    ?: throw IllegalArgumentException("Account $firstAccountId not found")
-                    
-                val accountUserId = account[AccountsTable.userId].value
-
-                val inserted = BudgetsTable.insert {
-                    it[id] = EntityID(budget.id ?: IdGenerator.nextId(), BudgetsTable)
-                    it[userId] = EntityID(accountUserId, UsersTable)
-                    it[accountId] = EntityID(firstAccountId, AccountsTable)
-                    it[accountIds] = Json.encodeToString(budget.accountIds.map { accountId -> accountId.toString() })
-                    it[name] = budget.name
-                    it[categoryIds] = Json.encodeToString(budget.categoryIds.map { it.toString() })
-                    it[limit] = budget.limit
-                    it[isExpense] = budget.isExpense
-                    it[startDate] = budget.startDate.toJavaLocalDate()
-                    it[endDate] = budget.endDate.toJavaLocalDate()
-                    it[createdAt] = now
-                    it[updatedAt] = now
-                }
-
-                val generatedId =
-                    inserted.resultedValues?.singleOrNull()?.get(BudgetsTable.id)?.value
-                        ?: throw IllegalStateException("Failed to get generated ID for budget")
-
-                budget.copy(id = generatedId)
+            // Insert relations
+            BudgetAccountsTable.batchInsert(budget.accountIds) { accId ->
+                this[BudgetAccountsTable.budgetId] = budgetIdValue
+                this[BudgetAccountsTable.accountId] = accId
             }
+            BudgetCategoriesTable.batchInsert(budget.categoryIds) { catId ->
+                this[BudgetCategoriesTable.budgetId] = budgetIdValue
+                this[BudgetCategoriesTable.categoryId] = catId
+            }
+
+            budget.copy(id = budgetIdValue)
         }
+
+    override suspend fun addAll(budgets: List<Budget>): List<Budget> = budgets.map { add(it) }
 
     override suspend fun update(userId: UUID, id: UUID, budget: Budget): Budget? =
         dbQuery {
+            val now = Clock.System.now()
             val rows = BudgetsTable.update({
                 (BudgetsTable.id eq EntityID(id, BudgetsTable)) and
                         (BudgetsTable.userId eq EntityID(userId, UsersTable))
             }) {
-                it[accountIds] = Json.encodeToString(budget.accountIds.map { accountId -> accountId.toString() })
-                // Also update the legacy accountId column if multiple accounts are present, just use the first one
                 if (budget.accountIds.isNotEmpty()) {
                     it[accountId] = EntityID(budget.accountIds.first(), AccountsTable)
                 }
                 it[name] = budget.name
-                it[categoryIds] = Json.encodeToString(budget.categoryIds.map { it.toString() })
                 it[limit] = budget.limit
                 it[isExpense] = budget.isExpense
                 it[startDate] = budget.startDate.toJavaLocalDate()
                 it[endDate] = budget.endDate.toJavaLocalDate()
-                it[updatedAt] = Clock.System.now()
+                it[updatedAt] = now
             }
 
             if (rows > 0) {
-                BudgetsTable
-                    .selectAll()
-                    .where {
-                        (BudgetsTable.id eq EntityID(id, BudgetsTable)) and
-                                (BudgetsTable.userId eq EntityID(userId, UsersTable))
-                    }
-                    .map { it.toBudget() }
-                    .singleOrNull()
+                // Update relations
+                BudgetAccountsTable.deleteWhere { budgetId eq id }
+                BudgetAccountsTable.batchInsert(budget.accountIds) { accId ->
+                    this[BudgetAccountsTable.budgetId] = id
+                    this[BudgetAccountsTable.accountId] = accId
+                }
+                
+                BudgetCategoriesTable.deleteWhere { budgetId eq id }
+                BudgetCategoriesTable.batchInsert(budget.categoryIds) { catId ->
+                    this[BudgetCategoriesTable.budgetId] = id
+                    this[BudgetCategoriesTable.categoryId] = catId
+                }
+
+                getById(userId, id)
             } else {
                 null
             }
@@ -165,13 +164,14 @@ class BudgetRepositoryImpl : BudgetRepository {
     override suspend fun deleteAllByUser(userId: UUID, accountIds: List<UUID>?): Int =
         dbQuery {
             if (!accountIds.isNullOrEmpty()) {
-                // Delete budgets where the legacy accountId is in the list OR any of the new accountIds match
-                // This is a bit aggressive but safer for a "clear data" operation
+                val budgetIdsWithAccounts = BudgetAccountsTable
+                    .select(BudgetAccountsTable.budgetId)
+                    .where { BudgetAccountsTable.accountId inList accountIds }
+                    .map { it[BudgetAccountsTable.budgetId].value }
+
                 BudgetsTable.deleteWhere {
-                    val userMatch = BudgetsTable.userId eq EntityID(userId, UsersTable)
-                    val accountMatch = accountIds.map { id -> BudgetsTable.accountIds.like("%$id%") }
-                        .fold<Op<Boolean>, Op<Boolean>>(BudgetsTable.accountId inList accountIds) { acc, op -> acc or op }
-                    userMatch and accountMatch
+                    (BudgetsTable.userId eq EntityID(userId, UsersTable)) and
+                    (BudgetsTable.id inList budgetIdsWithAccounts)
                 }
             } else {
                 BudgetsTable.deleteWhere {
@@ -222,7 +222,7 @@ class BudgetRepositoryImpl : BudgetRepository {
             .map { 
                 TransactionSummary(
                     accountId = it[TransactionsTable.accountId].value,
-                    categoryId = it[TransactionsTable.categoryId]?.value,
+                    categoryId = it[TransactionsTable.categoryId].value,
                     isIncome = it[TransactionsTable.isIncome],
                     amount = it[TransactionsTable.amount],
                     dateTime = it[TransactionsTable.dateTime]
@@ -242,9 +242,19 @@ class BudgetRepositoryImpl : BudgetRepository {
         }
     }
 
+    private fun fetchAccountIds(budgetId: UUID): List<UUID> =
+        BudgetAccountsTable.select(BudgetAccountsTable.accountId)
+            .where { BudgetAccountsTable.budgetId eq budgetId }
+            .map { it[BudgetAccountsTable.accountId].value }
+
+    private fun fetchCategoryIds(budgetId: UUID): List<UUID> =
+        BudgetCategoriesTable.select(BudgetCategoriesTable.categoryId)
+            .where { BudgetCategoriesTable.budgetId eq budgetId }
+            .map { it[BudgetCategoriesTable.categoryId].value }
+
     private data class TransactionSummary(
         val accountId: UUID,
-        val categoryId: UUID?,
+        val categoryId: UUID,
         val isIncome: Boolean,
         val amount: java.math.BigDecimal,
         val dateTime: Instant
@@ -255,21 +265,4 @@ class BudgetRepositoryImpl : BudgetRepository {
 
     private fun LocalDate.atEndOfDay(zone: KTimeZone): Instant =
         this.atTime(LocalTime(23, 59, 59, 999_999_999)).toInstant(zone)
-}
-
-private fun ResultRow.toBudget(): Budget {
-    val categoryIdsJson = this[BudgetsTable.categoryIds]
-    val categoryIds: List<UUID> = Json.decodeFromString<List<String>>(categoryIdsJson).map { UUID.fromString(it) }
-    val accountIdsJson = this[BudgetsTable.accountIds]
-    val accountIds: List<UUID> = Json.decodeFromString<List<String>>(accountIdsJson).map { UUID.fromString(it) }
-    return Budget(
-        id = this[BudgetsTable.id].value,
-        accountIds = accountIds,
-        name = this[BudgetsTable.name],
-        categoryIds = categoryIds,
-        limit = this[BudgetsTable.limit],
-        isExpense = this[BudgetsTable.isExpense],
-        startDate = this[BudgetsTable.startDate].toKotlinLocalDate(),
-        endDate = this[BudgetsTable.endDate].toKotlinLocalDate()
-    )
 }

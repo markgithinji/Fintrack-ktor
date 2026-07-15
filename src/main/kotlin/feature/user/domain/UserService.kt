@@ -9,7 +9,7 @@ import java.util.UUID
 interface UserService {
     suspend fun getUserProfile(userId: UUID): Result<UserDto>
     suspend fun updateUser(userId: UUID, request: UpdateUserRequest): Result<UserDto>
-    suspend fun updateTrackedCategories(userId: UUID, categories: List<String>): Result<UserDto>
+    suspend fun updateTrackedCategories(userId: UUID, categoryIds: List<UUID>): Result<UserDto>
     suspend fun verifyEmailChange(token: String): Result<UserDto>
     suspend fun deleteUser(userId: UUID): Result<Unit>
     suspend fun validateUserCredentials(email: String, password: String): User?

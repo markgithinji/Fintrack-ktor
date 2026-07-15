@@ -1,16 +1,14 @@
 package com.fintrack.feature.user.data
 
 import com.fintrack.feature.user.UsersTable
+import com.fintrack.feature.user.UserTrackedCategoriesTable
 import com.fintrack.feature.user.domain.User
 import core.PasswordHasher
 import com.fintrack.core.data.dbQuery
 import com.fintrack.feature.user.domain.UserRepository
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.update
 import java.util.UUID
 
 class UserRepositoryImpl : UserRepository {
@@ -32,14 +30,20 @@ class UserRepositoryImpl : UserRepository {
         dbQuery {
             UsersTable.selectAll().where { UsersTable.email eq email }
                 .singleOrNull()
-                ?.let {
+                ?.let { row ->
+                    val userId = row[UsersTable.id].value
+                    val trackedCategoryIds = UserTrackedCategoriesTable
+                        .select(UserTrackedCategoriesTable.categoryId)
+                        .where { UserTrackedCategoriesTable.userId eq userId }
+                        .map { it[UserTrackedCategoriesTable.categoryId].value }
+
                     User(
-                        id = it[UsersTable.id].value,
-                        email = it[UsersTable.email],
-                        name = it[UsersTable.name],
-                        passwordHash = it[UsersTable.passwordHash],
-                        trackedCategories = it[UsersTable.trackedCategories],
-                        isEmailVerified = it[UsersTable.isEmailVerified]
+                        id = userId,
+                        email = row[UsersTable.email],
+                        name = row[UsersTable.name],
+                        passwordHash = row[UsersTable.passwordHash],
+                        trackedCategoryIds = trackedCategoryIds,
+                        isEmailVerified = row[UsersTable.isEmailVerified]
                     )
                 }
         }
@@ -48,14 +52,19 @@ class UserRepositoryImpl : UserRepository {
         dbQuery {
             UsersTable.selectAll().where { UsersTable.id eq EntityID(userId, UsersTable) }
                 .singleOrNull()
-                ?.let {
+                ?.let { row ->
+                    val trackedCategoryIds = UserTrackedCategoriesTable
+                        .select(UserTrackedCategoriesTable.categoryId)
+                        .where { UserTrackedCategoriesTable.userId eq userId }
+                        .map { it[UserTrackedCategoriesTable.categoryId].value }
+
                     User(
-                        id = it[UsersTable.id].value,
-                        email = it[UsersTable.email],
-                        name = it[UsersTable.name],
-                        passwordHash = it[UsersTable.passwordHash],
-                        trackedCategories = it[UsersTable.trackedCategories],
-                        isEmailVerified = it[UsersTable.isEmailVerified]
+                        id = row[UsersTable.id].value,
+                        email = row[UsersTable.email],
+                        name = row[UsersTable.name],
+                        passwordHash = row[UsersTable.passwordHash],
+                        trackedCategoryIds = trackedCategoryIds,
+                        isEmailVerified = row[UsersTable.isEmailVerified]
                     )
                 }
         }
@@ -72,11 +81,14 @@ class UserRepositoryImpl : UserRepository {
             updateStatement > 0
         }
 
-    override suspend fun updateTrackedCategories(userId: UUID, categories: List<String>): Boolean =
+    override suspend fun updateTrackedCategories(userId: UUID, categoryIds: List<UUID>): Boolean =
         dbQuery {
-            UsersTable.update({ UsersTable.id eq EntityID(userId, UsersTable) }) {
-                it[UsersTable.trackedCategories] = categories.joinToString(",")
-            } > 0
+            UserTrackedCategoriesTable.deleteWhere { UserTrackedCategoriesTable.userId eq userId }
+            UserTrackedCategoriesTable.batchInsert(categoryIds) { catId ->
+                this[UserTrackedCategoriesTable.userId] = userId
+                this[UserTrackedCategoriesTable.categoryId] = catId
+            }
+            true
         }
 
     override suspend fun updatePassword(userId: UUID, newPassword: String): Boolean =
