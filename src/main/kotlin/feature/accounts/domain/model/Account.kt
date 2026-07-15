@@ -12,6 +12,7 @@ data class Account(
     val name: String,
     val isDefault: Boolean = false,
     val type: AccountType = AccountType.GENERAL,
+    val linkedSources: Set<String> = emptySet(),
     val balance: BigDecimal = BigDecimal.ZERO,
     val createdAt: Instant? = null,
     val lastSyncedAt: Instant? = null
@@ -26,5 +27,11 @@ enum class AccountType {
     MPESA,
 
     @SerialName("equity")
-    EQUITY
+    EQUITY,
+
+    @SerialName("savings")
+    SAVINGS,
+
+    @SerialName("checking")
+    CHECKING
 }

@@ -15,6 +15,7 @@ data class AccountDto(
     @Contextual val expense: BigDecimal? = null,
     val isDefault: Boolean? = false,
     val type: AccountType? = AccountType.GENERAL,
+    val linkedSources: Set<String> = emptySet(),
     val createdAt: Instant? = null,
     val lastSyncedAt: Instant? = null
 )

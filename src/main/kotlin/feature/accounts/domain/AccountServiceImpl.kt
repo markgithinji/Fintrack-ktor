@@ -186,6 +186,7 @@ class AccountServiceImpl(
         val account = existingAccount.copy(
             name = request.name,
             type = request.type,
+            linkedSources = request.linkedSources ?: existingAccount.linkedSources,
             balance = request.balance ?: existingAccount.balance,
             lastSyncedAt = request.lastSyncedAt ?: existingAccount.lastSyncedAt
         )

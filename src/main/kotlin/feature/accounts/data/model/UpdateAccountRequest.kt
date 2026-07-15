@@ -10,6 +10,7 @@ import java.math.BigDecimal
 data class UpdateAccountRequest(
     val name: String,
     val type: AccountType = AccountType.GENERAL,
+    val linkedSources: Set<String>? = null,
     @Contextual val balance: BigDecimal? = null,
     val lastSyncedAt: Instant? = null
 )

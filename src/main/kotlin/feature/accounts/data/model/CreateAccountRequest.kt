@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CreateAccountRequest(
     val name: String,
-    val type: AccountType = AccountType.GENERAL
+    val type: AccountType = AccountType.GENERAL,
+    val linkedSources: Set<String> = emptySet()
 )

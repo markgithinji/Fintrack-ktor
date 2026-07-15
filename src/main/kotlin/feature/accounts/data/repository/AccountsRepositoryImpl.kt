@@ -9,6 +9,8 @@ import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import feature.transaction.data.table.TransactionsTable
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Case
 import org.jetbrains.exposed.sql.ResultRow
@@ -82,6 +84,7 @@ class AccountsRepositoryImpl : AccountsRepository {
         row[AccountsTable.name] = account.name
         row[AccountsTable.isDefault] = account.isDefault
         row[AccountsTable.type] = account.type
+        row[AccountsTable.linkedSources] = Json.encodeToString(account.linkedSources)
         row[AccountsTable.balance] = account.balance
         row[AccountsTable.createdAt] = account.createdAt ?: now
         row[AccountsTable.lastSyncedAt] = account.lastSyncedAt
@@ -186,14 +189,24 @@ class AccountsRepositoryImpl : AccountsRepository {
             }
         }
 
-    private fun toAccount(row: ResultRow): Account = Account(
-        id = row[AccountsTable.id].value,
-        userId = row[AccountsTable.userId].value,
-        name = row[AccountsTable.name],
-        isDefault = row[AccountsTable.isDefault],
-        type = row[AccountsTable.type],
-        balance = row[AccountsTable.balance],
-        createdAt = row[AccountsTable.createdAt],
-        lastSyncedAt = row[AccountsTable.lastSyncedAt]
-    )
+    private fun toAccount(row: ResultRow): Account {
+        val linkedSourcesJson = row[AccountsTable.linkedSources]
+        val linkedSources = try {
+            Json.decodeFromString<Set<String>>(linkedSourcesJson)
+        } catch (e: Exception) {
+            emptySet()
+        }
+            
+        return Account(
+            id = row[AccountsTable.id].value,
+            userId = row[AccountsTable.userId].value,
+            name = row[AccountsTable.name],
+            isDefault = row[AccountsTable.isDefault],
+            type = row[AccountsTable.type],
+            linkedSources = linkedSources,
+            balance = row[AccountsTable.balance],
+            createdAt = row[AccountsTable.createdAt],
+            lastSyncedAt = row[AccountsTable.lastSyncedAt]
+        )
+    }
 }

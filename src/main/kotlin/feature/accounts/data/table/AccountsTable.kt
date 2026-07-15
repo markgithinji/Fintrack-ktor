@@ -12,6 +12,7 @@ object AccountsTable : UUIDTable(TableNames.ACCOUNTS) {
     val name = varchar(AccountsColumns.NAME, 100)
     val isDefault = bool(AccountsColumns.IS_DEFAULT).default(false)
     val type = enumerationByName(AccountsColumns.TYPE, 20, AccountType::class).default(AccountType.GENERAL)
+    val linkedSources = text(AccountsColumns.LINKED_SOURCES).default("[]")
     val balance = decimal(AccountsColumns.BALANCE, precision = 19, scale = 4).default(java.math.BigDecimal.ZERO)
     val createdAt = timestamp(AccountsColumns.CREATED_AT)
     val lastSyncedAt = timestamp(AccountsColumns.LAST_SYNCED_AT).nullable()

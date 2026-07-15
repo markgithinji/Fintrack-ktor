@@ -6,6 +6,7 @@ object AccountsColumns {
     const val IS_DEFAULT = "is_default"
     const val TYPE = "type"
     const val BALANCE = "balance"
+    const val LINKED_SOURCES = "linked_sources"
     const val CREATED_AT = "created_at"
     const val LAST_SYNCED_AT = "last_synced_at"
 }
