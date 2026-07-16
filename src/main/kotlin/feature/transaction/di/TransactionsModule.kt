@@ -8,5 +8,12 @@ import org.koin.dsl.module
 
 fun transactionsModule() = module {
     single<TransactionRepository> { TransactionRepositoryImpl() }
-    single<TransactionService> { TransactionServiceImpl(transactionRepository = get(), accountsRepository = get(), categoryRepository = get()) }
+    single<TransactionService> {
+        TransactionServiceImpl(
+            transactionRepository = get(),
+            accountsRepository = get(),
+            categoryRepository = get(),
+            categoryMatcher = get()
+        )
+    }
 }

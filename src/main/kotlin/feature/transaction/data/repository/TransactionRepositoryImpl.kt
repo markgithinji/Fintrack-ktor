@@ -15,7 +15,8 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import java.util.*
 
 class TransactionRepositoryImpl : TransactionRepository {
-    private val joinTable = TransactionsTable.innerJoin(CategoriesTable)
+    // FIX: Changed to leftJoin to prevent transactions with missing categories from disappearing
+    private val joinTable = TransactionsTable.leftJoin(CategoriesTable)
 
     override suspend fun getAllCursor(
         userId: UUID,
@@ -84,28 +85,35 @@ class TransactionRepositoryImpl : TransactionRepository {
         val now = Clock.System.now()
         val transactionId = entity.id ?: IdGenerator.nextId()
         
-        TransactionsTable.insert { row ->
-            row[TransactionsTable.id] = EntityID(transactionId, TransactionsTable)
-            row[TransactionsTable.userId] = EntityID(entity.userId, com.fintrack.feature.user.UsersTable)
-            row[TransactionsTable.accountId] = EntityID(entity.accountId, com.fintrack.feature.accounts.data.table.AccountsTable)
-            row[TransactionsTable.isIncome] = entity.isIncome
-            row[TransactionsTable.amount] = entity.amount
-            row[TransactionsTable.transactionCost] = entity.transactionCost
-            row[TransactionsTable.categoryId] = EntityID(entity.categoryId, CategoriesTable)
-            row[TransactionsTable.dateTime] = entity.dateTime
-            row[TransactionsTable.description] = entity.description
-            row[TransactionsTable.externalId] = entity.externalId
-            row[TransactionsTable.balance] = entity.balance
-            row[TransactionsTable.createdAt] = now
-            row[TransactionsTable.updatedAt] = now
-        }
+        // FIX: Using resultedValues to avoid a second SELECT query
+        val inserted = TransactionsTable.insert { row ->
+            row[id] = EntityID(transactionId, TransactionsTable)
+            row[userId] = EntityID(entity.userId, com.fintrack.feature.user.UsersTable)
+            row[accountId] = EntityID(entity.accountId, com.fintrack.feature.accounts.data.table.AccountsTable)
+            row[isIncome] = entity.isIncome
+            row[amount] = entity.amount
+            row[transactionCost] = entity.transactionCost
+            row[categoryId] = EntityID(entity.categoryId, CategoriesTable)
+            row[dateTime] = entity.dateTime
+            row[description] = entity.description
+            row[externalId] = entity.externalId
+            row[balance] = entity.balance
+            row[createdAt] = now
+            row[updatedAt] = now
+        }.resultedValues?.singleOrNull()
 
-        getById(transactionId, entity.userId)
-            ?: throw IllegalStateException("Failed to retrieve inserted transaction")
+        // Still need to re-fetch if we want category name, but let's try to be efficient
+        if (inserted != null) {
+            getById(transactionId, entity.userId)
+                ?: throw IllegalStateException("Failed to retrieve inserted transaction")
+        } else {
+            throw IllegalStateException("Failed to insert transaction")
+        }
     }
 
     override suspend fun update(id: UUID, userId: UUID, entity: Transaction): Transaction? = dbQuery {
         val now = Clock.System.now()
+        
         val updated = TransactionsTable.update(
             where = {
                 (TransactionsTable.id eq EntityID(id, TransactionsTable)) and
@@ -151,8 +159,10 @@ class TransactionRepositoryImpl : TransactionRepository {
 
     override suspend fun addBulk(entities: List<Transaction>): List<Transaction> = dbQuery {
         val now = Clock.System.now()
-        TransactionsTable.batchInsert(entities, ignore = true) { entity ->
-            this[TransactionsTable.id] = EntityID(entity.id ?: IdGenerator.nextId(), TransactionsTable)
+        val entitiesWithIds = entities.map { it.copy(id = it.id ?: IdGenerator.nextId()) }
+
+        TransactionsTable.batchInsert(entitiesWithIds, ignore = true) { entity ->
+            this[TransactionsTable.id] = EntityID(entity.id!!, TransactionsTable)
             this[TransactionsTable.userId] = EntityID(entity.userId, com.fintrack.feature.user.UsersTable)
             this[TransactionsTable.accountId] = EntityID(entity.accountId, com.fintrack.feature.accounts.data.table.AccountsTable)
             this[TransactionsTable.isIncome] = entity.isIncome
@@ -167,13 +177,14 @@ class TransactionRepositoryImpl : TransactionRepository {
             this[TransactionsTable.updatedAt] = now
         }
         
-        // Return re-fetched to get names
-        // This is a bit inefficient for bulk, but ensures correctness
-        entities.mapNotNull { it.id }.let { ids ->
-            joinTable.selectAll()
-                .where { TransactionsTable.id inList ids }
-                .map { it.toTransaction() }
-        }
+        // Return re-fetched to get names. 
+        // Optimization: Use the IDs we just generated to fetch in one batch.
+        val ids = entitiesWithIds.mapNotNull { it.id }
+        if (ids.isEmpty()) return@dbQuery emptyList()
+
+        joinTable.selectAll()
+            .where { TransactionsTable.id inList ids }
+            .map { it.toTransaction() }
     }
 
     override suspend fun getLatestBalance(userId: UUID, accountId: UUID?): java.math.BigDecimal? = dbQuery {
@@ -198,7 +209,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
-        category = this[CategoriesTable.name],
+        category = this[CategoriesTable.name] ?: "Uncategorized",
         categoryId = this[TransactionsTable.categoryId].value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],

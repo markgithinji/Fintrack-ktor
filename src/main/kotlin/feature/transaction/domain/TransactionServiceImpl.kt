@@ -8,6 +8,7 @@ import com.fintrack.feature.transaction.data.model.DeleteResponse
 import com.fintrack.feature.transaction.data.model.CreateTransactionRequest
 import com.fintrack.feature.transaction.data.model.UpdateTransactionRequest
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
+import feature.category.domain.CategoryMatcher
 import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.RecurringBillDto
 import feature.transaction.data.model.TransactionDto
@@ -25,7 +26,8 @@ import kotlin.math.abs
 class TransactionServiceImpl(
     private val transactionRepository: TransactionRepository,
     private val accountsRepository: AccountsRepository,
-    private val categoryRepository: feature.category.domain.CategoryRepository
+    private val categoryRepository: feature.category.domain.CategoryRepository,
+    private val categoryMatcher: CategoryMatcher
 ) : TransactionService {
 
     private val log = logger<TransactionServiceImpl>()
@@ -146,7 +148,7 @@ class TransactionServiceImpl(
         allAccounts: List<com.fintrack.feature.accounts.domain.model.Account>
     ): Transaction {
         val domain = request.toDomain(userId)
-        val resolvedCategoryId = resolveCategory(request.categoryId, request.category, request.isIncome, allCategories, domain.categoryId)
+        val resolvedCategoryId = categoryMatcher.resolveCategory(request.categoryId, request.category, request.isIncome, allCategories, domain.categoryId)
         val resolvedAccountId = resolveAccount(request.accountId, allAccounts, domain.accountId)
         return domain.copy(categoryId = resolvedCategoryId, accountId = resolvedAccountId)
     }
@@ -159,63 +161,9 @@ class TransactionServiceImpl(
         allAccounts: List<com.fintrack.feature.accounts.domain.model.Account>
     ): Transaction {
         val domain = request.toDomain(userId, id)
-        val resolvedCategoryId = resolveCategory(request.categoryId, request.category, request.isIncome, allCategories, domain.categoryId)
+        val resolvedCategoryId = categoryMatcher.resolveCategory(request.categoryId, request.category, request.isIncome, allCategories, domain.categoryId)
         val resolvedAccountId = resolveAccount(request.accountId, allAccounts, domain.accountId)
         return domain.copy(categoryId = resolvedCategoryId, accountId = resolvedAccountId)
-    }
-
-    private fun resolveCategory(
-        inputCategoryId: String?,
-        inputCategoryName: String?,
-        isIncome: Boolean,
-        allCategories: List<feature.category.domain.model.Category>,
-        defaultId: UUID
-    ): UUID {
-        // If we have a valid UUID-like string, use it
-        if (!inputCategoryId.isNullOrBlank() &&
-            inputCategoryId != "pending" &&
-            inputCategoryId != "00000000-0000-0000-0000-000000000000"
-        ) {
-            return try { UUID.fromString(inputCategoryId) } catch (_: Exception) { defaultId }
-        }
-
-        val name = inputCategoryName ?: return defaultId
-        if (name.isBlank()) return defaultId
-
-        val isExpense = !isIncome
-        val normalizedInput = name.replace("-", "").trim().lowercase()
-
-        // 1. Direct match with type (Original logic, but as first step)
-        allCategories.find {
-            it.name.equals(name, ignoreCase = true) && it.isExpense == isExpense
-        }?.let { return it.id }
-
-        // 2. Direct match without type (Fix: Use it even if isExpense doesn't match)
-        allCategories.find {
-            it.name.equals(name, ignoreCase = true)
-        }?.let { return it.id }
-
-        // 3. Fuzzy matching for common variations (Mshwari, Savings, etc.)
-        allCategories.find {
-            val norm = it.name.replace("-", "").trim().lowercase()
-            norm == normalizedInput || norm.startsWith(normalizedInput) || normalizedInput.startsWith(norm)
-        }?.let { return it.id }
-
-        // 4. Specific common keyword matching (Safaricom/M-Pesa aliases)
-        if (normalizedInput.contains("shwari") || normalizedInput.contains("saving")) {
-            allCategories.find { it.name.contains("Savings", ignoreCase = true) }?.let { return it.id }
-        }
-        if (normalizedInput.contains("loan")) {
-            allCategories.find { it.name.contains("Loans", ignoreCase = true) }?.let { return it.id }
-        }
-
-        // 5. Fallback logic
-        val fallbackName = if (isExpense) "Misc" else "Other Income"
-        return allCategories.find { it.name.equals(fallbackName, ignoreCase = true) }?.id
-            ?: allCategories.find { it.isExpense == isExpense }?.id
-            ?: allCategories.firstOrNull { it.isDefault }?.id
-            ?: allCategories.firstOrNull()?.id
-            ?: defaultId
     }
 
     private fun resolveAccount(
