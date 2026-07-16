@@ -11,6 +11,7 @@ data class UpdateTransactionRequest(
     val isIncome: Boolean,
     @Contextual val amount: BigDecimal,
     @Contextual val transactionCost: BigDecimal? = null,
+    val category: String? = null,
     val categoryId: String,
     val dateTime: Instant,
     val description: String,

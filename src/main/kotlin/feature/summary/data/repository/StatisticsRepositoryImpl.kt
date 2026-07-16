@@ -360,6 +360,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
+        category = this[CategoriesTable.name],
         categoryId = this[TransactionsTable.categoryId].value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],

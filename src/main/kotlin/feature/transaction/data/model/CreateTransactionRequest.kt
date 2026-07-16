@@ -11,6 +11,7 @@ data class CreateTransactionRequest(
     val isIncome: Boolean,
     @Contextual val amount: BigDecimal,
     @Contextual val transactionCost: BigDecimal = BigDecimal.ZERO,
+    val category: String? = null,
     val categoryId: String,
     val dateTime: Instant,
     val description: String,

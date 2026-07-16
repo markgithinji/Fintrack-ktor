@@ -15,6 +15,7 @@ import core.util.IdGenerator
 import com.fintrack.core.util.*
 import feature.transaction.data.model.toDomain
 import feature.transaction.data.model.toDto
+import feature.transaction.domain.model.Transaction
 import kotlinx.datetime.*
 import org.jetbrains.exposed.sql.SortOrder
 import java.math.BigDecimal
@@ -23,7 +24,8 @@ import kotlin.math.abs
 
 class TransactionServiceImpl(
     private val transactionRepository: TransactionRepository,
-    private val accountsRepository: AccountsRepository
+    private val accountsRepository: AccountsRepository,
+    private val categoryRepository: feature.category.domain.CategoryRepository
 ) : TransactionService {
 
     private val log = logger<TransactionServiceImpl>()
@@ -49,7 +51,6 @@ class TransactionServiceImpl(
             "limit" to limit,
         ).debug { "Fetching transactions with cursor pagination" }
 
-        // PREFER isIncome parameter over typeFilter if both are provided
         val finalIsIncome = isIncome ?: when (typeFilter?.lowercase()) {
             "income" -> true
             "expense" -> false
@@ -58,20 +59,20 @@ class TransactionServiceImpl(
 
         val start = try {
             startDate?.let { LocalDate.parse(it).atTime(0, 0, 0).toInstant(TimeZone.UTC) }
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             return Result.Failure(AppError.Validation("Invalid start date format: $startDate"))
         }
 
         val end = try {
             endDate?.let { LocalDate.parse(it).atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC) }
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             return Result.Failure(AppError.Validation("Invalid end date format: $endDate"))
         }
 
         val sortOrder = if (order == "DESC") SortOrder.DESC else SortOrder.ASC
         val parsedAfterDateTime = try {
             afterDateTime?.let { Instant.parse(it) }
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             return Result.Failure(AppError.Validation("Invalid cursor datetime: $afterDateTime"))
         }
 
@@ -94,6 +95,142 @@ class TransactionServiceImpl(
         return Result.Success(transaction.toDto())
     }
 
+    override suspend fun addBulk(
+        userId: UUID,
+        requests: List<CreateTransactionRequest>
+    ): Result<List<TransactionDto>> {
+        if (requests.isEmpty()) return Result.Success(emptyList())
+
+        val allCategories = categoryRepository.getAll(userId)
+        val allAccounts = accountsRepository.getAllAccounts(userId)
+        
+        val transactions = requests.map { 
+            resolveRefsAndToDomain(it, userId, allCategories, allAccounts) 
+        }
+        val result = transactionRepository.addBulk(transactions)
+
+        // Account Balance Update
+        val mostRecentWithBalance = requests.asSequence()
+            .filter { it.balance != null }
+            .maxByOrNull { it.dateTime }
+
+        if (mostRecentWithBalance != null) {
+            val accountIdStr = mostRecentWithBalance.accountId
+            val accountId = try { 
+                UUID.fromString(accountIdStr) 
+            } catch (e: Exception) {
+                allAccounts.find { it.name.lowercase().contains(accountIdStr.lowercase()) }?.id
+                    ?: allAccounts.find { it.isDefault }?.id
+                    ?: allAccounts.firstOrNull()?.id
+            }
+            
+            if (accountId != null) {
+                accountsRepository.updateBalance(accountId, mostRecentWithBalance.balance!!)
+            }
+        }
+
+        return Result.Success(result.map { it.toDto() })
+    }
+
+    override suspend fun syncEquityTransactions(
+        userId: UUID,
+        requests: List<CreateTransactionRequest>
+    ): Result<List<TransactionDto>> {
+        return addBulk(userId, requests)
+    }
+
+    private fun resolveRefsAndToDomain(
+        request: CreateTransactionRequest,
+        userId: UUID,
+        allCategories: List<feature.category.domain.model.Category>,
+        allAccounts: List<com.fintrack.feature.accounts.domain.model.Account>
+    ): Transaction {
+        val domain = request.toDomain(userId)
+        val resolvedCategoryId = resolveCategory(request.categoryId, request.category, request.isIncome, allCategories, domain.categoryId)
+        val resolvedAccountId = resolveAccount(request.accountId, allAccounts, domain.accountId)
+        return domain.copy(categoryId = resolvedCategoryId, accountId = resolvedAccountId)
+    }
+
+    private fun resolveRefsAndToDomain(
+        request: UpdateTransactionRequest,
+        userId: UUID,
+        id: UUID,
+        allCategories: List<feature.category.domain.model.Category>,
+        allAccounts: List<com.fintrack.feature.accounts.domain.model.Account>
+    ): Transaction {
+        val domain = request.toDomain(userId, id)
+        val resolvedCategoryId = resolveCategory(request.categoryId, request.category, request.isIncome, allCategories, domain.categoryId)
+        val resolvedAccountId = resolveAccount(request.accountId, allAccounts, domain.accountId)
+        return domain.copy(categoryId = resolvedCategoryId, accountId = resolvedAccountId)
+    }
+
+    private fun resolveCategory(
+        inputCategoryId: String?,
+        inputCategoryName: String?,
+        isIncome: Boolean,
+        allCategories: List<feature.category.domain.model.Category>,
+        defaultId: UUID
+    ): UUID {
+        // If we have a valid UUID-like string, use it
+        if (!inputCategoryId.isNullOrBlank() &&
+            inputCategoryId != "pending" &&
+            inputCategoryId != "00000000-0000-0000-0000-000000000000"
+        ) {
+            return try { UUID.fromString(inputCategoryId) } catch (_: Exception) { defaultId }
+        }
+
+        val name = inputCategoryName ?: return defaultId
+        if (name.isBlank()) return defaultId
+
+        val isExpense = !isIncome
+        val normalizedInput = name.replace("-", "").trim().lowercase()
+
+        // 1. Direct match with type (Original logic, but as first step)
+        allCategories.find {
+            it.name.equals(name, ignoreCase = true) && it.isExpense == isExpense
+        }?.let { return it.id }
+
+        // 2. Direct match without type (Fix: Use it even if isExpense doesn't match)
+        allCategories.find {
+            it.name.equals(name, ignoreCase = true)
+        }?.let { return it.id }
+
+        // 3. Fuzzy matching for common variations (Mshwari, Savings, etc.)
+        allCategories.find {
+            val norm = it.name.replace("-", "").trim().lowercase()
+            norm == normalizedInput || norm.startsWith(normalizedInput) || normalizedInput.startsWith(norm)
+        }?.let { return it.id }
+
+        // 4. Specific common keyword matching (Safaricom/M-Pesa aliases)
+        if (normalizedInput.contains("shwari") || normalizedInput.contains("saving")) {
+            allCategories.find { it.name.contains("Savings", ignoreCase = true) }?.let { return it.id }
+        }
+        if (normalizedInput.contains("loan")) {
+            allCategories.find { it.name.contains("Loans", ignoreCase = true) }?.let { return it.id }
+        }
+
+        // 5. Fallback logic
+        val fallbackName = if (isExpense) "Misc" else "Other Income"
+        return allCategories.find { it.name.equals(fallbackName, ignoreCase = true) }?.id
+            ?: allCategories.find { it.isExpense == isExpense }?.id
+            ?: defaultId
+    }
+
+    private fun resolveAccount(
+        inputAccountId: String?,
+        allAccounts: List<com.fintrack.feature.accounts.domain.model.Account>,
+        defaultId: UUID
+    ): UUID {
+        if (defaultId != UUID.fromString("00000000-0000-0000-0000-000000000000")) return defaultId
+        if (inputAccountId.isNullOrBlank()) return defaultId
+
+        val nameToMatch = inputAccountId.lowercase()
+        return allAccounts.find { it.name.lowercase().contains(nameToMatch) }?.id
+            ?: allAccounts.find { it.isDefault }?.id
+            ?: allAccounts.firstOrNull()?.id
+            ?: defaultId
+    }
+
     override suspend fun add(userId: UUID, request: CreateTransactionRequest): Result<TransactionDto> {
         log.withContext(
             "userId" to userId,
@@ -102,7 +239,9 @@ class TransactionServiceImpl(
             "categoryId" to request.categoryId
         ).info { "Creating transaction" }
 
-        val transaction = request.toDomain(userId)
+        val allCategories = categoryRepository.getAll(userId)
+        val allAccounts = accountsRepository.getAllAccounts(userId)
+        val transaction = resolveRefsAndToDomain(request, userId, allCategories, allAccounts)
         val result = transactionRepository.add(transaction)
 
         return Result.Success(result.toDto())
@@ -116,7 +255,9 @@ class TransactionServiceImpl(
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Updating transaction" }
 
-        val transaction = request.toDomain(userId, id)
+        val allCategories = categoryRepository.getAll(userId)
+        val allAccounts = accountsRepository.getAllAccounts(userId)
+        val transaction = resolveRefsAndToDomain(request, userId, id, allCategories, allAccounts)
         val result = transactionRepository.update(id, userId, transaction)
             ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
 
@@ -125,11 +266,9 @@ class TransactionServiceImpl(
 
     override suspend fun delete(userId: UUID, id: UUID): Result<Unit> {
         val deleted = transactionRepository.delete(id, userId)
-
         if (!deleted) {
             return Result.Failure(AppError.NotFound("Transaction $id not found"))
         }
-
         return Result.Success(Unit)
     }
 
@@ -145,51 +284,6 @@ class TransactionServiceImpl(
         else "All transactions cleared for user $userId"
 
         return Result.Success(DeleteResponse(message, cleared))
-    }
-
-    override suspend fun addBulk(
-        userId: UUID,
-        requests: List<CreateTransactionRequest>
-    ): Result<List<TransactionDto>> {
-        val transactions = requests.map { it.toDomain(userId) }
-        val result = transactionRepository.addBulk(transactions)
-
-        // Account Balance Update (match logic in syncEquityTransactions)
-        val mostRecentWithBalance = requests
-            .filter { it.balance != null }
-            .maxByOrNull { it.dateTime }
-
-        if (mostRecentWithBalance != null) {
-            val accountId = UUID.fromString(mostRecentWithBalance.accountId)
-            accountsRepository.updateBalance(accountId, mostRecentWithBalance.balance!!)
-        }
-
-        return Result.Success(result.map { it.toDto() })
-    }
-
-    override suspend fun syncEquityTransactions(
-        userId: UUID,
-        requests: List<CreateTransactionRequest>
-    ): Result<List<TransactionDto>> {
-        if (requests.isEmpty()) return Result.Success(emptyList())
-
-        // 1. Convert to domain objects
-        val transactions = requests.map { it.toDomain(userId) }
-
-        // 2. Deduplication is handled by repo.addBulk (using ignore = true and uniqueIndex(externalId, userId))
-        val result = transactionRepository.addBulk(transactions)
-
-        // 3. Account Balance Update
-        val mostRecentWithBalance = requests
-            .filter { it.balance != null }
-            .maxByOrNull { it.dateTime }
-
-        if (mostRecentWithBalance != null) {
-            val accountId = UUID.fromString(mostRecentWithBalance.accountId)
-            accountsRepository.updateBalance(accountId, mostRecentWithBalance.balance!!)
-        }
-
-        return Result.Success(result.map { it.toDto() })
     }
 
     override suspend fun detectRecurringBills(userId: UUID): Result<List<RecurringBillDto>> {
@@ -225,7 +319,7 @@ class TransactionServiceImpl(
                 
                 // Check for regular intervals (approx 30 days)
                 val intervals = mutableListOf<Long>()
-                for (i in 0 until sortedTxns.size - 1) {
+                for (i in 0 until (sortedTxns.size - 1)) {
                     val days = sortedTxns[i].dateTime.until(sortedTxns[i + 1].dateTime, DateTimeUnit.DAY, TimeZone.UTC)
                     intervals.add(days)
                 }
@@ -246,6 +340,7 @@ class TransactionServiceImpl(
                             id = IdGenerator.nextId().toString(),
                             name = name,
                             amount = avgAmount,
+                            category = lastTxn.category,
                             categoryId = lastTxn.categoryId.toString(),
                             frequency = "Monthly",
                             nextDueDate = nextDueDate,
