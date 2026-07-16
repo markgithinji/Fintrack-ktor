@@ -80,11 +80,11 @@ Headers: Authorization: Bearer <your-jwt-token>
 **Server & Framework:**
 - **Ktor**: Asynchronous non-blocking web framework for Kotlin.
 - **Netty Engine**: High-performance event-driven network application framework.
-- **Kotlinx Serialization**: Type-safe, multiplatform JSON serialization.
+- **Kotlinx Serialization**: Type-safe, multiplatform JSON serialization with custom handlers for `BigDecimal` and `UUID`.
 - **DoubleReceive**: Optimized request body handling for logging and validation.
 
 **Database & Persistence:**
-- **PostgreSQL**: Primary relational database for financial records.
+- **PostgreSQL**: Primary relational database with a **Normalized Financial Schema** using join tables for complex relationships.
 - **Exposed**: Type-safe SQL DSL and Lightweight DAO for Kotlin.
 - **HikariCP**: Production-ready high-performance JDBC connection pooling.
 - **Flyway**: Automated database schema migrations and versioning.
@@ -120,24 +120,24 @@ Headers: Authorization: Bearer <your-jwt-token>
 - **Audit Logging**: Structured logging of sensitive actions (registration, login, password changes) with IP and User-Agent tracking for security forensics.
 
 ### 📊 Financial Intelligence
-- **Historical Look-back & Smart Discovery**: Intelligent fallback engine that detects the most recent period of activity when the current month is empty. It performs automated top-category discovery and strict snapshot comparisons to provide relevant financial context to the user.
-- **Recurring Bill Detection**: AI-powered detection of subscription and recurring payments based on transaction patterns and frequency.
-- **Advanced Analytics**: Category-wise distribution, period comparisons (Week/Month/Year), and spending trends.
-- **Bulk Operations**: High-performance bulk transaction creation for data imports/syncs.
-- **Budgeting Engine**: Real-time tracking of spending against category-specific limits.
-- **Flexible Reporting**: Server-side aggregation for responsive mobile charts.
+- **Merchant Intelligence & Normalization**: Automated description cleaning that transforms messy bank strings (e.g., `"STARBUCKS STORE #1234 NY"`) into clean merchant identities.
+- **Dynamic Server-Side Sync Parsing**: Advanced keyword matching engine for transaction categorization that can be updated on-the-fly via the server without needing a mobile client release.
+- **Predictive Burn-Rate Analytics**: Intelligent forecasting that predicts exactly *which month* a user is likely to exceed their annual budget based on current spending velocity.
+- **Behavioral Correlations**: Insight engine that identifies links between financial events, such as detecting lifestyle creep by correlating income growth with specific luxury spending.
+- **Recurring Bill Detection**: Pattern-based detection of subscription and recurring payments based on frequency and merchant history.
+- **Advanced Budgeting Engine**: High-integrity tracking of spending against multi-account and multi-category limits using a relational join architecture.
 
 ### ⚙️ Maintainability & Architecture
 - **Clean Architecture**: Strict separation of concerns (Domain -> Application -> Data -> Presentation).
+- **Functional Domain Patterns**: Implementation of the `Result` sealed class pattern for robust, exception-free business logic.
 - **Feature-Modular Design**: Code organized by business domains (Auth, Transactions, Budgets, Summary) to reduce coupling.
-- **Migration Strategy**: Graceful migration path for legacy password hashes (BCrypt to Argon2) during user login.
-- **Type Safety**: End-to-end type safety using Kotlin's powerful type system and Exposed DSL.
+- **Type Safety**: End-to-end type safety using Kotlin's powerful type system and Exposed DSL, ensuring zero-rounding error precision for financial data.
 
 ---
 
 ## 🏗️ Architecture Layers
 
-1.  **Domain**: Pure Kotlin logic, Entities, and Repository Interfaces. No dependencies on frameworks.
+1.  **Domain**: Pure Kotlin logic, Entities, and Repository Interfaces. No dependencies on frameworks. Uses `Result<T>` for functional error handling.
 2.  **Application**: Implementation of business use cases (Services).
 3.  **Data**: Database implementations, Redis services, Mappers, and External API integrations.
 4.  **Presentation**: Ktor Routes, DTOs, Authentication interceptors, and Exception mapping.
