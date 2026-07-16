@@ -14,14 +14,17 @@ import java.util.UUID
 class CategoryRepositoryImpl : CategoryRepository {
     override suspend fun getAll(userId: UUID): List<Category> = dbQuery {
         CategoriesTable.selectAll()
-            .where { CategoriesTable.userId eq EntityID(userId, UsersTable) }
+            .where { (CategoriesTable.userId eq userId) or (CategoriesTable.userId.isNull()) }
             .orderBy(CategoriesTable.createdAt to SortOrder.ASC)
             .map { it.toCategory() }
     }
 
     override suspend fun getById(id: UUID, userId: UUID): Category? = dbQuery {
         CategoriesTable.selectAll()
-            .where { (CategoriesTable.id eq EntityID(id, CategoriesTable)) and (CategoriesTable.userId eq EntityID(userId, UsersTable)) }
+            .where { 
+                (CategoriesTable.id eq id) and 
+                ((CategoriesTable.userId eq userId) or (CategoriesTable.userId.isNull()))
+            }
             .map { it.toCategory() }
             .singleOrNull()
     }
@@ -36,7 +39,7 @@ class CategoryRepositoryImpl : CategoryRepository {
         val now = Clock.System.now()
         val inserted = CategoriesTable.insert { row ->
             row[id] = EntityID(category.id, CategoriesTable)
-            row[userId] = EntityID(category.userId, UsersTable)
+            row[userId] = category.userId?.let { EntityID(it, UsersTable) }
             row[name] = category.name
             row[isExpense] = category.isExpense
             row[iconName] = category.iconName
@@ -51,7 +54,7 @@ class CategoryRepositoryImpl : CategoryRepository {
         val now = Clock.System.now()
         CategoriesTable.batchInsert(categories) { category ->
             this[CategoriesTable.id] = EntityID(category.id, CategoriesTable)
-            this[CategoriesTable.userId] = EntityID(category.userId, UsersTable)
+            this[CategoriesTable.userId] = category.userId?.let { EntityID(it, UsersTable) }
             this[CategoriesTable.name] = category.name
             this[CategoriesTable.isExpense] = category.isExpense
             this[CategoriesTable.iconName] = category.iconName
@@ -79,11 +82,11 @@ class CategoryRepositoryImpl : CategoryRepository {
 
     private fun ResultRow.toCategory() = Category(
         id = this[CategoriesTable.id].value,
-        userId = this[CategoriesTable.userId].value,
+        userId = this[CategoriesTable.userId]?.value,
         name = this[CategoriesTable.name],
         isExpense = this[CategoriesTable.isExpense],
         iconName = this[CategoriesTable.iconName],
         isDefault = this[CategoriesTable.isDefault],
-        createdAt = this[CategoriesTable.createdAt]
+        createdAt = this[CategoriesTable.createdAt],
     )
 }

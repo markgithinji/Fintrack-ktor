@@ -7,7 +7,7 @@ import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.kotlin.datetime.timestamp
 
 object CategoriesTable : UUIDTable(TableNames.CATEGORIES) {
-    val userId = reference(CategoriesColumns.USER_ID, UsersTable, onDelete = ReferenceOption.CASCADE)
+    val userId = reference(CategoriesColumns.USER_ID, UsersTable, onDelete = ReferenceOption.CASCADE).nullable()
     val name = varchar(CategoriesColumns.NAME, 100)
     val isExpense = bool(CategoriesColumns.IS_EXPENSE)
     val iconName = varchar(CategoriesColumns.ICON_NAME, 100).nullable()

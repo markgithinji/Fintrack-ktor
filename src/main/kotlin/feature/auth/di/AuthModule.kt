@@ -10,7 +10,6 @@ import com.fintrack.feature.auth.domain.repository.RefreshTokenRepository
 import com.fintrack.feature.auth.domain.repository.EmailVerificationRepository
 import com.fintrack.feature.user.domain.UserRepository
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
-import feature.category.domain.CategoryRepository
 import com.fintrack.core.EmailService
 import com.fintrack.core.LogEmailService
 import org.koin.dsl.module
@@ -38,7 +37,6 @@ val authModule = module {
         AuthServiceImpl(
             userRepository = get<UserRepository>(),
             accountsRepository = get<AccountsRepository>(),
-            categoryRepository = get<CategoryRepository>(),
             tokenBlacklistRepository = get<TokenBlacklistRepository>(),
             refreshTokenRepository = get<RefreshTokenRepository>()
         )

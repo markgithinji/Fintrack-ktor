@@ -18,6 +18,7 @@ fun RequestValidationConfig.configureTransactionValidation() {
             description = request.description,
             dateTime = request.dateTime,
             transactionCost = request.transactionCost,
+            category = request.category
         )
     }
 
@@ -33,7 +34,8 @@ fun RequestValidationConfig.configureTransactionValidation() {
             categoryId = request.categoryId,
             description = request.description,
             dateTime = request.dateTime,
-            transactionCost = request.transactionCost
+            transactionCost = request.transactionCost,
+            category = request.category
         )
         
         if (fieldResult is ValidationResult.Invalid) {
@@ -64,6 +66,7 @@ private fun validateList(requests: List<CreateTransactionRequest>): ValidationRe
             description = req.description,
             dateTime = req.dateTime,
             transactionCost = req.transactionCost,
+            category = req.category,
             prefix = "Transaction #${index + 1}"
         )
         (result as? ValidationResult.Invalid)?.reasons ?: emptyList()
@@ -82,6 +85,7 @@ private fun validateTransactionFields(
     description: String,
     dateTime: Instant,
     transactionCost: BigDecimal?,
+    category: String? = null,
     prefix: String? = null
 ): ValidationResult {
     val violations = mutableListOf<String>()
@@ -98,9 +102,10 @@ private fun validateTransactionFields(
         violations.add("${p}Transaction cost cannot be negative")
     }
 
-    // Category ID validation
-    if (categoryId.isBlank()) {
-        violations.add("${p}Category ID cannot be blank")
+    // Category validation: Either ID or Name must be provided
+    // Allow static UUIDs and "pending" or other client-side indicators
+    if (categoryId.isBlank() && category.isNullOrBlank()) {
+        violations.add("${p}Category (ID or Name) must be provided")
     }
 
     // Description validation

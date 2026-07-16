@@ -213,6 +213,8 @@ class TransactionServiceImpl(
         val fallbackName = if (isExpense) "Misc" else "Other Income"
         return allCategories.find { it.name.equals(fallbackName, ignoreCase = true) }?.id
             ?: allCategories.find { it.isExpense == isExpense }?.id
+            ?: allCategories.firstOrNull { it.isDefault }?.id
+            ?: allCategories.firstOrNull()?.id
             ?: defaultId
     }
 
@@ -221,10 +223,15 @@ class TransactionServiceImpl(
         allAccounts: List<com.fintrack.feature.accounts.domain.model.Account>,
         defaultId: UUID
     ): UUID {
-        if (defaultId != UUID.fromString("00000000-0000-0000-0000-000000000000")) return defaultId
-        if (inputAccountId.isNullOrBlank()) return defaultId
+        if (!inputAccountId.isNullOrBlank() && 
+            inputAccountId != "00000000-0000-0000-0000-000000000000" &&
+            inputAccountId != "mpesa" && 
+            inputAccountId != "equity"
+        ) {
+            try { return UUID.fromString(inputAccountId) } catch (_: Exception) { }
+        }
 
-        val nameToMatch = inputAccountId.lowercase()
+        val nameToMatch = inputAccountId?.lowercase() ?: ""
         return allAccounts.find { it.name.lowercase().contains(nameToMatch) }?.id
             ?: allAccounts.find { it.isDefault }?.id
             ?: allAccounts.firstOrNull()?.id

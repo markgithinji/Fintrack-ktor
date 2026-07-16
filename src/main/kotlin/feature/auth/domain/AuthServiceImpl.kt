@@ -16,8 +16,6 @@ import com.fintrack.feature.auth.domain.model.RefreshToken
 import com.fintrack.feature.auth.domain.repository.RefreshTokenRepository
 import com.fintrack.feature.auth.domain.repository.TokenBlacklistRepository
 import com.fintrack.feature.user.domain.UserRepository
-import feature.category.domain.CategoryRepository
-import feature.category.domain.model.Category
 import core.PasswordHasher
 import core.util.IdGenerator
 import com.fintrack.core.data.dbQuery
@@ -25,11 +23,11 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import java.util.*
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class AuthServiceImpl(
     private val userRepository: UserRepository,
     private val accountsRepository: AccountsRepository,
-    private val categoryRepository: CategoryRepository,
     private val tokenBlacklistRepository: TokenBlacklistRepository,
     private val refreshTokenRepository: RefreshTokenRepository
 ) : AuthService {
@@ -47,7 +45,6 @@ class AuthServiceImpl(
         val name = email.substringBefore("@")
         val userId = userRepository.createUser(email, password, name)
         createDefaultAccounts(userId)
-        createDefaultCategories(userId)
 
         log.info { "User registered successfully: $email (userId: $userId)" }
         Result.Success(generateAuthResponse(userId))
@@ -196,63 +193,5 @@ class AuthServiceImpl(
             Account(userId = userId, name = "Cash", isDefault = true, createdAt = Instant.parse("2024-01-01T00:00:04Z"))
         )
         accountsRepository.addAll(defaultAccounts)
-    }
-
-    private suspend fun createDefaultCategories(userId: UUID) {
-        val incomeCategories = listOf(
-            "Salary" to "AttachMoney",
-            "Freelance" to "Work",
-            "Investments" to "TrendingUp",
-            "Gifts" to "CardGiftcard",
-            "Bonus" to "Paid",
-            "Rental" to "RealEstateAgent",
-            "Dividends" to "Analytics",
-            "Interest" to "Percent",
-            "Loans" to "AccountBalanceWallet",
-            "Transfer" to "Sync",
-            "Savings" to "Savings",
-            "Other Income" to "AttachMoney"
-        )
-        val expenseCategories = listOf(
-            "Food" to "Fastfood",
-            "Transport" to "DirectionsCar",
-            "Shopping" to "ShoppingCart",
-            "Health" to "LocalHospital",
-            "Bills" to "Receipt",
-            "Entertainment" to "Movie",
-            "Education" to "School",
-            "Gifts" to "CardGiftcard",
-            "Travel" to "Flight",
-            "Personal Care" to "ContentCut",
-            "Subscriptions" to "Subscriptions",
-            "Rent" to "Home",
-            "Groceries" to "ShoppingBag",
-            "Insurance" to "Shield",
-            "Dining Out" to "Restaurant",
-            "Utilities" to "Lightbulb",
-            "Internet" to "Wifi",
-            "Airtime" to "Smartphone",
-            "Bank" to "AccountBalance",
-            "Loans" to "AccountBalanceWallet",
-            "Charity" to "VolunteerActivism",
-            "Government" to "AccountBalance",
-            "Savings" to "Savings",
-            "Transfer" to "Sync",
-            "Pets" to "Pets",
-            "Fitness" to "FitnessCenter",
-            "Maintenance" to "Build",
-            "Transaction Fees" to "Receipt",
-            "Misc" to "HelpOutline"
-        )
-
-        val baseTime = Instant.parse("2024-01-01T00:00:00Z")
-        var offset = 0
-        val categories = incomeCategories.map { (name, icon) ->
-            Category(IdGenerator.nextId(), userId, name, isExpense = false, iconName = icon, isDefault = true, createdAt = baseTime.plus(kotlin.time.Duration.parse("${offset++}s")))
-        } + expenseCategories.map { (name, icon) ->
-            Category(IdGenerator.nextId(), userId, name, isExpense = true, iconName = icon, isDefault = true, createdAt = baseTime.plus(kotlin.time.Duration.parse("${offset++}s")))
-        }
-
-        categoryRepository.addAll(categories)
     }
 }

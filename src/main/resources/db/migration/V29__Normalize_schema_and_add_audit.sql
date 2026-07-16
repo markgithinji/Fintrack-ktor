@@ -66,3 +66,6 @@ CREATE INDEX idx_transactions_updated_at ON transactions(updated_at);
 
 -- Remove redundant category string column (since we have category_id now)
 ALTER TABLE transactions DROP COLUMN category;
+
+-- 6. Prepare categories table for global defaults
+ALTER TABLE categories ALTER COLUMN user_id DROP NOT NULL;
