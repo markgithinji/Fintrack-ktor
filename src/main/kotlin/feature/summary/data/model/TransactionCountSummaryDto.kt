@@ -9,5 +9,6 @@ data class TransactionCountSummaryDto(
     val totalIncomeTransactions: Int,
     val totalExpenseTransactions: Int,
     val totalTransactions: Int,
-    @Contextual val totalTransactionCost: BigDecimal = BigDecimal.ZERO
+    @Contextual val totalTransactionCost: BigDecimal = BigDecimal.ZERO,
+    @Contextual val totalAmount: BigDecimal = BigDecimal.ZERO
 )

@@ -1126,7 +1126,8 @@ class StatisticsServiceImpl(
                 counts.incomeCount,
                 counts.expenseCount,
                 counts.totalCount,
-                counts.totalTransactionCost
+                counts.totalTransactionCost,
+                counts.totalAmount
             )
         )
     }

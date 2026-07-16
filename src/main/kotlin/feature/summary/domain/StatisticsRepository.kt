@@ -75,7 +75,8 @@ data class TransactionCounts(
     val incomeCount: Int,
     val expenseCount: Int,
     val totalCount: Int,
-    val totalTransactionCost: BigDecimal = BigDecimal.ZERO
+    val totalTransactionCost: BigDecimal = BigDecimal.ZERO,
+    val totalAmount: BigDecimal = BigDecimal.ZERO
 )
 
 data class DailyTotal(

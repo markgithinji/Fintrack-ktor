@@ -349,9 +349,10 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         val incomeCountSum = incomeCase.sum()
         val expenseCountSum = expenseCase.sum()
         val totalCostSum = TransactionsTable.transactionCost.sum()
+        val totalAmountSum = TransactionsTable.amount.sum()
 
         var query = TransactionsTable
-            .select(incomeCountSum, expenseCountSum, totalCostSum)
+            .select(incomeCountSum, expenseCountSum, totalCostSum, totalAmountSum)
             .where { TransactionsTable.userId eq EntityID(userId, UsersTable) }
 
         if (accountId != null) query =
@@ -372,7 +373,8 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             incomeCount = row?.get(incomeCountSum) ?: 0,
             expenseCount = row?.get(expenseCountSum) ?: 0,
             totalCount = (row?.get(incomeCountSum) ?: 0) + (row?.get(expenseCountSum) ?: 0),
-            totalTransactionCost = row?.get(totalCostSum) ?: java.math.BigDecimal.ZERO
+            totalTransactionCost = row?.get(totalCostSum) ?: java.math.BigDecimal.ZERO,
+            totalAmount = row?.get(totalAmountSum) ?: java.math.BigDecimal.ZERO
         )
     }
 
