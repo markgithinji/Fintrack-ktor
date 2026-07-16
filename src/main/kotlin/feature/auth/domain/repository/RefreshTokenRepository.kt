@@ -6,6 +6,7 @@ import java.util.UUID
 interface RefreshTokenRepository {
     suspend fun save(refreshToken: RefreshToken)
     suspend fun findByToken(token: String): RefreshToken?
+    suspend fun markAsUsed(token: String)
     suspend fun deleteByToken(token: String)
     suspend fun deleteByUserId(userId: UUID)
 }

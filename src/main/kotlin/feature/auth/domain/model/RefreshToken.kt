@@ -8,5 +8,7 @@ data class RefreshToken(
     val id: UUID = IdGenerator.nextId(),
     val token: String,
     val userId: UUID,
-    val expiresAt: Instant
+    val expiresAt: Instant,
+    val isUsed: Boolean = false,
+    val rotatedAt: Instant? = null
 )

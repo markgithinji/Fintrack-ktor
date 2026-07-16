@@ -3,6 +3,7 @@ package com.fintrack.feature.auth.data.repository
 import com.fintrack.feature.auth.data.table.RefreshTokensTable
 import com.fintrack.feature.auth.domain.model.RefreshToken
 import com.fintrack.feature.auth.domain.repository.RefreshTokenRepository
+import kotlinx.datetime.Clock
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -16,6 +17,8 @@ class ExposedRefreshTokenRepository : RefreshTokenRepository {
                 it[token] = refreshToken.token
                 it[userId] = refreshToken.userId
                 it[expiresAt] = refreshToken.expiresAt
+                it[isUsed] = refreshToken.isUsed
+                it[rotatedAt] = refreshToken.rotatedAt
             }
         }
     }
@@ -25,6 +28,15 @@ class ExposedRefreshTokenRepository : RefreshTokenRepository {
             RefreshTokensTable.selectAll().where { RefreshTokensTable.token eq token }
                 .map { rowToRefreshToken(it) }
                 .singleOrNull()
+        }
+    }
+
+    override suspend fun markAsUsed(token: String) {
+        transaction {
+            RefreshTokensTable.update({ RefreshTokensTable.token eq token }) {
+                it[isUsed] = true
+                it[rotatedAt] = Clock.System.now()
+            }
         }
     }
 
@@ -44,6 +56,8 @@ class ExposedRefreshTokenRepository : RefreshTokenRepository {
         id = row[RefreshTokensTable.id].value,
         token = row[RefreshTokensTable.token],
         userId = row[RefreshTokensTable.userId],
-        expiresAt = row[RefreshTokensTable.expiresAt]
+        expiresAt = row[RefreshTokensTable.expiresAt],
+        isUsed = row[RefreshTokensTable.isUsed],
+        rotatedAt = row[RefreshTokensTable.rotatedAt]
     )
 }

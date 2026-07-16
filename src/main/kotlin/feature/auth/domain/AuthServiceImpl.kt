@@ -129,14 +129,33 @@ class AuthServiceImpl(
             return Result.Failure(AppError.Authentication("Invalid refresh token", "INVALID_REFRESH_TOKEN"))
         }
 
-        if (storedToken.expiresAt < Clock.System.now()) {
+        val now = Clock.System.now()
+
+        // Handle Token Reuse (Grace Period)
+        if (storedToken.isUsed) {
+            val gracePeriod = 30.seconds
+            val rotatedAt = storedToken.rotatedAt ?: Instant.DISTANT_PAST
+            
+            if (now > rotatedAt + gracePeriod) {
+                log.warn { "Refresh failed - token reuse detected after grace period for user ${storedToken.userId}" }
+                // Potential attack: Invalidate all tokens for this user
+                refreshTokenRepository.deleteByUserId(storedToken.userId)
+                return Result.Failure(AppError.Authentication("Security violation: Refresh token reused", "TOKEN_REUSE_DETECTED"))
+            }
+            
+            log.info { "Token reuse within grace period for user ${storedToken.userId}. Returning most recent session." }
+            // Optional: You could find and return the new token generated from the first rotation,
+            // but for simplicity and safety, we allow issuing a new one if it's within the window.
+        }
+
+        if (storedToken.expiresAt < now) {
             log.warn { "Refresh failed - token expired for user ${storedToken.userId}" }
             refreshTokenRepository.deleteByToken(refreshToken)
             return Result.Failure(AppError.Authentication("Refresh token expired", "REFRESH_TOKEN_EXPIRED"))
         }
 
-        // Revoke old refresh token (Token Rotation)
-        refreshTokenRepository.deleteByToken(refreshToken)
+        // Revoke old refresh token (Token Rotation with Grace Period)
+        refreshTokenRepository.markAsUsed(refreshToken)
         log.info { "Old refresh token rotated for user ${storedToken.userId}" }
 
         return Result.Success(generateAuthResponse(storedToken.userId))
