@@ -13,7 +13,8 @@ fun transactionsModule() = module {
             transactionRepository = get(),
             accountsRepository = get(),
             categoryRepository = get(),
-            categoryMatcher = get()
+            categoryMatcher = get(),
+            ruleService = get()
         )
     }
 }

@@ -9,6 +9,8 @@ import com.fintrack.feature.transaction.data.model.CreateTransactionRequest
 import com.fintrack.feature.transaction.data.model.UpdateTransactionRequest
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import feature.category.domain.CategoryMatcher
+import feature.category.domain.CategoryRuleService
+import feature.category.domain.model.CategoryRule
 import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.RecurringBillDto
 import feature.transaction.data.model.TransactionDto
@@ -27,7 +29,8 @@ class TransactionServiceImpl(
     private val transactionRepository: TransactionRepository,
     private val accountsRepository: AccountsRepository,
     private val categoryRepository: feature.category.domain.CategoryRepository,
-    private val categoryMatcher: CategoryMatcher
+    private val categoryMatcher: CategoryMatcher,
+    private val ruleService: CategoryRuleService
 ) : TransactionService {
 
     private val log = logger<TransactionServiceImpl>()
@@ -105,9 +108,10 @@ class TransactionServiceImpl(
 
         val allCategories = categoryRepository.getAll(userId)
         val allAccounts = accountsRepository.getAllAccounts(userId)
+        val rules = ruleService.getAllRules().getOrNull() ?: emptyList()
         
         val transactions = requests.map { 
-            resolveRefsAndToDomain(it, userId, allCategories, allAccounts) 
+            resolveRefsAndToDomain(it, userId, allCategories, allAccounts, rules) 
         }
         val result = transactionRepository.addBulk(transactions)
 
@@ -145,10 +149,19 @@ class TransactionServiceImpl(
         request: CreateTransactionRequest,
         userId: UUID,
         allCategories: List<feature.category.domain.model.Category>,
-        allAccounts: List<com.fintrack.feature.accounts.domain.model.Account>
+        allAccounts: List<com.fintrack.feature.accounts.domain.model.Account>,
+        rules: List<CategoryRule>
     ): Transaction {
         val domain = request.toDomain(userId)
-        val resolvedCategoryId = categoryMatcher.resolveCategory(request.categoryId, request.category, request.isIncome, allCategories, domain.categoryId)
+        val resolvedCategoryId = categoryMatcher.resolveCategory(
+            request.categoryId, 
+            request.category, 
+            request.description,
+            request.isIncome, 
+            allCategories, 
+            rules,
+            domain.categoryId
+        )
         val resolvedAccountId = resolveAccount(request.accountId, allAccounts, domain.accountId)
         return domain.copy(categoryId = resolvedCategoryId, accountId = resolvedAccountId)
     }
@@ -158,10 +171,19 @@ class TransactionServiceImpl(
         userId: UUID,
         id: UUID,
         allCategories: List<feature.category.domain.model.Category>,
-        allAccounts: List<com.fintrack.feature.accounts.domain.model.Account>
+        allAccounts: List<com.fintrack.feature.accounts.domain.model.Account>,
+        rules: List<CategoryRule>
     ): Transaction {
         val domain = request.toDomain(userId, id)
-        val resolvedCategoryId = categoryMatcher.resolveCategory(request.categoryId, request.category, request.isIncome, allCategories, domain.categoryId)
+        val resolvedCategoryId = categoryMatcher.resolveCategory(
+            request.categoryId, 
+            request.category, 
+            request.description,
+            request.isIncome, 
+            allCategories, 
+            rules,
+            domain.categoryId
+        )
         val resolvedAccountId = resolveAccount(request.accountId, allAccounts, domain.accountId)
         return domain.copy(categoryId = resolvedCategoryId, accountId = resolvedAccountId)
     }
@@ -196,7 +218,8 @@ class TransactionServiceImpl(
 
         val allCategories = categoryRepository.getAll(userId)
         val allAccounts = accountsRepository.getAllAccounts(userId)
-        val transaction = resolveRefsAndToDomain(request, userId, allCategories, allAccounts)
+        val rules = ruleService.getAllRules().getOrNull() ?: emptyList()
+        val transaction = resolveRefsAndToDomain(request, userId, allCategories, allAccounts, rules)
         val result = transactionRepository.add(transaction)
 
         return Result.Success(result.toDto())
@@ -212,7 +235,8 @@ class TransactionServiceImpl(
 
         val allCategories = categoryRepository.getAll(userId)
         val allAccounts = accountsRepository.getAllAccounts(userId)
-        val transaction = resolveRefsAndToDomain(request, userId, id, allCategories, allAccounts)
+        val rules = ruleService.getAllRules().getOrNull() ?: emptyList()
+        val transaction = resolveRefsAndToDomain(request, userId, id, allCategories, allAccounts, rules)
         val result = transactionRepository.update(id, userId, transaction)
             ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
 

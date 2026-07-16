@@ -1,6 +1,7 @@
 package feature.category.domain
 
 import feature.category.domain.model.Category
+import feature.category.domain.model.CategoryRule
 import java.util.UUID
 
 class CategoryMatcher {
@@ -12,8 +13,10 @@ class CategoryMatcher {
     fun resolveCategory(
         inputCategoryId: String?,
         inputCategoryName: String?,
+        description: String?,
         isIncome: Boolean,
         allCategories: List<Category>,
+        rules: List<CategoryRule>,
         defaultId: UUID
     ): UUID {
         // 1. Valid UUID Check
@@ -24,20 +27,30 @@ class CategoryMatcher {
             return try { UUID.fromString(inputCategoryId) } catch (_: Exception) { defaultId }
         }
 
-        val name = inputCategoryName ?: return defaultId
-        if (name.isBlank()) return defaultId
+        val rawInput = if (inputCategoryName?.lowercase() == "pending") null else inputCategoryName
+        val textToMatch = (rawInput ?: description ?: "").lowercase()
+        if (textToMatch.isBlank()) return defaultId
 
         val isExpense = !isIncome
-        val normalizedInput = name.replace("-", "").trim().lowercase()
 
-        // 2. Direct match with type
+        // 2. Dynamic Rule Matching (Loops through rules from DB)
+        rules.filter { it.isExpense == isExpense }.forEach { rule ->
+            val keyword = rule.keyword.lowercase()
+            if (textToMatch.contains(keyword) || (description?.lowercase()?.contains(keyword) == true)) {
+                return try { UUID.fromString(rule.categoryId) } catch (_: Exception) { defaultId }
+            }
+        }
+
+        val normalizedInput = textToMatch.replace("-", "").trim()
+
+        // 3. Direct match with type
         allCategories.find {
-            it.name.equals(name, ignoreCase = true) && it.isExpense == isExpense
+            it.name.equals(textToMatch, ignoreCase = true) && it.isExpense == isExpense
         }?.let { return it.id }
 
         // 3. Direct match without type (fallback if type mismatch but name matches)
         allCategories.find {
-            it.name.equals(name, ignoreCase = true)
+            it.name.equals(textToMatch, ignoreCase = true)
         }?.let { return it.id }
 
         // 4. Fuzzy matching for common variations (prefixes/suffixes)
