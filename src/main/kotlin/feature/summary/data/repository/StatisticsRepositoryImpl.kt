@@ -1,27 +1,39 @@
 package feature.summary.data.repository
 
-import com.fintrack.feature.user.UsersTable
 import com.fintrack.core.data.dbQuery
 import com.fintrack.feature.accounts.data.table.AccountsTable
-import feature.summary.domain.*
+import com.fintrack.feature.user.UsersTable
+import feature.category.data.table.CategoriesTable
+import feature.summary.domain.CategoryStats
+import feature.summary.domain.DailyTotal
+import feature.summary.domain.DescriptionTotal
+import feature.summary.domain.StatisticsRepository
+import feature.summary.domain.TransactionCounts
 import feature.transaction.data.table.TransactionsTable
 import feature.transaction.domain.model.Transaction
-import feature.category.data.table.CategoriesTable
-import kotlinx.datetime.*
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.atTime
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Case
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.intLiteral
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.sum
 import java.time.temporal.IsoFields
 import java.util.UUID
 
 class StatisticsRepositoryImpl : StatisticsRepository {
-    // FIX: Changed to leftJoin to prevent transactions with missing categories from disappearing
     private val joinTable = TransactionsTable.leftJoin(CategoriesTable)
 
     override suspend fun getTransactions(
@@ -56,7 +68,10 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
 
         val netAmount = Case()
-            .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+            .When(
+                TransactionsTable.isIncome eq true,
+                TransactionsTable.amount - TransactionsTable.transactionCost
+            )
             .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
 
         var query = TransactionsTable
@@ -76,13 +91,15 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         query.map {
             val date = it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).date
             val isIncome = it[TransactionsTable.isIncome]
-            val amount = it[netAmount] ?: java.math.BigDecimal.ZERO
+            val amount = it[netAmount]
             Triple(date, isIncome, amount)
         }
             .groupBy { it.first }
             .mapValues { (_, values) ->
-                val income = values.filter { it.second }.fold(java.math.BigDecimal.ZERO) { acc, t -> acc + t.third }
-                val expense = values.filter { !it.second }.fold(java.math.BigDecimal.ZERO) { acc, t -> acc + t.third }
+                val income = values.filter { it.second }
+                    .fold(java.math.BigDecimal.ZERO) { acc, t -> acc + t.third }
+                val expense = values.filter { !it.second }
+                    .fold(java.math.BigDecimal.ZERO) { acc, t -> acc + t.third }
                 DailyTotal(income, expense)
             }
     }
@@ -97,11 +114,20 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
 
         val netAmount = Case()
-            .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+            .When(
+                TransactionsTable.isIncome eq true,
+                TransactionsTable.amount - TransactionsTable.transactionCost
+            )
             .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
 
         var query = joinTable
-            .select(TransactionsTable.dateTime, CategoriesTable.id, CategoriesTable.name, TransactionsTable.isIncome, netAmount)
+            .select(
+                TransactionsTable.dateTime,
+                CategoriesTable.id,
+                CategoriesTable.name,
+                TransactionsTable.isIncome,
+                netAmount
+            )
             .where {
                 (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
                         (TransactionsTable.dateTime greaterEq startInstant) and
@@ -118,18 +144,18 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             val date = it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC)
             val period = "%04d-%02d".format(date.year, date.monthNumber)
             val isIncome = it[TransactionsTable.isIncome]
-            val categoryId = it[CategoriesTable.id]?.value
-            val categoryName = it[CategoriesTable.name]?.trim()?.lowercase() ?: "uncategorized"
-            val amount = it[netAmount] ?: java.math.BigDecimal.ZERO
-            
+            val categoryId = it[CategoriesTable.id].value
+            val categoryName = it[CategoriesTable.name].trim().lowercase()
+            val amount = it[netAmount]
+
             val stats = CategoryStats(
                 categoryId = categoryId,
-                name = it[CategoriesTable.name] ?: "Uncategorized",
+                name = it[CategoriesTable.name],
                 totalAmount = amount,
                 count = 1,
                 isIncome = isIncome
             )
-            
+
             period to (categoryName to stats)
         }
             .groupBy { it.first }
@@ -161,7 +187,10 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
 
         val netAmount = Case()
-            .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+            .When(
+                TransactionsTable.isIncome eq true,
+                TransactionsTable.amount - TransactionsTable.transactionCost
+            )
             .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
 
         val totalSum = netAmount.sum()
@@ -181,7 +210,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
         query.groupBy(CategoriesTable.name, TransactionsTable.description)
             .map {
-                val cat = it[CategoriesTable.name] ?: "Uncategorized"
+                val cat = it[CategoriesTable.name]
                 val desc = it[TransactionsTable.description]!!
                 val sum = it[totalSum] ?: java.math.BigDecimal.ZERO
                 cat to DescriptionTotal(desc, sum)
@@ -220,6 +249,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                             val week = date[IsoFields.WEEK_OF_WEEK_BASED_YEAR]
                             "%04d-W%02d".format(year, week)
                         }
+
                         "months" -> "%04d-%02d".format(date.year, date.monthValue)
                         "years" -> date.year.toString()
                         else -> ""
@@ -268,9 +298,12 @@ class StatisticsRepositoryImpl : StatisticsRepository {
     ): Map<String, java.math.BigDecimal> =
         dbQuery {
             val netAmount = Case()
-                .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+                .When(
+                    TransactionsTable.isIncome eq true,
+                    TransactionsTable.amount - TransactionsTable.transactionCost
+                )
                 .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
-            
+
             val totalSum = netAmount.sum()
 
             var query = joinTable
@@ -281,7 +314,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
                 query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
             if (isIncome != null) query =
                 query.andWhere { TransactionsTable.isIncome eq isIncome }
-            
+
             if (start != null) {
                 val startInstant = start.atStartOfDayIn(TimeZone.UTC)
                 query = query.andWhere { TransactionsTable.dateTime greaterEq startInstant }
@@ -293,7 +326,9 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
             query
                 .groupBy(CategoriesTable.name)
-                .associateBy({ it[CategoriesTable.name] ?: "Uncategorized" }, { it[totalSum] ?: java.math.BigDecimal.ZERO })
+                .associateBy(
+                    { it[CategoriesTable.name] },
+                    { it[totalSum] ?: java.math.BigDecimal.ZERO })
         }
 
     override suspend fun getTransactionCounts(
@@ -306,9 +341,11 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         end: Instant?
     ): TransactionCounts = dbQuery {
         // FIX: Replaced 3 queries with 1 single efficient query using conditional aggregation
-        val incomeCase = Case().When(TransactionsTable.isIncome eq true, intLiteral(1)).Else(intLiteral(0))
-        val expenseCase = Case().When(TransactionsTable.isIncome eq false, intLiteral(1)).Else(intLiteral(0))
-        
+        val incomeCase =
+            Case().When(TransactionsTable.isIncome eq true, intLiteral(1)).Else(intLiteral(0))
+        val expenseCase =
+            Case().When(TransactionsTable.isIncome eq false, intLiteral(1)).Else(intLiteral(0))
+
         val incomeCountSum = incomeCase.sum()
         val expenseCountSum = expenseCase.sum()
         val totalCostSum = TransactionsTable.transactionCost.sum()
@@ -317,16 +354,20 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             .select(incomeCountSum, expenseCountSum, totalCostSum)
             .where { TransactionsTable.userId eq EntityID(userId, UsersTable) }
 
-        if (accountId != null) query = query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
+        if (accountId != null) query =
+            query.andWhere { TransactionsTable.accountId eq EntityID(accountId, AccountsTable) }
         if (start != null) query = query.andWhere { TransactionsTable.dateTime greaterEq start }
         if (end != null) query = query.andWhere { TransactionsTable.dateTime lessEq end }
         if (isIncome != null) query = query.andWhere { TransactionsTable.isIncome eq isIncome }
-        if (!categoryIds.isNullOrEmpty()) query = query.andWhere { TransactionsTable.categoryId inList categoryIds }
-        if (hasCost == true) query = query.andWhere { TransactionsTable.transactionCost greater java.math.BigDecimal.ZERO }
-        if (hasCost == false) query = query.andWhere { TransactionsTable.transactionCost eq java.math.BigDecimal.ZERO }
+        if (!categoryIds.isNullOrEmpty()) query =
+            query.andWhere { TransactionsTable.categoryId inList categoryIds }
+        if (hasCost == true) query =
+            query.andWhere { TransactionsTable.transactionCost greater java.math.BigDecimal.ZERO }
+        if (hasCost == false) query =
+            query.andWhere { TransactionsTable.transactionCost eq java.math.BigDecimal.ZERO }
 
         val row = query.singleOrNull()
-        
+
         TransactionCounts(
             incomeCount = row?.get(incomeCountSum) ?: 0,
             expenseCount = row?.get(expenseCountSum) ?: 0,
@@ -341,7 +382,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
-        category = this[CategoriesTable.name] ?: "Uncategorized",
+        category = this[CategoriesTable.name],
         categoryId = this[TransactionsTable.categoryId].value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],

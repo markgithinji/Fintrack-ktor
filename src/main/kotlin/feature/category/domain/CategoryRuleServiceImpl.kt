@@ -4,9 +4,9 @@ import com.fintrack.core.domain.Result
 import feature.category.domain.model.CategoryRule
 
 class CategoryRuleServiceImpl(
-    private val repository: CategoryRuleRepository
+    private val categoryRuleRepository: CategoryRuleRepository
 ) : CategoryRuleService {
     override suspend fun getAllRules(): Result<List<CategoryRule>> {
-        return Result.Success(repository.getAll())
+        return Result.Success(categoryRuleRepository.getAll())
     }
 }

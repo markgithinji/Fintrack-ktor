@@ -61,7 +61,6 @@ fun Application.configureRateLimiting() {
             requestKey { call ->
                 try {
                     // Peek into the body for email (requires DoubleReceive)
-                    // In Ktor 3.0.x, using receive() is more reliable than receiveNullable() with DoubleReceive
                     call.receive<AuthRequest>().email
                 } catch (_: Exception) {
                     call.request.origin.remoteHost

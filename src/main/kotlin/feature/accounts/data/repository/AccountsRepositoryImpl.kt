@@ -1,22 +1,21 @@
 package com.fintrack.feature.accounts.data.repository
 
-import com.fintrack.feature.user.UsersTable
 import com.fintrack.core.data.dbQuery
 import com.fintrack.feature.accounts.data.table.AccountsTable
 import com.fintrack.feature.accounts.domain.model.Account
 import com.fintrack.feature.accounts.domain.model.TransactionSummary
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
+import com.fintrack.feature.user.UsersTable
 import feature.transaction.data.table.TransactionsTable
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Case
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.and
@@ -101,7 +100,10 @@ class AccountsRepositoryImpl : AccountsRepository {
     ): TransactionSummary =
         dbQuery {
             val netAmount = Case()
-                .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+                .When(
+                    TransactionsTable.isIncome eq true,
+                    TransactionsTable.amount - TransactionsTable.transactionCost
+                )
                 .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
 
             val totalSum = netAmount.sum()
@@ -126,7 +128,10 @@ class AccountsRepositoryImpl : AccountsRepository {
     override suspend fun getTransactionSummaries(userId: UUID): Map<UUID?, TransactionSummary> =
         dbQuery {
             val netAmount = Case()
-                .When(TransactionsTable.isIncome eq true, TransactionsTable.amount - TransactionsTable.transactionCost)
+                .When(
+                    TransactionsTable.isIncome eq true,
+                    TransactionsTable.amount - TransactionsTable.transactionCost
+                )
                 .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
 
             val totalSum = netAmount.sum()
@@ -196,7 +201,7 @@ class AccountsRepositoryImpl : AccountsRepository {
         } catch (e: Exception) {
             emptySet()
         }
-            
+
         return Account(
             id = row[AccountsTable.id].value,
             userId = row[AccountsTable.userId].value,

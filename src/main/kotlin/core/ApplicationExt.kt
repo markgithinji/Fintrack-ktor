@@ -1,13 +1,10 @@
 package com.fintrack.core
 
-import io.ktor.server.application.*
-import io.ktor.server.auth.*
-import io.ktor.server.auth.jwt.*
-import java.util.*
-import javax.naming.AuthenticationException
-
-import io.ktor.server.application.*
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.auth.jwt.JWTPrincipal
+import io.ktor.server.auth.principal
 import java.util.UUID
+import javax.naming.AuthenticationException
 
 fun ApplicationCall.userIdOrThrow(): UUID {
     val principal = this.principal<JWTPrincipal>()

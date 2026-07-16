@@ -6,7 +6,7 @@ import java.math.RoundingMode
 fun BigDecimal.calculatePercentageChange(previous: BigDecimal): Double =
     if (previous.compareTo(BigDecimal.ZERO) != 0) {
         (this - previous).divide(previous, 4, RoundingMode.HALF_UP).toDouble() * 100
-    } else if (this.compareTo(BigDecimal.ZERO) > 0) {
+    } else if (this > BigDecimal.ZERO) {
         100.0
     } else {
         0.0

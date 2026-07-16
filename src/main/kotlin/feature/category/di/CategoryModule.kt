@@ -8,7 +8,7 @@ import org.koin.dsl.module
 val categoryModule = module {
     single { CategoryMatcher() }
     single<CategoryRepository> { CategoryRepositoryImpl() }
-    single<CategoryService> { CategoryServiceImpl(get()) }
+    single<CategoryService> { CategoryServiceImpl(categoryRepository = get()) }
     single<CategoryRuleRepository> { CategoryRuleRepositoryImpl() }
-    single<CategoryRuleService> { CategoryRuleServiceImpl(get()) }
+    single<CategoryRuleService> { CategoryRuleServiceImpl(categoryRuleRepository = get()) }
 }

@@ -5,7 +5,6 @@ import com.fintrack.core.domain.AppError
 import com.fintrack.core.domain.Result
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
-import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import com.fintrack.feature.auth.domain.model.EmailVerificationToken
 import com.fintrack.feature.auth.domain.repository.EmailVerificationRepository
 import com.fintrack.feature.user.data.model.UpdateUserRequest

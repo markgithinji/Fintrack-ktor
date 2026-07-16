@@ -35,7 +35,7 @@ fun Application.configureStatusPages() {
             call.respond(
                 status,
                 ApiResponse.Error(
-                    message = cause.message ?: "An error occurred",
+                    message = cause.message,
                     errorCode = cause.errorCode
                 )
             )

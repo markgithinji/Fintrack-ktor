@@ -15,7 +15,6 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import java.util.*
 
 class TransactionRepositoryImpl : TransactionRepository {
-    // FIX: Changed to leftJoin to prevent transactions with missing categories from disappearing
     private val joinTable = TransactionsTable.leftJoin(CategoriesTable)
 
     override suspend fun getAllCursor(
@@ -84,8 +83,7 @@ class TransactionRepositoryImpl : TransactionRepository {
     override suspend fun add(entity: Transaction): Transaction = dbQuery {
         val now = Clock.System.now()
         val transactionId = entity.id ?: IdGenerator.nextId()
-        
-        // FIX: Using resultedValues to avoid a second SELECT query
+
         val inserted = TransactionsTable.insert { row ->
             row[id] = EntityID(transactionId, TransactionsTable)
             row[userId] = EntityID(entity.userId, com.fintrack.feature.user.UsersTable)
@@ -102,7 +100,7 @@ class TransactionRepositoryImpl : TransactionRepository {
             row[updatedAt] = now
         }.resultedValues?.singleOrNull()
 
-        // Still need to re-fetch if we want category name, but let's try to be efficient
+        // Still need to re-fetch if we want category name, try to be efficient
         if (inserted != null) {
             getById(transactionId, entity.userId)
                 ?: throw IllegalStateException("Failed to retrieve inserted transaction")
@@ -209,7 +207,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
-        category = this[CategoriesTable.name] ?: "Uncategorized",
+        category = this[CategoriesTable.name],
         categoryId = this[TransactionsTable.categoryId].value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],

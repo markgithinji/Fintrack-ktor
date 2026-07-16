@@ -26,9 +26,7 @@ object TransactionsTable : UUIDTable(TableNames.TRANSACTIONS) {
 
     init {
         uniqueIndex(externalId, userId)
-        // Industry Standard: Composite index for Equality (userId) + Sort/Range (dateTime)
         index(false, userId, dateTime)
-        // Optimized for account-specific filtering
         index(false, userId, accountId, dateTime)
     }
 }

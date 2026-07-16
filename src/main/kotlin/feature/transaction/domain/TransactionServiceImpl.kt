@@ -2,6 +2,7 @@ package feature.transaction.domain
 
 import com.fintrack.core.domain.AppError
 import com.fintrack.core.domain.Result
+import com.fintrack.core.domain.getOrNull
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.feature.transaction.data.model.DeleteResponse

@@ -20,13 +20,13 @@ fun Account.toDto(id: String, income: BigDecimal, expense: BigDecimal, balance: 
     )
 
 fun CreateAccountRequest.toDomain(userId: UUID): Account {
-    val sources = if (linkedSources.isEmpty()) {
+    val sources = linkedSources.ifEmpty {
         when (type) {
             AccountType.MPESA -> setOf("mpesa")
             AccountType.EQUITY -> setOf("equity")
             else -> emptySet()
         }
-    } else linkedSources
+    }
 
     return Account(
         userId = userId,

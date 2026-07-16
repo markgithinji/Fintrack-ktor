@@ -191,7 +191,7 @@ class BudgetServiceImpl(
     private fun assembleBudgetStatus(budget: Budget, spent: BigDecimal): BudgetStatus {
         val remaining = budget.limit - spent
         val percentageUsed = spent.calculateRatio(budget.limit) ?: 0.0
-        val isExceeded = spent.compareTo(budget.limit) > 0
+        val isExceeded = spent > budget.limit
 
         return BudgetStatus(
             limit = budget.limit,
