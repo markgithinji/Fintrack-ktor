@@ -28,6 +28,7 @@ fun Application.configureRouting() {
     val categoryService: CategoryService by inject()
     val statisticsService: StatisticsService by inject()
     val budgetService: BudgetService by inject()
+    val ruleService: feature.category.domain.CategoryRuleService by inject()
     val userService: UserService by inject()
     val authService: AuthService by inject()
     val healthService: HealthService by inject()
@@ -43,7 +44,7 @@ fun Application.configureRouting() {
         authenticationRoutes(authService, userService)
 
         // Business API endpoints
-        apiRoutes(accountService, transactionService, categoryService, statisticsService, budgetService, userService)
+        apiRoutes(accountService, transactionService, categoryService, ruleService, statisticsService, budgetService, userService)
     }
 }
 
@@ -62,6 +63,7 @@ fun Routing.apiRoutes(
     accountService: AccountService,
     transactionService: TransactionService,
     categoryService: CategoryService,
+    ruleService: feature.category.domain.CategoryRuleService,
     statisticsService: StatisticsService,
     budgetService: BudgetService,
     userService: UserService
@@ -69,7 +71,7 @@ fun Routing.apiRoutes(
     authenticate("auth-jwt") {
         withProtectedRateLimit {
             transactionRoutes(transactionService)
-            categoryRoutes(categoryService)
+            categoryRoutes(categoryService, ruleService)
             accountsRoutes(accountService)
             budgetRoutes(budgetService)
             summaryRoutes(statisticsService)
