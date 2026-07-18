@@ -12,6 +12,7 @@ import com.fintrack.feature.accounts.domain.AccountService
 import com.fintrack.feature.user.domain.UserRepository
 import feature.budget.domain.BudgetRepository
 import feature.category.domain.CategoryRepository
+import feature.category.domain.model.CategoryConstants
 import feature.summary.data.model.AvailableMonthsDto
 import feature.summary.data.model.AvailableWeeksDto
 import feature.summary.data.model.AvailableYearsDto
@@ -157,7 +158,15 @@ class StatisticsServiceImpl(
         }
 
         val totalIncome = incomeCategoryTotals.values.fold(BigDecimal.ZERO, BigDecimal::add)
-        val totalExpense = expenseCategoryTotals.values.fold(BigDecimal.ZERO, BigDecimal::add)
+        
+        // Requirement 2 & 1 Unified: totalExpense should represent all outflows
+        // We take the sum of all expense amounts, subtract the 'Transaction Fees' category amount (to avoid double counting),
+        // and then add the unified totalTransactionCost.
+        val transactionFeesCategoryName = "Transaction Fees" // Fallback name
+        val feeAmountFromCategory = expenseCategoryTotals.entries
+            .find { it.key.equals(transactionFeesCategoryName, ignoreCase = true) }?.value ?: BigDecimal.ZERO
+            
+        val totalExpense = expenseCategoryTotals.values.fold(BigDecimal.ZERO, BigDecimal::add) - feeAmountFromCategory + counts.totalTransactionCost
 
         val savingsRate = (totalIncome - totalExpense).calculateRatio(totalIncome)
 
@@ -617,11 +626,19 @@ class StatisticsServiceImpl(
         )
 
         val totalIncomeAmount = currentStats.values.filter { it.isIncome }.sumOf { it.totalAmount }
-        val totalExpenseAmount =
-            currentStats.values.filter { !it.isIncome }.sumOf { it.totalAmount }
+        
+        // Requirement 2 & 1 Unified: base total for expense distribution
+        val feeAmountFromStats = currentStats.values
+            .find { !it.isIncome && it.categoryId == CategoryConstants.TRANSACTION_FEES_ID }?.totalAmount ?: BigDecimal.ZERO
+        
+        val counts = getCountsForPeriod(userId, accountId, isIncome, start, end, parsedPeriod)
+        val totalExpenseAmount = currentStats.values.filter { !it.isIncome }.sumOf { it.totalAmount } - feeAmountFromStats + counts.totalTransactionCost
 
         fun categorySummary(isInc: Boolean): List<CategorySummaryDto> {
-            val relevantStats = currentStats.filterValues { it.isIncome == isInc }
+            // Requirement 3: Filter out 'Transaction Fees' category to prevent duplication with the unified top-level totalTransactionCost field
+            val relevantStats = currentStats.filterValues {
+                it.isIncome == isInc && it.categoryId != CategoryConstants.TRANSACTION_FEES_ID
+            }
 
             val totalAmountAll = if (isInc) totalIncomeAmount else totalExpenseAmount
 
@@ -683,8 +700,6 @@ class StatisticsServiceImpl(
 
         val incomeCategoriesFinal = if (isIncome != false) categorySummary(true) else emptyList()
         val expenseCategoriesFinal = if (isIncome != true) categorySummary(false) else emptyList()
-
-        val counts = getCountsForPeriod(userId, accountId, isIncome, start, end, parsedPeriod)
 
         Result.Success(
             DistributionSummaryDto(
@@ -900,7 +915,7 @@ class StatisticsServiceImpl(
         val comparisons = if (trackedCategories.isNotEmpty() && !isBackupMonth) {
             trackedCategories.map { category ->
                 async {
-                    if (category == "Transaction Fees" || category == "Transaction Cost") {
+                    if (category.equals("Transaction Fees", ignoreCase = true) || category.equals("Transaction Cost", ignoreCase = true)) {
                         calculateTransactionCostComparison(
                             userId,
                             accountId,

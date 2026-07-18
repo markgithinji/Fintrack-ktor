@@ -4,6 +4,7 @@ import com.fintrack.core.data.dbQuery
 import com.fintrack.feature.accounts.data.table.AccountsTable
 import com.fintrack.feature.user.UsersTable
 import feature.category.data.table.CategoriesTable
+import feature.category.domain.model.CategoryConstants
 import feature.summary.domain.CategoryStats
 import feature.summary.domain.DailyTotal
 import feature.summary.domain.DescriptionTotal
@@ -27,6 +28,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.decimalLiteral
 import org.jetbrains.exposed.sql.intLiteral
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.sum
@@ -67,15 +69,11 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         val startInstant = start.atStartOfDayIn(TimeZone.UTC)
         val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
 
-        val netAmount = Case()
-            .When(
-                TransactionsTable.isIncome eq true,
-                TransactionsTable.amount - TransactionsTable.transactionCost
-            )
-            .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
+        // Requirement 1: Stop Double Counting - sum only the amount column
+        val amountColumn = TransactionsTable.amount
 
         var query = TransactionsTable
-            .select(TransactionsTable.dateTime, TransactionsTable.isIncome, netAmount)
+            .select(TransactionsTable.dateTime, TransactionsTable.isIncome, amountColumn)
             .where {
                 (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
                         (TransactionsTable.dateTime greaterEq startInstant) and
@@ -91,7 +89,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         query.map {
             val date = it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC).date
             val isIncome = it[TransactionsTable.isIncome]
-            val amount = it[netAmount]
+            val amount = it[amountColumn]
             Triple(date, isIncome, amount)
         }
             .groupBy { it.first }
@@ -113,20 +111,16 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         val startInstant = start.atStartOfDayIn(TimeZone.UTC)
         val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
 
-        val netAmount = Case()
-            .When(
-                TransactionsTable.isIncome eq true,
-                TransactionsTable.amount - TransactionsTable.transactionCost
-            )
-            .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
+        // Requirement 1: Stop Double Counting - sum only the amount column
+        val amountColumn = TransactionsTable.amount
 
         var query = joinTable
             .select(
                 TransactionsTable.dateTime,
-                CategoriesTable.id,
+                TransactionsTable.categoryId,
                 CategoriesTable.name,
                 TransactionsTable.isIncome,
-                netAmount
+                amountColumn
             )
             .where {
                 (TransactionsTable.userId eq EntityID(userId, UsersTable)) and
@@ -144,13 +138,15 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             val date = it[TransactionsTable.dateTime].toLocalDateTime(TimeZone.UTC)
             val period = "%04d-%02d".format(date.year, date.monthNumber)
             val isIncome = it[TransactionsTable.isIncome]
-            val categoryId = it[CategoriesTable.id].value
-            val categoryName = it[CategoriesTable.name].trim().lowercase()
-            val amount = it[netAmount]
+            val categoryId = it[TransactionsTable.categoryId].value
+            val rawName = it.getOrNull(CategoriesTable.name)
+            val displayName = if (rawName.isNullOrBlank()) "Uncategorized" else rawName
+            val categoryName = displayName.trim().lowercase()
+            val amount = it[amountColumn]
 
             val stats = CategoryStats(
                 categoryId = categoryId,
-                name = it[CategoriesTable.name],
+                name = displayName,
                 totalAmount = amount,
                 count = 1,
                 isIncome = isIncome
@@ -186,14 +182,9 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         val startInstant = start.atStartOfDayIn(TimeZone.UTC)
         val endInstant = end.atTime(23, 59, 59, 999_999_999).toInstant(TimeZone.UTC)
 
-        val netAmount = Case()
-            .When(
-                TransactionsTable.isIncome eq true,
-                TransactionsTable.amount - TransactionsTable.transactionCost
-            )
-            .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
-
-        val totalSum = netAmount.sum()
+        // Requirement 1: Stop Double Counting - sum only the amount column
+        val amountColumn = TransactionsTable.amount
+        val totalSum = amountColumn.sum()
 
         var query = joinTable
             .select(CategoriesTable.name, TransactionsTable.description, totalSum)
@@ -210,7 +201,8 @@ class StatisticsRepositoryImpl : StatisticsRepository {
 
         query.groupBy(CategoriesTable.name, TransactionsTable.description)
             .map {
-                val cat = it[CategoriesTable.name]
+                val rawCat = it.getOrNull(CategoriesTable.name)
+                val cat = if (rawCat.isNullOrBlank()) "Uncategorized" else rawCat
                 val desc = it[TransactionsTable.description]!!
                 val sum = it[totalSum] ?: java.math.BigDecimal.ZERO
                 cat to DescriptionTotal(desc, sum)
@@ -297,14 +289,9 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         isIncome: Boolean?
     ): Map<String, java.math.BigDecimal> =
         dbQuery {
-            val netAmount = Case()
-                .When(
-                    TransactionsTable.isIncome eq true,
-                    TransactionsTable.amount - TransactionsTable.transactionCost
-                )
-                .Else(TransactionsTable.amount + TransactionsTable.transactionCost)
-
-            val totalSum = netAmount.sum()
+            // Requirement 1: Stop Double Counting - sum only the amount column
+            val amountColumn = TransactionsTable.amount
+            val totalSum = amountColumn.sum()
 
             var query = joinTable
                 .select(CategoriesTable.name, totalSum)
@@ -327,7 +314,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             query
                 .groupBy(CategoriesTable.name)
                 .associateBy(
-                    { it[CategoriesTable.name] },
+                    { it.getOrNull(CategoriesTable.name).let { name -> if (name.isNullOrBlank()) "Uncategorized" else name } },
                     { it[totalSum] ?: java.math.BigDecimal.ZERO })
         }
 
@@ -351,8 +338,14 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         val totalCostSum = TransactionsTable.transactionCost.sum()
         val totalAmountSum = TransactionsTable.amount.sum()
 
+        // Requirement 2: Formula: SUM(transaction_cost) from all transactions + SUM(amount) from transactions categorized as 'Transaction Fees'
+        val feeAmountCase = Case()
+            .When(TransactionsTable.categoryId eq CategoryConstants.TRANSACTION_FEES_ID, TransactionsTable.amount)
+            .Else(decimalLiteral(java.math.BigDecimal.ZERO))
+        val feeAmountSum = feeAmountCase.sum()
+
         var query = TransactionsTable
-            .select(incomeCountSum, expenseCountSum, totalCostSum, totalAmountSum)
+            .select(incomeCountSum, expenseCountSum, totalCostSum, totalAmountSum, feeAmountSum)
             .where { TransactionsTable.userId eq EntityID(userId, UsersTable) }
 
         if (accountId != null) query =
@@ -373,7 +366,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
             incomeCount = row?.get(incomeCountSum) ?: 0,
             expenseCount = row?.get(expenseCountSum) ?: 0,
             totalCount = (row?.get(incomeCountSum) ?: 0) + (row?.get(expenseCountSum) ?: 0),
-            totalTransactionCost = row?.get(totalCostSum) ?: java.math.BigDecimal.ZERO,
+            totalTransactionCost = (row?.get(totalCostSum) ?: java.math.BigDecimal.ZERO) + (row?.get(feeAmountSum) ?: java.math.BigDecimal.ZERO),
             totalAmount = row?.get(totalAmountSum) ?: java.math.BigDecimal.ZERO
         )
     }
@@ -384,7 +377,7 @@ class StatisticsRepositoryImpl : StatisticsRepository {
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
-        category = this[CategoriesTable.name],
+        category = this.getOrNull(CategoriesTable.name).let { if (it.isNullOrBlank()) "Uncategorized" else it },
         categoryId = this[TransactionsTable.categoryId].value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
