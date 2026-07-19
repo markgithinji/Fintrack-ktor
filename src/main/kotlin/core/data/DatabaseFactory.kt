@@ -45,15 +45,21 @@ object DatabaseFactory {
             }
 
             dataSource = HikariDataSource(config)
-            Database.connect(dataSource!!)
+            try {
+                Database.connect(dataSource!!)
 
-            log.withContext(
-                "url" to config.jdbcUrl.replace(Regex(":[^:]*@"), ":****@"),
-                "poolSize" to config.maximumPoolSize,
-                "minIdle" to config.minimumIdle
-            ).info { "Database connection pool initialized" }
-            // Test connection - let exceptions propagate for startup failure
-            testConnection()
+                log.withContext(
+                    "url" to config.jdbcUrl.replace(Regex(":[^:]*@"), ":****@"),
+                    "poolSize" to config.maximumPoolSize,
+                    "minIdle" to config.minimumIdle
+                ).info { "Database connection pool initialized" }
+                // Test connection - let exceptions propagate for startup failure
+                testConnection()
+            } catch (e: Exception) {
+                log.error("Failed to connect to database at ${config.jdbcUrl}. Ensure PostgreSQL is running (e.g., 'docker-compose up -d').")
+                dataSource?.close()
+                throw e
+            }
             // Run schema migrations - let exceptions propagate
             runMigrations()
 

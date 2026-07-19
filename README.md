@@ -20,7 +20,13 @@ cd fintrack-backend
 ```
 
 ### 2. Infrastructure Setup with Docker
-You'll need PostgreSQL for data and Redis for rate limiting and token management.
+You'll need PostgreSQL for data and Redis for rate limiting and token management. The easiest way is using Docker Compose:
+
+```bash
+docker-compose up -d
+```
+
+Alternatively, you can run them individually:
 
 ```bash
 # PostgreSQL
