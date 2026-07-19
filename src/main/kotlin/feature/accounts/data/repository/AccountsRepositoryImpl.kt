@@ -1,6 +1,8 @@
 package com.fintrack.feature.accounts.data.repository
 
 import com.fintrack.core.data.dbQuery
+import com.fintrack.feature.accounts.data.model.toDomain
+import com.fintrack.feature.accounts.data.model.toDto
 import com.fintrack.feature.accounts.data.table.AccountsTable
 import com.fintrack.feature.accounts.domain.model.Account
 import com.fintrack.feature.accounts.domain.model.TransactionSummary
@@ -34,6 +36,8 @@ class AccountsRepositoryImpl : AccountsRepository {
     override suspend fun getAllAccounts(userId: UUID): List<Account> =
         dbQuery {
             AccountsTable.selectAll().where { AccountsTable.userId eq EntityID(userId, UsersTable) }
+                .orderBy(AccountsTable.isDefault to SortOrder.DESC)
+                .orderBy(AccountsTable.createdAt to SortOrder.ASC)
                 .map { toAccount(it) }
         }
 
@@ -82,7 +86,7 @@ class AccountsRepositoryImpl : AccountsRepository {
     private fun fillRow(row: UpdateBuilder<*>, account: Account, now: Instant) {
         row[AccountsTable.name] = account.name
         row[AccountsTable.isDefault] = account.isDefault
-        row[AccountsTable.type] = account.type
+        row[AccountsTable.type] = account.type.toDto()
         row[AccountsTable.linkedSources] = Json.encodeToString(account.linkedSources)
         row[AccountsTable.balance] = account.balance
         row[AccountsTable.createdAt] = account.createdAt ?: now
@@ -207,7 +211,7 @@ class AccountsRepositoryImpl : AccountsRepository {
             userId = row[AccountsTable.userId].value,
             name = row[AccountsTable.name],
             isDefault = row[AccountsTable.isDefault],
-            type = row[AccountsTable.type],
+            type = row[AccountsTable.type].toDomain(),
             linkedSources = linkedSources,
             balance = row[AccountsTable.balance],
             createdAt = row[AccountsTable.createdAt],

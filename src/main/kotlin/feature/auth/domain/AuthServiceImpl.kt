@@ -258,30 +258,35 @@ class AuthServiceImpl(
                 name = "Mpesa",
                 isDefault = true,
                 type = AccountType.MPESA,
+                linkedSources = setOf("mpesa"),
                 createdAt = Instant.parse("2024-01-01T00:00:00Z")
             ),
             Account(
                 userId = userId,
                 name = "Bank",
                 isDefault = true,
+                type = AccountType.BANK,
                 createdAt = Instant.parse("2024-01-01T00:00:01Z")
             ),
             Account(
                 userId = userId,
                 name = "Wallet",
                 isDefault = true,
+                type = AccountType.WALLET,
                 createdAt = Instant.parse("2024-01-01T00:00:02Z")
             ),
             Account(
                 userId = userId,
                 name = "Savings",
                 isDefault = true,
+                type = AccountType.SAVINGS,
                 createdAt = Instant.parse("2024-01-01T00:00:03Z")
             ),
             Account(
                 userId = userId,
                 name = "Cash",
                 isDefault = true,
+                type = AccountType.CASH,
                 createdAt = Instant.parse("2024-01-01T00:00:04Z")
             )
         )

@@ -1,6 +1,5 @@
 package com.fintrack.feature.accounts.data.model
 
-import com.fintrack.feature.accounts.domain.model.AccountType
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
@@ -14,7 +13,7 @@ data class AccountDto(
     @Contextual val income: BigDecimal? = null,
     @Contextual val expense: BigDecimal? = null,
     val isDefault: Boolean? = false,
-    val type: AccountType? = AccountType.GENERAL,
+    val type: AccountTypeDto? = AccountTypeDto.OTHER,
     val linkedSources: Set<String> = emptySet(),
     val createdAt: Instant? = null,
     val lastSyncedAt: Instant? = null

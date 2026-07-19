@@ -2,6 +2,7 @@ package com.fintrack.feature.accounts.domain
 
 import com.fintrack.core.domain.AppError
 import com.fintrack.core.domain.Result
+import com.fintrack.core.domain.getOrNull
 import com.fintrack.core.logger
 import com.fintrack.core.withContext
 import com.fintrack.feature.accounts.data.model.AccountDto
@@ -38,20 +39,13 @@ class AccountServiceImpl(
             val summary = accountsRepository.getTransactionSummary(userId, accountId)
             val latestBalance = accountsRepository.getLatestBalance(userId, accountId)
 
-            // Prioritize: 1. Latest transaction balance, 2. Stored account balance, 3. Calculated balance
-            val derivedBalance = latestBalance ?: if (account.balance != BigDecimal.ZERO || account.lastSyncedAt != null) {
-                account.balance
-            } else if (summary.income != BigDecimal.ZERO || summary.expense != BigDecimal.ZERO) {
-                summary.income - summary.expense
-            } else {
-                account.balance
-            }
-            Triple(summary.income, summary.expense, derivedBalance)
+            Triple(summary.income, summary.expense, deriveBalance(account, summary, latestBalance))
         } else {
             // Aggregate across all accounts
-            val accountsResult = getAllAccounts(userId)
-            if (accountsResult is Result.Failure) return Result.Failure(accountsResult.error)
-            val accounts = (accountsResult as Result.Success).value
+            val accounts = when (val res = getAllAccounts(userId)) {
+                is Result.Success -> res.value
+                is Result.Failure -> return Result.Failure(res.error)
+            }
 
             val totalIncome = accounts.fold(BigDecimal.ZERO) { acc, a -> acc + (a.income ?: BigDecimal.ZERO) }
             val totalExpense = accounts.fold(BigDecimal.ZERO) { acc, a -> acc + (a.expense ?: BigDecimal.ZERO) }
@@ -80,22 +74,13 @@ class AccountServiceImpl(
 
         val result = accounts.map { account ->
             val summary = summaries[account.id] ?: TransactionSummary(BigDecimal.ZERO, BigDecimal.ZERO)
-
-            // Prioritize: 1. Latest transaction balance, 2. Stored account balance, 3. Calculated balance
             val latestTransactionBalance = accountsRepository.getLatestBalance(userId, account.id)
-            val derivedBalance = latestTransactionBalance ?: if (account.balance != BigDecimal.ZERO || account.lastSyncedAt != null) {
-                account.balance
-            } else if (summary.income != BigDecimal.ZERO || summary.expense != BigDecimal.ZERO) {
-                summary.income - summary.expense
-            } else {
-                account.balance
-            }
 
             account.toDto(
                 id = account.id.toString(),
                 income = summary.income,
                 expense = summary.expense,
-                balance = derivedBalance
+                balance = deriveBalance(account, summary, latestTransactionBalance)
             )
         }
 
@@ -128,8 +113,8 @@ class AccountServiceImpl(
         }
 
         // Internal call to getAccountAggregates - we know it returns Success here
-        val aggregatesResult = getAccountAggregates(userId, account.id)
-        val aggregates = (aggregatesResult as Result.Success).value
+        val aggregates = getAccountAggregates(userId, account.id).getOrNull() 
+            ?: return Result.Failure(AppError.Internal("Failed to calculate aggregates"))
         
         val accountDto = account.toDto(
             id = account.id.toString(),
@@ -185,7 +170,7 @@ class AccountServiceImpl(
 
         val account = existingAccount.copy(
             name = request.name,
-            type = request.type,
+            type = request.type.toDomain(),
             linkedSources = request.linkedSources ?: existingAccount.linkedSources,
             balance = request.balance ?: existingAccount.balance,
             lastSyncedAt = request.lastSyncedAt ?: existingAccount.lastSyncedAt
@@ -193,8 +178,8 @@ class AccountServiceImpl(
         val updatedAccount = accountsRepository.updateAccount(account)
         
         // Internal call
-        val aggregatesResult = getAccountAggregates(userId, updatedAccount.id)
-        val aggregates = (aggregatesResult as Result.Success).value
+        val aggregates = getAccountAggregates(userId, updatedAccount.id).getOrNull()
+            ?: return Result.Failure(AppError.Internal("Failed to calculate aggregates"))
         
         val accountDto = updatedAccount.toDto(
             id = updatedAccount.id.toString(),
@@ -234,7 +219,9 @@ class AccountServiceImpl(
 
         // 2. Handle Budgets
         val userAccounts = accountsRepository.getAllAccounts(userId)
-        val mpesaAccount = userAccounts.find { it.type == AccountType.MPESA }
+        val fallbackAccount = userAccounts.find { it.type == AccountType.MPESA && it.id != accountId }
+            ?: userAccounts.find { it.id != accountId && it.isDefault }
+            ?: userAccounts.find { it.id != accountId }
         
         val userBudgets = budgetRepository.getAllByUser(userId, null, 1000, 0)
         userBudgets.forEach { budget ->
@@ -242,15 +229,13 @@ class AccountServiceImpl(
                 val updatedAccountIds = budget.accountIds.filter { it != accountId }.toMutableList()
                 
                 if (updatedAccountIds.isEmpty()) {
-                    // If it was the only account, reassign to M-Pesa account if available
-                    mpesaAccount?.id?.let { updatedAccountIds.add(it) }
+                    // If it was the only account, reassign to fallback account if available
+                    fallbackAccount?.id?.let { updatedAccountIds.add(it) }
                 }
 
                 if (updatedAccountIds.isNotEmpty()) {
                     budgetRepository.update(userId, budget.id!!, budget.copy(accountIds = updatedAccountIds))
                 } else {
-                    // If no M-Pesa account and no other accounts, we might have to delete the budget or leave it empty-handed.
-                    // User said "reassign to mpesa account", so if it's missing, we might want to delete it or just log a warning.
                     budgetRepository.delete(userId, budget.id!!)
                 }
             }
@@ -262,5 +247,20 @@ class AccountServiceImpl(
         log.withContext("userId" to userId, "accountId" to accountId)
             .info { "Account deleted successfully along with associated data" }
         return Result.Success(Unit)
+    }
+
+    private fun deriveBalance(
+        account: com.fintrack.feature.accounts.domain.model.Account,
+        summary: TransactionSummary,
+        latestBalance: BigDecimal?
+    ): BigDecimal {
+        // Prioritize: 1. Latest transaction balance, 2. Stored account balance, 3. Calculated balance
+        return latestBalance ?: if (account.balance != BigDecimal.ZERO || account.lastSyncedAt != null) {
+            account.balance
+        } else if (summary.income != BigDecimal.ZERO || summary.expense != BigDecimal.ZERO) {
+            summary.income - summary.expense
+        } else {
+            account.balance
+        }
     }
 }
