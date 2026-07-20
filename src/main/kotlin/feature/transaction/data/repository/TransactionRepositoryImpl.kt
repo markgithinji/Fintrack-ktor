@@ -155,6 +155,16 @@ class TransactionRepositoryImpl : TransactionRepository {
         deleted > 0
     }
 
+    override suspend fun reassignCategory(userId: UUID, oldCategoryId: UUID, newCategoryId: UUID): Int = dbQuery {
+        TransactionsTable.update({
+            (TransactionsTable.userId eq EntityID(userId, com.fintrack.feature.user.UsersTable)) and
+                    (TransactionsTable.categoryId eq EntityID(oldCategoryId, CategoriesTable))
+        }) {
+            it[categoryId] = EntityID(newCategoryId, CategoriesTable)
+            it[updatedAt] = Clock.System.now()
+        }
+    }
+
     override suspend fun addBulk(entities: List<Transaction>): List<Transaction> = dbQuery {
         val now = Clock.System.now()
         val entitiesWithIds = entities.map { it.copy(id = it.id ?: IdGenerator.nextId()) }
