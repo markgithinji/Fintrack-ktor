@@ -125,12 +125,14 @@ Headers: Authorization: Bearer <your-jwt-token>
 - **Granular Rate Limiting**: Per-endpoint and per-user limits to ensure API stability.
 - **Audit Logging**: Structured logging of sensitive actions (registration, login, password changes) with IP and User-Agent tracking for security forensics.
 
-### 📊 Financial Intelligence
-- **Merchant Intelligence & Normalization**: Automated description cleaning that transforms messy bank strings (e.g., `"STARBUCKS STORE #1234 NY"`) into clean merchant identities.
-- **Dynamic Server-Side Sync Parsing**: Advanced keyword matching engine for transaction categorization that can be updated on-the-fly via the server without needing a mobile client release.
-- **Predictive Burn-Rate Analytics**: Intelligent forecasting that predicts exactly *which month* a user is likely to exceed their annual budget based on current spending velocity.
-- **Behavioral Correlations**: Insight engine that identifies links between financial events, such as detecting lifestyle creep by correlating income growth with specific luxury spending.
-- **Recurring Bill Detection**: Pattern-based detection of subscription and recurring payments based on frequency and merchant history.
+### 📊 Financial Intelligence & Analytics
+- **Proactive Budgeting & Forecasting**: Includes a predictive engine that warns users if their current spending pace will exhaust annual budgets early, identifying the specific "Risk Month".
+- **Smart Health Benchmarks**: Automated evaluation of the 50/30/20 rule, calculating real-time **Savings Rates** (kept vs. spent) and **Essential Ratios** (needs vs. wants).
+- **Behavioral Correlation Insights**: Identifies hidden links between financial events, such as correlating income growth with lifestyle creep in specific categories.
+- **Comparative Volatility Tracking**: Automated Year-over-Year (YoY) benchmarking and momentum indicators (UP/DOWN/STABLE) to monitor spending trends over time.
+- **Merchant Normalization**: Automated description cleaning that transforms messy bank strings (e.g., `"STARBUCKS STORE #1234 NY"`) into clean, recognizable merchant identities.
+- **Peak Performance Analysis**: Automated detection of "Peak Day" outliers and "Busiest Month" trends to help users manage seasonal cash flow.
+- **Recurring Bill Detection**: Pattern-based identification of subscriptions and recurring payments based on historical frequency and merchant data.
 - **Advanced Budgeting Engine**: High-integrity tracking of spending against multi-account and multi-category limits using a relational join architecture.
 
 ### ⚙️ Maintainability & Architecture
