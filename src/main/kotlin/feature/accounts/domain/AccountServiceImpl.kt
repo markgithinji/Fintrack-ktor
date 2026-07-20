@@ -112,7 +112,7 @@ class AccountServiceImpl(
             return Result.Failure(AppError.Unauthorized("Account does not belong to user"))
         }
 
-        // Internal call to getAccountAggregates - we know it returns Success here
+        // Internal call to getAccountAggregates; we know it returns Success here
         val aggregates = getAccountAggregates(userId, account.id).getOrNull() 
             ?: return Result.Failure(AppError.Internal("Failed to calculate aggregates"))
         

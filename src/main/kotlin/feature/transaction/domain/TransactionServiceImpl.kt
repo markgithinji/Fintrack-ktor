@@ -11,6 +11,7 @@ import com.fintrack.feature.transaction.data.model.UpdateTransactionRequest
 import com.fintrack.feature.accounts.domain.repository.AccountsRepository
 import feature.category.domain.CategoryMatcher
 import feature.category.domain.CategoryRuleService
+import feature.category.domain.model.CategoryConstants
 import feature.category.domain.model.CategoryRule
 import feature.transaction.data.model.PaginatedTransactionDto
 import feature.transaction.data.model.RecurringBillDto
@@ -195,7 +196,7 @@ class TransactionServiceImpl(
         defaultId: UUID
     ): UUID {
         if (!inputAccountId.isNullOrBlank() && 
-            inputAccountId != "00000000-0000-0000-0000-000000000000" &&
+            inputAccountId != CategoryConstants.PENDING_ID.toString() &&
             inputAccountId != "mpesa" && 
             inputAccountId != "equity"
         ) {

@@ -4,6 +4,7 @@ import kotlinx.datetime.Instant
 import java.util.UUID
 
 object CategoryConstants {
+    val PENDING_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000000")
     val TRANSACTION_FEES_ID: UUID = UUID.fromString("00000000-0000-4000-a000-000000000028")
     val MISC_EXPENSE_ID: UUID = UUID.fromString("99999999-9999-4999-a999-999999999999")
     val OTHER_INCOME_ID: UUID = UUID.fromString("bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb")

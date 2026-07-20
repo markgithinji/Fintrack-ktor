@@ -69,9 +69,7 @@ class CategoryServiceImpl(
                 val updatedCategoryIds = budget.categoryIds.filter { it != id }.toMutableList()
                 
                 // If the budget is now empty, we delete it or reassign it. 
-                // For categories, it makes more sense to delete the budget if its only tracked category is gone,
-                // or just let it be empty if the user wants to add more later.
-                // However, to be safe and consistent with AccountServiceImpl, we'll delete it if empty.
+                // For categories, it makes more sense to delete the budget if its only tracked category is gone
                 if (updatedCategoryIds.isEmpty()) {
                     budgetRepository.delete(userId, budget.id!!)
                 } else {

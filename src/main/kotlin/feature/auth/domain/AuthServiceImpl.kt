@@ -178,7 +178,7 @@ class AuthServiceImpl(
             }
 
             log.info { "Token reuse within grace period for user ${storedToken.userId}. Returning most recent session." }
-            // Optional: You could find and return the new token generated from the first rotation,
+            // Optional: We could find and return the new token generated from the first rotation,
             // but for simplicity and safety, we allow issuing a new one if it's within the window.
         }
 

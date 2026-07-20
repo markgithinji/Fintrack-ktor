@@ -57,6 +57,12 @@ class StatisticsServiceImpl(
 
     private val log = logger<StatisticsServiceImpl>()
 
+    /**
+     * Set of category names considered "Essential" for financial health benchmarks (Needs vs Wants).
+     * Strings are used here rather than UUIDs to provide flexibility: it allows the logic to
+     * automatically include both system-default categories and user-created categories that
+     * match these semantic groups (e.g., a custom category named "Rent").
+     */
     private val essentialCategories = setOf(
         "Rent", "Groceries", "Transport", "Bills", "Health", "Education", "Utilities", "Insurance"
     )

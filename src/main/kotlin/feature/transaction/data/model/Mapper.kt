@@ -2,6 +2,7 @@ package feature.transaction.data.model
 
 import com.fintrack.feature.transaction.data.model.CreateTransactionRequest
 import com.fintrack.feature.transaction.data.model.UpdateTransactionRequest
+import feature.category.domain.model.CategoryConstants
 import feature.transaction.domain.model.Transaction
 import java.math.BigDecimal
 import java.util.UUID
@@ -27,7 +28,7 @@ fun CreateTransactionRequest.toDomain(userId: UUID): Transaction {
         UUID.fromString(categoryId)
     } catch (e: Exception) {
         // Placeholder UUID, should be resolved by Service layer if "pending"
-        UUID.fromString("00000000-0000-0000-0000-000000000000")
+        CategoryConstants.PENDING_ID
     }
     
     val resolvedAccountId = try {
@@ -35,7 +36,7 @@ fun CreateTransactionRequest.toDomain(userId: UUID): Transaction {
     } catch (e: Exception) {
         // Use user's default account if possible, or a fallback.
         // This prevents 500 crashes when client sends "mpesa" or "equity" strings.
-        UUID.fromString("00000000-0000-0000-0000-000000000000")
+        CategoryConstants.PENDING_ID
     }
 
     return Transaction(
@@ -59,13 +60,13 @@ fun UpdateTransactionRequest.toDomain(userId: UUID, transactionId: UUID): Transa
         UUID.fromString(categoryId)
     } catch (e: Exception) {
         // Placeholder UUID, should be resolved by Service layer if "pending"
-        UUID.fromString("00000000-0000-0000-0000-000000000000")
+        CategoryConstants.PENDING_ID
     }
 
     val resolvedAccountId = try {
         UUID.fromString(this.accountId)
     } catch (e: Exception) {
-        UUID.fromString("00000000-0000-0000-0000-000000000000")
+        CategoryConstants.PENDING_ID
     }
 
     return Transaction(

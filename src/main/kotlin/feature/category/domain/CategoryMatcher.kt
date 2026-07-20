@@ -1,6 +1,7 @@
 package feature.category.domain
 
 import feature.category.domain.model.Category
+import feature.category.domain.model.CategoryConstants
 import feature.category.domain.model.CategoryRule
 import java.util.UUID
 
@@ -22,7 +23,7 @@ class CategoryMatcher {
         // 1. Valid UUID Check
         if (!inputCategoryId.isNullOrBlank() &&
             inputCategoryId != "pending" &&
-            inputCategoryId != "00000000-0000-0000-0000-000000000000"
+            inputCategoryId != CategoryConstants.PENDING_ID.toString()
         ) {
             return try { UUID.fromString(inputCategoryId) } catch (_: Exception) { defaultId }
         }
