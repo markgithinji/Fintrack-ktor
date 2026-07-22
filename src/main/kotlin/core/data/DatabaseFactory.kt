@@ -28,6 +28,13 @@ object DatabaseFactory {
                 jdbcUrl = databaseConfig.url
                 username = databaseConfig.user
                 password = databaseConfig.password
+
+                // Add SSL support for cloud databases (Neon/Supabase)
+                if (databaseConfig.url.contains("neon.tech") || databaseConfig.url.contains("aws.neon.tech")) {
+                    addDataSourceProperty("ssl", "true")
+                    addDataSourceProperty("sslmode", "require")
+                }
+
                 maximumPoolSize = databaseConfig.poolSize
                 minimumIdle = databaseConfig.minimumIdle ?: (databaseConfig.poolSize / 2)
                 maxLifetime = databaseConfig.maxLifetime ?: 1800000

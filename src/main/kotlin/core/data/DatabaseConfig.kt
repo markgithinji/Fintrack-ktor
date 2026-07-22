@@ -1,7 +1,9 @@
 package com.fintrack.core.data
 
 import io.ktor.server.config.*
+import java.net.URI
 import java.util.concurrent.TimeUnit
+import org.slf4j.LoggerFactory
 
 data class DatabaseConfig(
     val url: String,
@@ -16,24 +18,51 @@ data class DatabaseConfig(
     val maxLifetime: Long? = null
 ) {
     companion object {
+        private val log = LoggerFactory.getLogger("DatabaseConfig")
+
         fun fromEnvironment(config: ApplicationConfig): DatabaseConfig {
-            // 1. Try to get URL from Env first (Railway style)
-            val envUrl = System.getenv("DATABASE_URL") ?: System.getenv("DB_URL")
-            val rawUrl = envUrl ?: config.propertyOrNull("database.url")?.getString() ?: "jdbc:postgresql://localhost:5432/fintrack_db"
+            val envUrl = System.getenv("DATABASE_URL") ?: System.getenv("DB_URL") ?: System.getenv("POSTGRES_URL")
             
-            val finalUrl = when {
-                rawUrl.startsWith("postgres://") -> rawUrl.replace("postgres://", "jdbc:postgresql://")
-                rawUrl.startsWith("postgresql://") -> rawUrl.replace("postgresql://", "jdbc:postgresql://")
-                else -> rawUrl
+            var finalUrl = config.propertyOrNull("database.url")?.getString() ?: "jdbc:postgresql://localhost:5432/fintrack_db"
+            var finalUser = System.getenv("PGUSER") ?: System.getenv("DB_USER") ?: config.propertyOrNull("database.user")?.getString() ?: "fintrack"
+            var finalPassword = System.getenv("PGPASSWORD") ?: System.getenv("DB_PASSWORD") ?: config.propertyOrNull("database.password")?.getString() ?: "secret"
+
+            if (envUrl != null) {
+                try {
+                    val uri = URI(envUrl)
+                    val userInfo = uri.userInfo?.split(":")
+                    
+                    val host = uri.host
+                    val port = if (uri.port != -1) uri.port else 5432
+                    val path = uri.path
+                    
+                    finalUrl = "jdbc:postgresql://$host:$port$path"
+                    if (uri.query != null) {
+                        finalUrl += "?${uri.query}"
+                    }
+                    
+                    finalUser = userInfo?.getOrNull(0) ?: finalUser
+                    finalPassword = userInfo?.getOrNull(1) ?: finalPassword
+                    
+                    log.info("Parsed DATABASE_URL successfully for host: $host")
+                } catch (e: Exception) {
+                    log.error("Failed to parse DATABASE_URL: ${e.message}. Falling back to default resolution.")
+                    // Fallback to simple replacement if URI parsing fails for some reason
+                    finalUrl = envUrl.replace("postgres://", "jdbc:postgresql://")
+                        .replace("postgresql://", "jdbc:postgresql://")
+                }
+            } else {
+                // Ensure the URL starts with jdbc:
+                if (!finalUrl.startsWith("jdbc:")) {
+                    finalUrl = "jdbc:postgresql://" + finalUrl.removePrefix("postgres://").removePrefix("postgresql://")
+                }
             }
 
             return DatabaseConfig(
                 url = finalUrl,
                 driver = config.propertyOrNull("database.driver")?.getString() ?: "org.postgresql.Driver",
-                user = System.getenv("PGUSER") ?: System.getenv("DB_USER") 
-                    ?: config.propertyOrNull("database.user")?.getString() ?: "fintrack",
-                password = System.getenv("PGPASSWORD") ?: System.getenv("DB_PASSWORD") 
-                    ?: config.propertyOrNull("database.password")?.getString() ?: "secret",
+                user = finalUser,
+                password = finalPassword,
                 poolSize = System.getenv("DB_POOL_SIZE")?.toIntOrNull() 
                     ?: config.propertyOrNull("database.poolSize")?.getString()?.toIntOrNull() ?: 5,
                 connectionTimeout = config.propertyOrNull("database.connectionTimeout")?.getString()?.toLongOrNull()
