@@ -5,7 +5,7 @@ WORKDIR /home/gradle/src
 RUN ./gradlew buildFatJar --no-daemon
 
 # Run stage
-FROM openjdk:21-slim
+FROM eclipse-temurin:21-jre-jammy
 EXPOSE 8080
 RUN mkdir /app
 COPY --from=build /home/gradle/src/build/libs/*-all.jar /app/fintrack.jar
