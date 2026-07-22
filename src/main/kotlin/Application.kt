@@ -11,7 +11,14 @@ import org.koin.ktor.ext.inject
 import redis.clients.jedis.JedisPool
 
 fun main(args: Array<String>) {
-    EngineMain.main(args)
+    // Railway provides the PORT env var. If present, we override the default 8080.
+    val port = System.getenv("PORT")
+    val finalArgs = if (port != null) {
+        args + "-port=$port"
+    } else {
+        args
+    }
+    EngineMain.main(finalArgs)
 }
 
 fun Application.module() {

@@ -17,12 +17,11 @@ data class DatabaseConfig(
 ) {
     companion object {
         fun fromEnvironment(config: ApplicationConfig): DatabaseConfig {
-            val rawUrl = config.propertyOrNull("database.url")?.getString()
-                ?: System.getenv("DB_URL")
-                ?: System.getenv("DATABASE_URL")
-
+            // 1. Try to get URL from Env first (Railway style)
+            val envUrl = System.getenv("DATABASE_URL") ?: System.getenv("DB_URL")
+            val rawUrl = envUrl ?: config.propertyOrNull("database.url")?.getString() ?: "jdbc:postgresql://localhost:5432/fintrack_db"
+            
             val finalUrl = when {
-                rawUrl == null -> "jdbc:postgresql://localhost:5432/fintrack_db"
                 rawUrl.startsWith("postgres://") -> rawUrl.replace("postgres://", "jdbc:postgresql://")
                 rawUrl.startsWith("postgresql://") -> rawUrl.replace("postgresql://", "jdbc:postgresql://")
                 else -> rawUrl
@@ -30,17 +29,13 @@ data class DatabaseConfig(
 
             return DatabaseConfig(
                 url = finalUrl,
-                driver = config.propertyOrNull("database.driver")?.getString()
-                    ?: "org.postgresql.Driver",
-                user = config.propertyOrNull("database.user")?.getString()
-                    ?: System.getenv("DB_USER")
-                    ?: System.getenv("PGUSER")
-                    ?: "fintrack",
-                password = config.propertyOrNull("database.password")?.getString()
-                    ?: System.getenv("DB_PASSWORD")
-                    ?: System.getenv("PGPASSWORD")
-                    ?: "secret",
-                poolSize = config.propertyOrNull("database.poolSize")?.getString()?.toIntOrNull() ?: 5,
+                driver = config.propertyOrNull("database.driver")?.getString() ?: "org.postgresql.Driver",
+                user = System.getenv("PGUSER") ?: System.getenv("DB_USER") 
+                    ?: config.propertyOrNull("database.user")?.getString() ?: "fintrack",
+                password = System.getenv("PGPASSWORD") ?: System.getenv("DB_PASSWORD") 
+                    ?: config.propertyOrNull("database.password")?.getString() ?: "secret",
+                poolSize = System.getenv("DB_POOL_SIZE")?.toIntOrNull() 
+                    ?: config.propertyOrNull("database.poolSize")?.getString()?.toIntOrNull() ?: 5,
                 connectionTimeout = config.propertyOrNull("database.connectionTimeout")?.getString()?.toLongOrNull()
                     ?: TimeUnit.SECONDS.toMillis(30),
                 validationTimeout = config.propertyOrNull("database.validationTimeout")?.getString()?.toLongOrNull()
@@ -49,7 +44,7 @@ data class DatabaseConfig(
                     ?: TimeUnit.SECONDS.toMillis(60),
                 minimumIdle = config.propertyOrNull("database.minimumIdle")?.getString()?.toIntOrNull(),
                 maxLifetime = config.propertyOrNull("database.maxLifetime")?.getString()?.toLongOrNull()
-                    ?: TimeUnit.MINUTES.toMillis(30) // Default 30 minutes
+                    ?: TimeUnit.MINUTES.toMillis(30)
             )
         }
     }
