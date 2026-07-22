@@ -13,6 +13,19 @@ import org.koin.ktor.plugin.Koin
 
 fun Application.configureDI() {
     install(Koin) {
+        // Load properties from Ktor application.yaml
+        val redisHost = environment.config.propertyOrNull("redis.host")?.getString()
+        val redisPort = environment.config.propertyOrNull("redis.port")?.getString()
+        val redisPassword = environment.config.propertyOrNull("redis.password")?.getString()
+
+        properties(
+            mapOf(
+                "redis.host" to (redisHost ?: "localhost"),
+                "redis.port" to (redisPort ?: "6379"),
+                "redis.password" to (redisPassword ?: "")
+            )
+        )
+
         modules(
             accountsModule,
             transactionsModule(),

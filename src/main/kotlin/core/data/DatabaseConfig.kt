@@ -17,17 +17,27 @@ data class DatabaseConfig(
 ) {
     companion object {
         fun fromEnvironment(config: ApplicationConfig): DatabaseConfig {
+            val rawUrl = config.propertyOrNull("database.url")?.getString()
+                ?: System.getenv("DB_URL")
+                ?: System.getenv("DATABASE_URL")
+
+            val finalUrl = when {
+                rawUrl == null -> "jdbc:postgresql://localhost:5432/fintrack_db"
+                rawUrl.startsWith("postgresql://") -> rawUrl.replace("postgresql://", "jdbc:postgresql://")
+                else -> rawUrl
+            }
+
             return DatabaseConfig(
-                url = config.propertyOrNull("database.url")?.getString()
-                    ?: System.getenv("DB_URL")
-                    ?: "jdbc:postgresql://localhost:5432/fintrack_db",
+                url = finalUrl,
                 driver = config.propertyOrNull("database.driver")?.getString()
                     ?: "org.postgresql.Driver",
                 user = config.propertyOrNull("database.user")?.getString()
                     ?: System.getenv("DB_USER")
+                    ?: System.getenv("PGUSER")
                     ?: "fintrack",
                 password = config.propertyOrNull("database.password")?.getString()
                     ?: System.getenv("DB_PASSWORD")
+                    ?: System.getenv("PGPASSWORD")
                     ?: "secret",
                 poolSize = config.propertyOrNull("database.poolSize")?.getString()?.toIntOrNull() ?: 5,
                 connectionTimeout = config.propertyOrNull("database.connectionTimeout")?.getString()?.toLongOrNull()
