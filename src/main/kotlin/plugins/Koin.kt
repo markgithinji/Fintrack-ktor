@@ -10,24 +10,43 @@ import feature.summary.di.summaryModule
 import feature.transaction.di.transactionsModule
 import io.ktor.server.application.*
 import org.koin.ktor.plugin.Koin
+import java.net.URI
 
 fun Application.configureDI() {
     install(Koin) {
-        // Resolve properties manually from Env or Config to avoid YAML parser bugs
-        val redisHost = System.getenv("REDISHOST") ?: System.getenv("REDIS_HOST") 
-            ?: environment.config.propertyOrNull("redis.host")?.getString() ?: "localhost"
+        // 1. Try to get the full REDIS_URL first
+        val redisUrlStr = System.getenv("REDIS_URL") ?: System.getenv("REDIS_TLS_URL")
+        
+        var finalHost = "localhost"
+        var finalPort = "6379"
+        var finalPassword = ""
+
+        if (redisUrlStr != null) {
+            try {
+                val uri = URI(redisUrlStr)
+                finalHost = uri.host
+                finalPort = uri.port.toString()
+                finalPassword = uri.userInfo?.split(":")?.getOrNull(1) ?: ""
+            } catch (e: Exception) {
+                // Fallback to separate variables if URI parsing fails
+            }
+        } else {
+            // 2. Fallback to separate environment variables
+            finalHost = System.getenv("REDISHOST") ?: System.getenv("REDIS_HOST") 
+                ?: environment.config.propertyOrNull("redis.host")?.getString() ?: "localhost"
             
-        val redisPort = System.getenv("REDISPORT") ?: System.getenv("REDIS_PORT") 
-            ?: environment.config.propertyOrNull("redis.port")?.getString() ?: "6379"
+            finalPort = System.getenv("REDISPORT") ?: System.getenv("REDIS_PORT") 
+                ?: environment.config.propertyOrNull("redis.port")?.getString() ?: "6379"
             
-        val redisPassword = System.getenv("REDISPASSWORD") ?: System.getenv("REDIS_PASSWORD") 
-            ?: environment.config.propertyOrNull("redis.password")?.getString() ?: ""
+            finalPassword = System.getenv("REDISPASSWORD") ?: System.getenv("REDIS_PASSWORD") 
+                ?: environment.config.propertyOrNull("redis.password")?.getString() ?: ""
+        }
 
         properties(
             mapOf(
-                "redis.host" to redisHost,
-                "redis.port" to redisPort,
-                "redis.password" to redisPassword
+                "redis.host" to finalHost,
+                "redis.port" to finalPort,
+                "redis.password" to finalPassword
             )
         )
 
