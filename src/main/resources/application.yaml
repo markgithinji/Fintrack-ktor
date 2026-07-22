@@ -8,10 +8,10 @@ ktor:
       - com.fintrack.ApplicationKt.module
 
 database:
-  url: ${DB_URL:-${DATABASE_URL:-jdbc:postgresql://localhost:5432/fintrack_db}}
+  url: ${DATABASE_URL:-jdbc:postgresql://localhost:5432/fintrack_db}
   driver: "org.postgresql.Driver"
-  user: ${DB_USER:-${PGUSER:-fintrack}}
-  password: ${DB_PASSWORD:-${PGPASSWORD:-secret}}
+  user: ${PGUSER:-fintrack}
+  password: ${PGPASSWORD:-secret}
   poolSize: ${DB_POOL_SIZE:-5}
   connectionTimeout: 30000
   validationTimeout: 5000
@@ -24,6 +24,6 @@ jwt:
   realm: "FinTrack API"
 
 redis:
-  host: ${REDIS_HOST:-${REDISHOST:-localhost}}
-  port: ${REDIS_PORT:-${REDISPORT:-6379}}
-  password: ${REDIS_PASSWORD:-${REDISPASSWORD:-""}}
+  host: ${REDISHOST:-localhost}
+  port: ${REDISPORT:-6379}
+  password: ${REDISPASSWORD:-}

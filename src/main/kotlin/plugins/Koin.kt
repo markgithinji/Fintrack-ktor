@@ -22,7 +22,7 @@ fun Application.configureDI() {
             mapOf(
                 "redis.host" to (redisHost ?: "localhost"),
                 "redis.port" to (redisPort ?: "6379"),
-                "redis.password" to (redisPassword ?: "")
+                "redis.password" to (if (redisPassword.isNullOrBlank()) "" else redisPassword)
             )
         )
 

@@ -23,6 +23,7 @@ data class DatabaseConfig(
 
             val finalUrl = when {
                 rawUrl == null -> "jdbc:postgresql://localhost:5432/fintrack_db"
+                rawUrl.startsWith("postgres://") -> rawUrl.replace("postgres://", "jdbc:postgresql://")
                 rawUrl.startsWith("postgresql://") -> rawUrl.replace("postgresql://", "jdbc:postgresql://")
                 else -> rawUrl
             }
