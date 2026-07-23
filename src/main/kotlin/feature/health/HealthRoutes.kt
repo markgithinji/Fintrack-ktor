@@ -1,18 +1,30 @@
 package com.fintrack.feature.health
 
-
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.get
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class HealthResponse(
+    val status: String,
+    val service: String,
+    val timestamp: Long
+)
+
+@Serializable
+data class SimpleStatusResponse(
+    val status: String
+)
 
 fun Routing.healthRoutes(healthService: HealthService) {
     // Simple health check
     get("/health") {
-        call.respond(mapOf(
-            "status" to "UP",
-            "service" to "fintrack-api",
-            "timestamp" to System.currentTimeMillis()
+        call.respond(HealthResponse(
+            status = "UP",
+            service = "fintrack-api",
+            timestamp = System.currentTimeMillis()
         ))
     }
 
@@ -27,15 +39,15 @@ fun Routing.healthRoutes(healthService: HealthService) {
     get("/health/ready") {
         val isReady = healthService.checkReadiness()
         if (isReady) {
-            call.respond(mapOf("status" to "READY"))
+            call.respond(SimpleStatusResponse(status = "READY"))
         } else {
-            call.respond(HttpStatusCode.ServiceUnavailable, mapOf("status" to "NOT_READY"))
+            call.respond(HttpStatusCode.ServiceUnavailable, SimpleStatusResponse(status = "NOT_READY"))
         }
     }
 
     // Liveness check
     get("/health/live") {
-        call.respond(mapOf("status" to "ALIVE"))
+        call.respond(SimpleStatusResponse(status = "ALIVE"))
     }
 
     // Health metrics endpoint

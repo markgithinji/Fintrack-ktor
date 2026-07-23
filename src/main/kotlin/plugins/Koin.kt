@@ -20,6 +20,7 @@ fun Application.configureDI() {
         var finalHost = "localhost"
         var finalPort = "6379"
         var finalPassword = ""
+        var useSsl = false
 
         if (redisUrlStr != null) {
             try {
@@ -27,6 +28,7 @@ fun Application.configureDI() {
                 finalHost = uri.host
                 finalPort = uri.port.toString()
                 finalPassword = uri.userInfo?.split(":")?.getOrNull(1) ?: ""
+                useSsl = uri.scheme == "rediss"
             } catch (e: Exception) {
                 // Fallback to separate variables if URI parsing fails
             }
@@ -40,13 +42,16 @@ fun Application.configureDI() {
             
             finalPassword = System.getenv("REDISPASSWORD") ?: System.getenv("REDIS_PASSWORD") 
                 ?: environment.config.propertyOrNull("redis.password")?.getString() ?: ""
+                
+            useSsl = System.getenv("REDIS_SSL")?.toBoolean() ?: false
         }
 
         properties(
             mapOf(
                 "redis.host" to finalHost,
                 "redis.port" to finalPort,
-                "redis.password" to finalPassword
+                "redis.password" to finalPassword,
+                "redis.ssl" to useSsl.toString()
             )
         )
 

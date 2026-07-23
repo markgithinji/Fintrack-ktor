@@ -18,14 +18,24 @@ import redis.clients.jedis.JedisPoolConfig
 
 val authModule = module {
     single {
-        val host = getPropertyOrNull("redis.host") ?: "localhost"
+        val host = getPropertyOrNull<String>("redis.host") ?: "localhost"
         val port = getPropertyOrNull<String>("redis.port")?.toInt() ?: 6379
         val password = getPropertyOrNull<String>("redis.password")
+        val useSsl = getPropertyOrNull<String>("redis.ssl")?.toBoolean() ?: false
         
+        val config = JedisPoolConfig().apply {
+            maxTotal = 10
+            maxIdle = 5
+            minIdle = 1
+            testOnBorrow = true
+            testOnReturn = true
+            testWhileIdle = true
+        }
+
         if (password.isNullOrBlank()) {
-            JedisPool(JedisPoolConfig(), host, port)
+            JedisPool(config, host, port, 2000, useSsl)
         } else {
-            JedisPool(JedisPoolConfig(), host, port, 2000, password)
+            JedisPool(config, host, port, 2000, password, useSsl)
         }
     }
     
