@@ -26,17 +26,16 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.decimalLiteral
-import org.jetbrains.exposed.sql.intLiteral
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.sum
+import org.jetbrains.exposed.sql.*
 import java.time.temporal.IsoFields
 import java.util.UUID
 
 class StatisticsRepositoryImpl : StatisticsRepository {
-    private val joinTable = TransactionsTable.leftJoin(CategoriesTable)
+    private val joinTable = TransactionsTable.leftJoin(
+        CategoriesTable,
+        { TransactionsTable.categoryId },
+        { CategoriesTable.id }
+    )
 
     override suspend fun getTransactions(
         userId: UUID,

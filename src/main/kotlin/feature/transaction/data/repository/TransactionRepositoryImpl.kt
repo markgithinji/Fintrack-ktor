@@ -15,7 +15,11 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import java.util.*
 
 class TransactionRepositoryImpl : TransactionRepository {
-    private val joinTable = TransactionsTable.leftJoin(CategoriesTable)
+    private val joinTable = TransactionsTable.leftJoin(
+        CategoriesTable,
+        { TransactionsTable.categoryId },
+        { CategoriesTable.id }
+    )
 
     override suspend fun getAllCursor(
         userId: UUID,
@@ -71,6 +75,10 @@ class TransactionRepositoryImpl : TransactionRepository {
     }
 
     override suspend fun getById(id: UUID, userId: UUID): Transaction? = dbQuery {
+        getByIdInternal(id, userId)
+    }
+
+    private fun getByIdInternal(id: UUID, userId: UUID): Transaction? =
         joinTable
             .selectAll().where {
                 (TransactionsTable.id eq id) and
@@ -78,7 +86,6 @@ class TransactionRepositoryImpl : TransactionRepository {
             }
             .map { it.toTransaction() }
             .singleOrNull()
-    }
 
     override suspend fun add(entity: Transaction): Transaction = dbQuery {
         val now = Clock.System.now()
@@ -102,7 +109,7 @@ class TransactionRepositoryImpl : TransactionRepository {
 
         // Still need to re-fetch if we want category name, try to be efficient
         if (inserted != null) {
-            getById(transactionId, entity.userId)
+            getByIdInternal(transactionId, entity.userId)
                 ?: throw IllegalStateException("Failed to retrieve inserted transaction")
         } else {
             throw IllegalStateException("Failed to insert transaction")
@@ -132,7 +139,7 @@ class TransactionRepositoryImpl : TransactionRepository {
 
         if (updated == 0) return@dbQuery null
         
-        getById(id, userId)
+        getByIdInternal(id, userId)
     }
 
     override suspend fun delete(id: UUID, userId: UUID): Boolean = dbQuery {
@@ -217,7 +224,7 @@ class TransactionRepositoryImpl : TransactionRepository {
         isIncome = this[TransactionsTable.isIncome],
         amount = this[TransactionsTable.amount],
         transactionCost = this[TransactionsTable.transactionCost],
-        category = this[CategoriesTable.name],
+        category = this.getOrNull(CategoriesTable.name) ?: "Uncategorized",
         categoryId = this[TransactionsTable.categoryId].value,
         dateTime = this[TransactionsTable.dateTime],
         description = this[TransactionsTable.description],
