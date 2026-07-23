@@ -224,6 +224,13 @@ class TransactionServiceImpl(
         val transaction = resolveRefsAndToDomain(request, userId, allCategories, allAccounts, rules)
         val result = transactionRepository.add(transaction)
 
+        // Update Account Balance
+        val account = allAccounts.find { it.id == transaction.accountId }
+        if (account?.id != null) {
+            val delta = if (transaction.isIncome) transaction.totalAmount else -transaction.totalAmount
+            accountsRepository.updateBalance(account.id!!, account.balance + delta)
+        }
+
         return Result.Success(result.toDto())
     }
 
@@ -235,6 +242,9 @@ class TransactionServiceImpl(
         log.withContext("userId" to userId, "transactionId" to id)
             .info { "Updating transaction" }
 
+        val oldTransaction = transactionRepository.getById(id, userId)
+            ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
+
         val allCategories = categoryRepository.getAll(userId)
         val allAccounts = accountsRepository.getAllAccounts(userId)
         val rules = ruleService.getAllRules().getOrNull() ?: emptyList()
@@ -242,14 +252,50 @@ class TransactionServiceImpl(
         val result = transactionRepository.update(id, userId, transaction)
             ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
 
+        // Update Account Balances
+        if (oldTransaction.accountId == transaction.accountId) {
+            val oldDelta = if (oldTransaction.isIncome) oldTransaction.totalAmount else -oldTransaction.totalAmount
+            val newDelta = if (transaction.isIncome) transaction.totalAmount else -transaction.totalAmount
+            val diff = newDelta - oldDelta
+
+            val account = allAccounts.find { it.id == transaction.accountId }
+            if (account?.id != null) {
+                accountsRepository.updateBalance(account.id!!, account.balance + diff)
+            }
+        } else {
+            // Account changed: Remove from old, add to new
+            val oldAccount = allAccounts.find { it.id == oldTransaction.accountId }
+            if (oldAccount?.id != null) {
+                val oldDelta = if (oldTransaction.isIncome) oldTransaction.totalAmount else -oldTransaction.totalAmount
+                accountsRepository.updateBalance(oldAccount.id!!, oldAccount.balance - oldDelta)
+            }
+
+            val newAccount = allAccounts.find { it.id == transaction.accountId }
+            if (newAccount?.id != null) {
+                val newDelta = if (transaction.isIncome) transaction.totalAmount else -transaction.totalAmount
+                accountsRepository.updateBalance(newAccount.id!!, newAccount.balance + newDelta)
+            }
+        }
+
         return Result.Success(result.toDto())
     }
 
     override suspend fun delete(userId: UUID, id: UUID): Result<Unit> {
+        val transaction = transactionRepository.getById(id, userId)
+            ?: return Result.Failure(AppError.NotFound("Transaction $id not found"))
+
         val deleted = transactionRepository.delete(id, userId)
         if (!deleted) {
             return Result.Failure(AppError.NotFound("Transaction $id not found"))
         }
+
+        // Update Account Balance: Reverse the transaction's effect
+        val account = accountsRepository.getAccountById(transaction.accountId)
+        if (account?.id != null) {
+            val delta = if (transaction.isIncome) transaction.totalAmount else -transaction.totalAmount
+            accountsRepository.updateBalance(account.id!!, account.balance - delta)
+        }
+
         return Result.Success(Unit)
     }
 
