@@ -168,6 +168,10 @@ class AccountServiceImpl(
             return Result.Failure(AppError.Unauthorized("Account does not belong to user"))
         }
 
+        if (existingAccount.isDefault && existingAccount.name != request.name) {
+            return Result.Failure(AppError.Validation("Cannot rename a system default account"))
+        }
+
         val account = existingAccount.copy(
             name = request.name,
             type = request.type.toDomain(),
