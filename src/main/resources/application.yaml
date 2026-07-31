@@ -1,6 +1,6 @@
 ktor:
   deployment:
-    port: ${PORT:-8080}
+    port: 8080
     host: "0.0.0.0"
 
   application:
@@ -8,23 +8,23 @@ ktor:
       - com.fintrack.ApplicationKt.module
 
 database:
-  url: ${DB_URL:-"jdbc:postgresql://localhost:5432/fintrack_db"}
+  url: "jdbc:postgresql://localhost:5432/fintrack_db"
   driver: "org.postgresql.Driver"
-  user: ${DB_USER:-fintrack}
-  password: ${DB_PASSWORD:-secret}
-  poolSize: ${DB_POOL_SIZE:-5}
+  user: "fintrack"
+  password: "secret"
+  poolSize: 5
   connectionTimeout: 30000
   validationTimeout: 5000
   leakDetectionThreshold: 60000
 
 jwt:
-  secret: ${JWT_SECRET:-development-secret-change-in-production}
+  secret: "development-secret-change-in-production"
   issuer: "fintrack-app"
   audience: "fintrack-users"
   realm: "FinTrack API"
 
 redis:
-  host: ${REDIS_HOST:-localhost}
-  port: ${REDIS_PORT:-6379}
-  password: ${REDIS_PASSWORD:-""}
-  ssl: ${REDIS_SSL:-false}
+  host: "localhost"
+  port: 6379
+  password: ""
+  ssl: false
