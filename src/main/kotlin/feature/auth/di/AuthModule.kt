@@ -18,10 +18,10 @@ import redis.clients.jedis.JedisPoolConfig
 
 val authModule = module {
     single {
-        val host = getPropertyOrNull<String>("redis.host") ?: "localhost"
-        val port = getPropertyOrNull<String>("redis.port")?.toInt() ?: 6379
-        val password = getPropertyOrNull<String>("redis.password")
-        val useSsl = getPropertyOrNull<String>("redis.ssl")?.toBoolean() ?: false
+        val host = System.getenv("REDIS_HOST") ?: getPropertyOrNull("redis.host") ?: "localhost"
+        val port = System.getenv("REDIS_PORT")?.toInt() ?: getPropertyOrNull<String>("redis.port")?.toInt() ?: 6379
+        val password = System.getenv("REDIS_PASSWORD") ?: getPropertyOrNull("redis.password")
+        val useSsl = System.getenv("REDIS_SSL")?.toBoolean() ?: getPropertyOrNull<String>("redis.ssl")?.toBoolean() ?: false
         
         val config = JedisPoolConfig().apply {
             maxTotal = 10
@@ -33,9 +33,10 @@ val authModule = module {
         }
 
         if (password.isNullOrBlank()) {
-            JedisPool(config, host, port, 2000, useSsl)
+            JedisPool(config, host, port, 5000, useSsl)
         } else {
-            JedisPool(config, host, port, 2000, password, useSsl)
+            // Using 5000ms timeout for cloud Redis stability
+            JedisPool(config, host, port, 5000, password, useSsl)
         }
     }
     

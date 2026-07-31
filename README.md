@@ -10,7 +10,7 @@
 
 ### Prerequisites
 - **Java 17** or higher
-- **Docker Desktop** (installed and running)
+- **Docker Desktop**: [Download and install here](https://www.docker.com/products/docker-desktop/) (Must be installed and running on your host machine to provide the database and Redis services)
 - **Git**
 
 ### 1. Clone & Setup
