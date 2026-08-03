@@ -43,6 +43,8 @@ docker run -d --name fintrack-redis -p 6379:6379 redis:alpine
 ./gradlew run
 ```
 
+> 💡 **Tip**: If you are using Android Studio or IntelliJ, a shared run configuration named **"Run Backend"** is automatically available. You can simply select it from the dropdown and hit **Run**.
+
 ### 4. Testing with Sample Data (via Postman)
 To see the API in action, you can use **Postman** to hit the following endpoints. 
 
