@@ -11,6 +11,7 @@
 ### Prerequisites
 - **Java 17** or higher
 - **Docker Desktop**: [Download and install here](https://www.docker.com/products/docker-desktop/) (Must be installed and running on your host machine to provide the database and Redis services)
+- **Postman**: [Download and install here](https://www.postman.com/downloads/) (Recommended for testing the API endpoints)
 - **Git**
 
 ### 1. Clone & Setup
@@ -42,42 +43,43 @@ docker run -d --name fintrack-redis -p 6379:6379 redis:alpine
 ./gradlew run
 ```
 
-### 4. Testing with Sample Data
-To see the API in action, you can follow this quick flow:
+### 4. Testing with Sample Data (via Postman)
+To see the API in action, you can use **Postman** to hit the following endpoints. 
+
+> 💡 **Tip**: If you are using the [Fintrack KMP mobile app](https://github.com/markgithinji/fintrack-kmp), it also includes a built-in **Seed Data** option to automatically populate your account with a realistic dataset directly from the UI.
 
 ##### Register a user:
-```bash
-POST http://localhost:8080/auth/register
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/auth/register`
+- **Body** (JSON):
+```json
 {
   "email": "test@example.com",
   "password": "testpass123"
 }
 ```
-*Note: Save the JWT token from the response.*
+*Note: Save the `accessToken` from the response.*
 
 ##### Get your account IDs:
-```bash
-GET http://localhost:8080/accounts
-Headers: Authorization: Bearer <your-jwt-token>
-```
+- **Method**: `GET`
+- **URL**: `http://localhost:8080/accounts`
+- **Headers**: `Authorization: Bearer <your-access-token>`
 
 ##### Add sample transactions (Bulk):
 1. **Fetch IDs**: Get your `accountId` from the `/accounts` endpoint.
 2. **Prepare Data**: Use the [sample-transactions.json](sample-data/sample-transactions.json) file included in this repo. You can use this AI prompt with your `accountId` to generate a personalized dataset:
     > "Using the structure in `sample-data/sample-transactions.json`, replace all `accountId` values with [your-id]. Update all dates to be within the last 7 days from today, ensuring 3-4 transactions per day with realistic timestamps and categories."
 3. **Upload**:
-```bash
-POST http://localhost:8080/transactions/bulk
-Headers: Authorization: Bearer <your-jwt-token>
-Body: [your-generated-json]
-```
+- **Method**: `POST`
+- **URL**: `http://localhost:8080/transactions/bulk`
+- **Headers**: `Authorization: Bearer <your-access-token>`
+- **Body**: `[your-generated-json]`
 
 ##### Cleanup:
 To start fresh:
-```bash
-DELETE http://localhost:8080/transactions/clear
-Headers: Authorization: Bearer <your-jwt-token>
-```
+- **Method**: `DELETE`
+- **URL**: `http://localhost:8080/transactions/clear`
+- **Headers**: `Authorization: Bearer <your-access-token>`
 
 ---
 
