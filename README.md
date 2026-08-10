@@ -1,4 +1,4 @@
-# 🚀 Fintrack Ktor API — Personal Finance Backend Service
+# 🚀 Fintrack Ktor API, Personal Finance Backend Service
 
 **Fintrack Ktor API** is a robust, high-performance backend service built with **Ktor** and **Kotlin**, designed to power the [Fintrack KMP mobile application](https://github.com/markgithinji/fintrack-kmp). It follows **clean architecture** principles and implements modern security standards to deliver a scalable, maintainable, and secure financial data API.
 
